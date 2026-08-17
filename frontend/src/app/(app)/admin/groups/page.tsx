@@ -38,6 +38,7 @@ const schema = z.object({
   description: z.string().optional(),
   leaderUsername: z.string().min(1, "L'identifiant est requis"),
   leaderFullName: z.string().min(1, "Le nom complet est requis"),
+  leaderPassword: z.union([z.string().min(6, "Au moins 6 caractères"), z.literal("")]).optional(),
 });
 
 const editSchema = z.object({
@@ -101,13 +102,13 @@ export default function AdminGroupsPage() {
 
   const createMutation = useMutation({
     mutationFn: createGroup,
-    onSuccess: (group, variables) => {
+    onSuccess: (group) => {
       toast.success(`Groupe « ${group.name} » créé`);
       queryClient.invalidateQueries({ queryKey: ["admin", "groups"] });
       setCreateOpen(false);
       reset();
-      if (variables.leaderPassword) {
-        setNewCredentials({ username: variables.leaderUsername, password: variables.leaderPassword });
+      if (group.leaderUsername && group.temporaryPassword) {
+        setNewCredentials({ username: group.leaderUsername, password: group.temporaryPassword });
       }
     },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la création du groupe")),
@@ -150,7 +151,9 @@ export default function AdminGroupsPage() {
               <DialogTitle>Créer un groupe de travail</DialogTitle>
             </DialogHeader>
             <form
-              onSubmit={handleSubmit((values) => createMutation.mutate(values))}
+              onSubmit={handleSubmit((values) =>
+                createMutation.mutate({ ...values, leaderPassword: values.leaderPassword || undefined })
+              )}
               className="space-y-4"
             >
               <div className="space-y-1.5">
@@ -174,9 +177,19 @@ export default function AdminGroupsPage() {
                   {errors.leaderFullName && <p className="text-[13px] text-accent-700">{errors.leaderFullName.message}</p>}
                 </div>
               </div>
-              <p className="text-[13px] text-slate-500">
-                Un mot de passe temporaire sera généré automatiquement et affiché après la création.
-              </p>
+              <div className="space-y-1.5">
+                <Label>Mot de passe du chef de groupe</Label>
+                <Input
+                  {...register("leaderPassword")}
+                  type="text"
+                  error={!!errors.leaderPassword}
+                  placeholder="Laisser vide pour générer automatiquement"
+                />
+                {errors.leaderPassword && <p className="text-[13px] text-accent-700">{errors.leaderPassword.message}</p>}
+                <p className="text-[13px] text-slate-500">
+                  Si laissé vide, un mot de passe temporaire sera généré automatiquement et affiché après la création.
+                </p>
+              </div>
               <DialogFooter>
                 <Button type="submit" variant="primary" loading={createMutation.isPending}>
                   Créer le groupe

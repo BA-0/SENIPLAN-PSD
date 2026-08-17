@@ -6,9 +6,33 @@
   :root {
     --background: 210 40% 98%;
     --foreground: 215 25% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
     --border: 214 32% 91%;
     --input: 214 32% 91%;
     --ring: 142 47% 32%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 215 25% 15%;
+  }
+
+  .dark {
+    --background: 222 33% 16%;
+    --foreground: 210 35% 94%;
+    --card: 222 30% 21%;
+    --card-foreground: 210 35% 94%;
+    --popover: 222 30% 21%;
+    --popover-foreground: 210 35% 94%;
+    --border: 222 20% 30%;
+    --input: 222 20% 30%;
+    --ring: 142 45% 45%;
+    --muted: 222 25% 25%;
+    --muted-foreground: 216 18% 68%;
+    --secondary: 222 25% 25%;
+    --secondary-foreground: 210 35% 94%;
   }
 
   * {
@@ -16,20 +40,20 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-800;
+    @apply bg-background text-foreground;
     font-feature-settings: "cv11", "ss01";
   }
 
   h1 {
-    @apply text-2xl font-semibold text-slate-800;
+    @apply text-2xl font-semibold text-foreground;
   }
 
   h2 {
-    @apply text-lg font-semibold text-slate-800;
+    @apply text-lg font-semibold text-foreground;
   }
 
   h3 {
-    @apply text-[15px] font-medium text-slate-700;
+    @apply text-[15px] font-medium text-foreground/90;
   }
 }
 
@@ -44,6 +68,6 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-slate-300 rounded-full;
+    @apply bg-slate-300 dark:bg-white/15 rounded-full;
   }
 }

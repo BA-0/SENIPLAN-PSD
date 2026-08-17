@@ -30,6 +30,7 @@ interface SectionShellProps {
   onSaveNow: () => void;
   onSubmit: () => void;
   submitting?: boolean;
+  submitBlockedReason?: string | null;
   prevSection?: { code: string; title: string } | null;
   nextSection?: { code: string; title: string } | null;
   children: React.ReactNode;
@@ -46,6 +47,7 @@ export function SectionShell({
   onSaveNow,
   onSubmit,
   submitting,
+  submitBlockedReason,
   prevSection,
   nextSection,
   children,
@@ -55,7 +57,9 @@ export function SectionShell({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="text-slate-400 text-sm">{code}</span>
+            <span className="rounded-md bg-primary-50 px-2 py-0.5 text-[13px] font-semibold text-primary-700">
+              {code}
+            </span>
             <h1>{title}</h1>
             <StatusBadge status={status} />
           </div>
@@ -71,7 +75,12 @@ export function SectionShell({
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="submit" size="lg" disabled={submitting}>
+                <Button
+                  variant="submit"
+                  size="lg"
+                  disabled={submitting || !!submitBlockedReason}
+                  title={submitBlockedReason ?? undefined}
+                >
                   Soumettre la section
                 </Button>
               </AlertDialogTrigger>
@@ -100,6 +109,12 @@ export function SectionShell({
         </div>
       )}
 
+      {!locked && submitBlockedReason && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-700">
+          {submitBlockedReason}
+        </div>
+      )}
+
       {status === "REVISION_REQUESTED" && adminComment && (
         <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-[13px] text-orange-700">
           <span className="font-medium">Révision demandée par l&apos;administrateur : </span>
@@ -107,7 +122,7 @@ export function SectionShell({
         </div>
       )}
 
-      <div>{children}</div>
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">{children}</div>
 
       <div className="flex items-center justify-between pt-4 border-t border-slate-200">
         {prevSection ? (

@@ -26,17 +26,35 @@ export function ResourcesMatrixForm({ content, onChange, readOnly }: SectionForm
       <TableBody>
         {content.rows.map((row, index) => (
           <TableRow key={row.resourceKey}>
-            <TableCell className="font-medium text-slate-700 text-[13px]">
+            <TableCell className="border-l-2 border-l-primary-300 py-2.5 align-top font-medium text-slate-700 text-[13px] leading-snug">
               {RESOURCE_LABELS[row.resourceKey] ?? row.resourceKey}
             </TableCell>
-            <TableCell>
-              <EditableCell value={row.strengths} onChange={(v) => updateRow(index, { strengths: v })} readOnly={readOnly} multiline />
+            <TableCell className="py-2.5 align-top">
+              <EditableCell
+                value={row.strengths}
+                onChange={(v) => updateRow(index, { strengths: v })}
+                readOnly={readOnly}
+                placeholder="Ajouter une force / un acquis…"
+                multiline
+              />
             </TableCell>
-            <TableCell>
-              <EditableCell value={row.weaknesses} onChange={(v) => updateRow(index, { weaknesses: v })} readOnly={readOnly} multiline />
+            <TableCell className="py-2.5 align-top">
+              <EditableCell
+                value={row.weaknesses}
+                onChange={(v) => updateRow(index, { weaknesses: v })}
+                readOnly={readOnly}
+                placeholder="Ajouter une faiblesse…"
+                multiline
+              />
             </TableCell>
-            <TableCell>
-              <EditableCell value={row.challenges} onChange={(v) => updateRow(index, { challenges: v })} readOnly={readOnly} multiline />
+            <TableCell className="py-2.5 align-top">
+              <EditableCell
+                value={row.challenges}
+                onChange={(v) => updateRow(index, { challenges: v })}
+                readOnly={readOnly}
+                placeholder="Ajouter un défi à relever…"
+                multiline
+              />
             </TableCell>
           </TableRow>
         ))}

@@ -4,7 +4,7 @@ import lombok.Builder;
 
 import java.time.LocalDateTime;
 
-@Builder
+@Builder(toBuilder = true)
 public record WorkGroupDto(
         Long id,
         String name,
@@ -17,6 +17,8 @@ public record WorkGroupDto(
         Integer completionPercent,
         Integer sectionsSubmitted,
         Integer sectionsValidated,
-        LocalDateTime lastActivityAt
+        LocalDateTime lastActivityAt,
+        /** Present uniquement dans la reponse de creation, pour affichage unique a l'admin. */
+        String temporaryPassword
 ) {
 }

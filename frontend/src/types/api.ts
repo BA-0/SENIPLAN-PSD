@@ -29,6 +29,7 @@ export interface WorkGroupDto {
   sectionsSubmitted: number;
   sectionsValidated: number;
   lastActivityAt: string | null;
+  temporaryPassword?: string | null;
 }
 
 export interface ResetPasswordResponse {

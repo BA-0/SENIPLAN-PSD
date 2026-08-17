@@ -12,8 +12,8 @@ const buttonVariants = cva(
       variant: {
         primary: "bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700",
         secondary:
-          "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100",
-        ghost: "bg-transparent text-slate-600 hover:bg-slate-100 active:bg-slate-200",
+          "bg-card border border-border text-foreground hover:bg-muted hover:border-slate-300 dark:hover:border-white/20 active:bg-muted",
+        ghost: "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted",
         destructive: "bg-accent-500 text-white hover:bg-accent-600 active:bg-accent-700",
         destructiveGhost: "bg-transparent text-accent-500 hover:bg-accent-50 active:bg-accent-100",
         link: "bg-transparent text-primary-500 hover:underline hover:text-primary-600 p-0 h-auto",

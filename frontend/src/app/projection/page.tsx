@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -47,7 +47,7 @@ const ACTION_CONFIG: Record<
   REQUEST_REVISION: {
     label: (a) => `${a.sectionCode} renvoyée pour révision — ${a.groupName}`,
     icon: RotateCcw,
-    color: "text-orange-300",
+    color: "text-amber-300",
   },
   LOGIN: {
     label: (a) => `${a.userFullName ?? a.groupName} s'est connecté(e)`,
@@ -94,13 +94,15 @@ function ProjectionPage() {
   );
 
   return (
-    <div className="h-screen w-full overflow-y-auto bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white flex flex-col">
-      <header className="flex items-center justify-between gap-4 px-8 py-5 border-b border-white/10 shrink-0">
+    <div className="relative h-screen w-full overflow-y-auto overflow-x-hidden bg-gradient-to-br from-[#0d1220] via-[#151d33] to-[#0d1220] text-white flex flex-col">
+      <BackgroundDecor />
+
+      <header className="relative z-10 flex items-center justify-between gap-4 px-8 py-5 border-b border-white/10 shrink-0 backdrop-blur-sm">
         <div className="flex items-center gap-4 min-w-0">
-          <div className="bg-white rounded-xl p-2.5 shadow-lg shadow-black/20 shrink-0">
-            <Image src="/logo-senico.png" alt="SENICO" width={40} height={40} className="h-10 w-10 object-contain" />
+          <div className="bg-white rounded-xl p-2.5 shadow-lg shadow-black/20 shrink-0 animate-fade-scale-in">
+            <Image src="/logo-senico.png" alt="SENICO" width={514} height={98} className="h-10 w-10 object-contain" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 animate-fade-in-up" style={{ animationDelay: "80ms" }}>
             <p className="text-[22px] font-bold leading-tight truncate">Diagnostic Stratégique — SENICO</p>
             <p className="text-[13px] text-white/60 truncate">
               Plan Stratégique de Développement 2027-2031 · Séance de travail des groupes
@@ -108,27 +110,32 @@ function ProjectionPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-5 shrink-0">
+        <div className="flex items-center gap-5 shrink-0 animate-fade-in" style={{ animationDelay: "120ms" }}>
           <div className="text-right">
             <p className="text-[28px] font-bold tabular-nums leading-none">{now ? formatTime(now) : "--:--:--"}</p>
             <p className="text-[12px] text-white/60 capitalize mt-1">{now ? formatDate(now) : ""}</p>
           </div>
           <div className="flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-3 py-1.5">
-            <span className={cn("h-2 w-2 rounded-full", connected ? "bg-emerald-400 animate-pulse" : "bg-amber-400")} />
+            <span className="relative flex h-2 w-2">
+              {connected && (
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 animate-ping opacity-75" />
+              )}
+              <span className={cn("relative inline-flex h-2 w-2 rounded-full", connected ? "bg-emerald-400" : "bg-amber-400")} />
+            </span>
             <span className="text-[12px] font-medium text-white/70">{connected ? "En direct" : "Synchronisation..."}</span>
           </div>
           <button
             type="button"
             onClick={toggleFullscreen}
             title={isFullscreen ? "Quitter le plein écran" : "Plein écran"}
-            className="h-9 w-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors"
+            className="h-9 w-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 hover:scale-110 active:scale-95 transition-all duration-200"
           >
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
           <Link
             href="/admin"
             title="Quitter la projection"
-            className="h-9 w-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors"
+            className="h-9 w-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 hover:scale-110 active:scale-95 transition-all duration-200"
           >
             <X className="h-4 w-4" />
           </Link>
@@ -136,21 +143,53 @@ function ProjectionPage() {
       </header>
 
       {isLoading || !data ? (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="relative z-10 flex-1 flex items-center justify-center">
           <div className="h-10 w-10 rounded-full border-2 border-white/20 border-t-white/70 animate-spin" />
         </div>
       ) : (
-        <main className="flex-1 min-h-0 flex flex-col gap-5 px-8 py-6">
+        <main className="relative z-10 flex-1 min-h-0 flex flex-col gap-5 px-8 py-6">
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 shrink-0">
-            <KpiTile icon={Users} label="Groupes actifs" value={`${data.activeGroups} / ${data.totalGroups}`} accent="bg-primary-500/20 text-primary-200" />
-            <KpiTile icon={TrendingUp} label="Complétion globale" value={`${data.globalCompletionPercent}%`} accent="bg-primary-500/20 text-primary-200" />
-            <KpiTile icon={Send} label="Sections soumises" value={data.sectionsSubmitted} accent="bg-sky-500/20 text-sky-200" />
-            <KpiTile icon={CheckCircle2} label="Sections validées" value={data.sectionsValidated} accent="bg-emerald-500/20 text-emerald-200" />
-            <KpiTile icon={RotateCcw} label="En révision" value={data.sectionsRevisionRequested} accent="bg-accent-500/20 text-accent-200" />
+            <KpiTile
+              icon={Users}
+              label="Groupes actifs"
+              value={data.activeGroups}
+              suffix={` / ${data.totalGroups}`}
+              accent="bg-sky-500/20 text-sky-200"
+              delay={0}
+            />
+            <KpiTile
+              icon={TrendingUp}
+              label="Complétion globale"
+              value={data.globalCompletionPercent}
+              suffix="%"
+              accent="bg-primary-500/20 text-primary-200"
+              delay={70}
+            />
+            <KpiTile
+              icon={Send}
+              label="Sections soumises"
+              value={data.sectionsSubmitted}
+              accent="bg-violet-500/20 text-violet-200"
+              delay={140}
+            />
+            <KpiTile
+              icon={CheckCircle2}
+              label="Sections validées"
+              value={data.sectionsValidated}
+              accent="bg-emerald-500/20 text-emerald-200"
+              delay={210}
+            />
+            <KpiTile
+              icon={RotateCcw}
+              label="En révision"
+              value={data.sectionsRevisionRequested}
+              accent="bg-amber-500/20 text-amber-200"
+              delay={280}
+            />
           </div>
 
           <div className="flex-1 min-h-0 flex gap-5">
-            <section className="flex-[2] min-w-0 rounded-2xl bg-white/[0.07] border border-white/15 flex flex-col min-h-0">
+            <section className="flex-[2] min-w-0 rounded-2xl bg-white/[0.07] border border-white/15 flex flex-col min-h-0 animate-fade-in-up" style={{ animationDelay: "160ms" }}>
               <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0">
                 <h2 className="text-[15px] font-semibold uppercase tracking-wide text-white/80">Progression des groupes</h2>
                 <span className="text-[12px] text-white/50">{sortedGroups.length} groupes</span>
@@ -164,7 +203,7 @@ function ProjectionPage() {
               </div>
             </section>
 
-            <section className="flex-1 min-w-0 rounded-2xl bg-white/[0.07] border border-white/15 flex flex-col min-h-0">
+            <section className="flex-1 min-w-0 rounded-2xl bg-white/[0.07] border border-white/15 flex flex-col min-h-0 animate-fade-in-up" style={{ animationDelay: "220ms" }}>
               <div className="px-6 py-4 border-b border-white/10 shrink-0">
                 <h2 className="text-[15px] font-semibold uppercase tracking-wide text-white/80">Activité en direct</h2>
               </div>
@@ -172,18 +211,24 @@ function ProjectionPage() {
                 {!activity || activity.length === 0 ? (
                   <p className="text-white/40 text-[13px] italic">Aucune activité pour l&apos;instant</p>
                 ) : (
-                  activity.map((entry, i) => <ActivityRow key={i} entry={entry} />)
+                  activity.map((entry, i) => (
+                    <ActivityRow
+                      key={`${entry.timestamp}-${entry.groupId}-${entry.action}-${entry.sectionCode}`}
+                      entry={entry}
+                      isNewest={i === 0}
+                    />
+                  ))
                 )}
               </div>
             </section>
           </div>
 
           {sections.length > 0 && (
-            <section className="shrink-0 rounded-2xl bg-white/[0.07] border border-white/15 px-6 py-4">
+            <section className="shrink-0 rounded-2xl bg-white/[0.07] border border-white/15 px-6 py-4 animate-fade-in-up" style={{ animationDelay: "280ms" }}>
               <h2 className="text-[12px] font-semibold uppercase tracking-wide text-white/60 mb-3">Avancement par section</h2>
               <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-1">
-                {sections.map((s) => (
-                  <SectionBar key={s.sectionId} code={s.code} done={s.groupsSubmittedOrValidated} total={s.totalGroups} />
+                {sections.map((s, i) => (
+                  <SectionBar key={s.sectionId} code={s.code} done={s.groupsSubmittedOrValidated} total={s.totalGroups} delay={i * 30} />
                 ))}
               </div>
             </section>
@@ -194,24 +239,48 @@ function ProjectionPage() {
   );
 }
 
+function BackgroundDecor() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
+      <div className="absolute -top-24 -left-16 h-96 w-96 rounded-full bg-sky-400/20 blur-3xl animate-float" />
+      <div className="absolute top-1/3 -right-24 h-[28rem] w-[28rem] rounded-full bg-primary-400/15 blur-3xl animate-float-slow" />
+      <div className="absolute -bottom-32 left-1/4 h-80 w-80 rounded-full bg-violet-500/10 blur-3xl animate-float" style={{ animationDelay: "2s" }} />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0d1220]/70 via-transparent to-[#0d1220]/30" />
+    </div>
+  );
+}
+
 function KpiTile({
   icon: Icon,
   label,
   value,
+  suffix = "",
   accent,
+  delay = 0,
 }: {
   icon: React.ElementType;
   label: string;
-  value: string | number;
+  value: number;
+  suffix?: string;
   accent: string;
+  delay?: number;
 }) {
+  const display = useCountUp(value);
+
   return (
-    <div className="rounded-2xl bg-white/[0.06] border border-white/10 px-6 py-5 flex items-center gap-4">
-      <div className={cn("h-12 w-12 rounded-xl flex items-center justify-center shrink-0", accent)}>
-        <Icon className="h-6 w-6" strokeWidth={1.75} />
+    <div
+      className="group rounded-2xl bg-white/[0.06] border border-white/10 px-6 py-5 flex items-center gap-4 animate-fade-in-up hover:-translate-y-1 hover:bg-white/[0.1] hover:border-white/20 hover:shadow-xl hover:shadow-black/20 transition-all duration-300"
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div className={cn("relative h-12 w-12 rounded-xl flex items-center justify-center shrink-0", accent)}>
+        <span className="absolute inset-0 rounded-xl bg-current animate-glow-pulse" />
+        <Icon className="relative h-6 w-6" strokeWidth={1.75} />
       </div>
       <div className="min-w-0">
-        <p className="text-[34px] font-bold tabular-nums leading-none">{value}</p>
+        <p className="text-[34px] font-bold tabular-nums leading-none">
+          {display}
+          {suffix}
+        </p>
         <p className="text-[11px] text-white/60 mt-1.5 uppercase tracking-wide truncate">{label}</p>
       </div>
     </div>
@@ -222,7 +291,7 @@ function GroupRow({ rank, group }: { rank: number; group: AdminDashboardDto["gro
   const isTyping = useIsGroupTyping(group.groupId);
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-4 animate-fade-in-up" style={{ animationDelay: `${Math.min(rank - 1, 8) * 60}ms` }}>
       <span className="text-[14px] font-bold text-white/30 w-5 shrink-0 text-right">{rank}</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-3 mb-1.5">
@@ -242,9 +311,11 @@ function GroupRow({ rank, group }: { rank: number; group: AdminDashboardDto["gro
         </div>
         <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-primary-400 to-primary-200 transition-all duration-500"
+            className="relative h-full rounded-full bg-gradient-to-r from-primary-400 to-primary-200 overflow-hidden transition-[width] duration-700 ease-out"
             style={{ width: `${group.completionPercent}%` }}
-          />
+          >
+            <span className="absolute inset-0 -skew-x-12 bg-gradient-to-r from-transparent via-white/50 to-transparent animate-shimmer" />
+          </div>
         </div>
         <div className="flex items-center gap-3 mt-1.5 text-[11px] text-white/45">
           <span className="truncate">{group.leaderFullName ?? "—"}</span>
@@ -258,11 +329,16 @@ function GroupRow({ rank, group }: { rank: number; group: AdminDashboardDto["gro
   );
 }
 
-function ActivityRow({ entry }: { entry: ActivityEntryDto }) {
+function ActivityRow({ entry, isNewest }: { entry: ActivityEntryDto; isNewest: boolean }) {
   const config = ACTION_CONFIG[entry.action] ?? ACTION_CONFIG.SAVE_DRAFT;
   const Icon = config.icon;
   return (
-    <div className="flex items-start gap-3">
+    <div
+      className={cn(
+        "flex items-start gap-3 animate-fade-in-right rounded-lg -mx-2 px-2 py-1",
+        isNewest && "animate-flash-highlight"
+      )}
+    >
       <Icon className={cn("h-4 w-4 mt-0.5 shrink-0", config.color)} />
       <div className="min-w-0">
         <p className="text-[13px] text-white/85 leading-snug">{config.label(entry)}</p>
@@ -272,16 +348,20 @@ function ActivityRow({ entry }: { entry: ActivityEntryDto }) {
   );
 }
 
-function SectionBar({ code, done, total }: { code: string; done: number; total: number }) {
+function SectionBar({ code, done, total, delay = 0 }: { code: string; done: number; total: number; delay?: number }) {
   const ratio = total > 0 ? done / total : 0;
   const complete = ratio >= 1 && total > 0;
   return (
-    <div className="flex flex-col items-center gap-1.5 w-14 shrink-0">
+    <div className="flex flex-col items-center gap-1.5 w-14 shrink-0 animate-fade-in-up" style={{ animationDelay: `${delay}ms` }}>
       <div className="h-16 w-full rounded-md bg-white/10 flex items-end overflow-hidden">
         <div
-          className={cn("w-full transition-all duration-500", complete ? "bg-primary-300" : "bg-primary-500/60")}
+          className={cn("relative w-full overflow-hidden transition-all duration-700 ease-out", complete ? "bg-primary-300" : "bg-primary-500/60")}
           style={{ height: `${Math.round(ratio * 100)}%` }}
-        />
+        >
+          {complete && (
+            <span className="absolute inset-0 -skew-x-12 bg-gradient-to-r from-transparent via-white/50 to-transparent animate-shimmer" />
+          )}
+        </div>
       </div>
       <span className="text-[10px] text-white/60 font-medium">{code}</span>
       <span className="text-[10px] text-white/35 tabular-nums">
@@ -327,4 +407,34 @@ function useFullscreen() {
   }
 
   return { isFullscreen, toggleFullscreen };
+}
+
+function useCountUp(value: number, duration = 900): number {
+  const [display, setDisplay] = useState(value);
+  const fromRef = useRef(value);
+
+  useEffect(() => {
+    const from = fromRef.current;
+    const to = value;
+    if (from === to) return;
+
+    const start = performance.now();
+    let frame: number;
+
+    const tick = (t: number) => {
+      const progress = Math.min(1, (t - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(from + (to - from) * eased));
+      if (progress < 1) {
+        frame = requestAnimationFrame(tick);
+      } else {
+        fromRef.current = to;
+      }
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value, duration]);
+
+  return display;
 }

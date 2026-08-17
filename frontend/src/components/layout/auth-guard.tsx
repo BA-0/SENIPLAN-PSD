@@ -27,7 +27,7 @@ export function AuthGuard({ requiredRole, children }: { requiredRole?: Role; chi
 
   if (!hydrated || !user || (requiredRole && user.role !== requiredRole)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="h-8 w-8 rounded-full border-2 border-primary-200 border-t-primary-500 animate-spin" />
       </div>
     );

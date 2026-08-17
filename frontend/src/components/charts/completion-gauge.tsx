@@ -8,7 +8,7 @@ export function CompletionGauge({ percent, size = 140 }: { percent: number; size
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#F1F5F9" strokeWidth={strokeWidth} />
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth={strokeWidth} />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -23,8 +23,8 @@ export function CompletionGauge({ percent, size = 140 }: { percent: number; size
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[30px] font-bold text-slate-800 tabular-nums leading-none">{clamped}%</span>
-        <span className="text-[11px] text-slate-500 mt-1">complété</span>
+        <span className="text-[30px] font-bold text-foreground tabular-nums leading-none">{clamped}%</span>
+        <span className="text-[11px] text-muted-foreground mt-1">complété</span>
       </div>
     </div>
   );

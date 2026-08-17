@@ -51,17 +51,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-slate-50 to-white px-4">
+    <div className="min-h-screen flex items-center justify-center bg-white px-4">
       <div className="w-full max-w-sm">
-        <div className="flex justify-center mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-3">
-            <Image src="/logo-senico.png" alt="SENICO" width={180} height={180} priority className="h-auto w-[180px]" />
-          </div>
+        <div className="flex justify-center mb-10">
+          <Image src="/logo-senico.png" alt="SENICO" width={514} height={98} priority className="h-auto w-[260px]" />
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-md p-8">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-lg shadow-slate-200/50 p-8">
           <h1 className="text-center mb-1">Diagnostic Stratégique</h1>
-          <p className="text-center text-[13px] text-slate-500 mb-6">PSD 2027-2031 — Connexion</p>
+          <p className="text-center text-[13px] text-slate-500 mb-7">PSD 2027-2031 — Connexion</p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1.5">

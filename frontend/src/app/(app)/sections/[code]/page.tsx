@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { getMySectionContent, listMySections, submitMySection } from "@/lib/api/me";
 import { extractErrorMessage } from "@/lib/api-client";
+import { getSubmitBlockedReason } from "@/lib/section-submission";
 import { useSectionAutosave } from "@/hooks/use-section-autosave";
 import { usePresencePublisher } from "@/hooks/use-presence-publisher";
 import { SectionShell } from "@/components/sections/section-shell";
@@ -82,6 +83,7 @@ export default function SectionFormPage() {
       onSaveNow={saveNow}
       onSubmit={() => submitMutation.mutate()}
       submitting={submitMutation.isPending}
+      submitBlockedReason={getSubmitBlockedReason(data.type as SectionType, content)}
       prevSection={prevSection}
       nextSection={nextSection}
     >

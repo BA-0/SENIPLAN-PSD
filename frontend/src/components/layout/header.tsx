@@ -2,6 +2,7 @@
 
 import { LogOut, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useRealtimeGroup } from "@/hooks/use-realtime-group";
 import { useVoiceNotificationsStore } from "@/store/voice-notifications-store";
@@ -21,24 +22,25 @@ export function Header() {
     .toUpperCase();
 
   return (
-    <header className="h-16 shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-10">
+    <header className="h-16 shrink-0 bg-card border-b border-border flex items-center justify-between px-6 sticky top-0 z-10">
       <div>
-        <p className="text-sm font-medium text-slate-800">{user?.groupName ?? "Administration"}</p>
-        <p className="text-[12px] text-slate-500">
+        <p className="text-sm font-medium text-foreground">{user?.groupName ?? "Administration"}</p>
+        <p className="text-[12px] text-muted-foreground">
           {user?.role === "ADMIN" ? "Comité de pilotage" : "Espace chef de groupe"}
         </p>
       </div>
 
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="h-9 w-9 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-[13px] font-semibold">
+          <div className="h-9 w-9 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300 flex items-center justify-center text-[13px] font-semibold">
             {initials || "?"}
           </div>
           <div className="hidden sm:block">
-            <p className="text-[13px] font-medium text-slate-800 leading-tight">{user?.fullName}</p>
-            <p className="text-[12px] text-slate-500 leading-tight">{user?.username}</p>
+            <p className="text-[13px] font-medium text-foreground leading-tight">{user?.fullName}</p>
+            <p className="text-[12px] text-muted-foreground leading-tight">{user?.username}</p>
           </div>
         </div>
+        <ThemeToggle />
         <Button
           variant="ghost"
           size="icon"

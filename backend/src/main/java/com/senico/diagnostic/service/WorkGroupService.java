@@ -73,7 +73,7 @@ public class WorkGroupService {
 
         initSectionStatuses(group);
 
-        return toDto(group);
+        return toDto(group).toBuilder().temporaryPassword(rawPassword).build();
     }
 
     @Transactional

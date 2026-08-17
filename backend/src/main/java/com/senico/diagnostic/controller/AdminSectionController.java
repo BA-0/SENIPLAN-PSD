@@ -1,0 +1,51 @@
+package com.senico.diagnostic.controller;
+
+import com.senico.diagnostic.domain.User;
+import com.senico.diagnostic.dto.section.AdminReviewRequest;
+import com.senico.diagnostic.dto.section.SectionContentResponse;
+import com.senico.diagnostic.dto.section.SectionStatusSummary;
+import com.senico.diagnostic.exception.ResourceNotFoundException;
+import com.senico.diagnostic.repository.UserRepository;
+import com.senico.diagnostic.security.UserPrincipal;
+import com.senico.diagnostic.service.SectionEngineService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * Suivi et revision des sections par l'admin, pour n'importe quel groupe
+ * (y compris consultation des brouillons non soumis). Route protegee ROLE_ADMIN.
+ */
+@RestController
+@RequestMapping("/api/v1/admin/groups/{groupId}/sections")
+@RequiredArgsConstructor
+public class AdminSectionController {
+
+    private final SectionEngineService sectionEngineService;
+    private final UserRepository userRepository;
+
+    @GetMapping
+    public ResponseEntity<List<SectionStatusSummary>> listStatuses(@PathVariable Long groupId) {
+        return ResponseEntity.ok(sectionEngineService.listStatuses(groupId));
+    }
+
+    @GetMapping("/{code}")
+    public ResponseEntity<SectionContentResponse> getContent(@PathVariable Long groupId, @PathVariable String code) {
+        return ResponseEntity.ok(sectionEngineService.getContent(groupId, code));
+    }
+
+    @PostMapping("/{code}/review")
+    public ResponseEntity<SectionContentResponse> review(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long groupId,
+            @PathVariable String code,
+            @Valid @RequestBody AdminReviewRequest request) {
+        User admin = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable"));
+        return ResponseEntity.ok(sectionEngineService.adminReview(groupId, code, request, admin));
+    }
+}

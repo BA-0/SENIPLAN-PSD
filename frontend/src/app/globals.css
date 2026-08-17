@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 215 25% 15%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 142 47% 32%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-800;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  h1 {
+    @apply text-2xl font-semibold text-slate-800;
+  }
+
+  h2 {
+    @apply text-lg font-semibold text-slate-800;
+  }
+
+  h3 {
+    @apply text-[15px] font-medium text-slate-700;
+  }
+}
+
+@layer utilities {
+  .tabular-nums {
+    font-feature-settings: "tnum";
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+}

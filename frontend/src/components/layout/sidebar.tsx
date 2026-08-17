@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutDashboard, Users, Columns3, FileDown, Settings, MonitorPlay } from "lucide-react";
+import { LayoutDashboard, Users, Columns3, FileDown, MonitorPlay } from "lucide-react";
 
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -96,7 +96,6 @@ export function Sidebar() {
             Exporter en PDF
           </button>
         )}
-        <NavItem href="#" icon={Settings} label="Paramètres" active={false} />
       </div>
     </aside>
   );

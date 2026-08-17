@@ -32,6 +32,7 @@ Monorepo à deux applications :
 - App Router Next.js 14, TypeScript strict, Tailwind CSS avec le design system SENICO (tokens dans `tailwind.config.ts` / `globals.css`).
 - TanStack Query pour les données serveur, Zustand pour la session (JWT persistés), react-hook-form + zod pour les formulaires, Recharts pour les graphiques, sonner pour les toasts.
 - 17 formulaires de section typés individuellement (`src/types/sections.ts`), avec autosave debouncée + périodique et confirmation de soumission.
+- Vue projecteur (`/projection`, réservée ADMIN) : écran plein format pensé pour être projeté en salle pendant les séances de travail — KPIs, classement des groupes, activité en direct et avancement par section, rafraîchis en temps réel (WebSocket + repli polling 15s). Accessible depuis la barre latérale admin ("Vue projecteur").
 
 ## Démarrage en développement
 

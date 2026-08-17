@@ -94,7 +94,7 @@ function ProjectionPage() {
   );
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white flex flex-col">
+    <div className="h-screen w-full overflow-y-auto bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white flex flex-col">
       <header className="flex items-center justify-between gap-4 px-8 py-5 border-b border-white/10 shrink-0">
         <div className="flex items-center gap-4 min-w-0">
           <div className="bg-white rounded-xl p-2.5 shadow-lg shadow-black/20 shrink-0">
@@ -150,7 +150,7 @@ function ProjectionPage() {
           </div>
 
           <div className="flex-1 min-h-0 flex gap-5">
-            <section className="flex-[2] min-w-0 rounded-2xl bg-white/[0.04] border border-white/10 flex flex-col min-h-0">
+            <section className="flex-[2] min-w-0 rounded-2xl bg-white/[0.07] border border-white/15 flex flex-col min-h-0">
               <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between shrink-0">
                 <h2 className="text-[15px] font-semibold uppercase tracking-wide text-white/80">Progression des groupes</h2>
                 <span className="text-[12px] text-white/50">{sortedGroups.length} groupes</span>
@@ -164,7 +164,7 @@ function ProjectionPage() {
               </div>
             </section>
 
-            <section className="flex-1 min-w-0 rounded-2xl bg-white/[0.04] border border-white/10 flex flex-col min-h-0">
+            <section className="flex-1 min-w-0 rounded-2xl bg-white/[0.07] border border-white/15 flex flex-col min-h-0">
               <div className="px-6 py-4 border-b border-white/10 shrink-0">
                 <h2 className="text-[15px] font-semibold uppercase tracking-wide text-white/80">Activité en direct</h2>
               </div>
@@ -179,7 +179,7 @@ function ProjectionPage() {
           </div>
 
           {sections.length > 0 && (
-            <section className="shrink-0 rounded-2xl bg-white/[0.04] border border-white/10 px-6 py-4">
+            <section className="shrink-0 rounded-2xl bg-white/[0.07] border border-white/15 px-6 py-4">
               <h2 className="text-[12px] font-semibold uppercase tracking-wide text-white/60 mb-3">Avancement par section</h2>
               <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-1">
                 {sections.map((s) => (

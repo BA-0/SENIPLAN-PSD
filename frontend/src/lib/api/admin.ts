@@ -56,13 +56,30 @@ export async function getGroupSectionContent<T>(groupId: number, code: string): 
 export async function reviewSection<T>(
   groupId: number,
   code: string,
-  decision: "VALIDATE" | "REQUEST_REVISION",
+  decision: "VALIDATE" | "REQUEST_REVISION" | "RETURN_TO_GROUP",
   comment?: string
 ): Promise<SectionContentResponse<T>> {
   const { data } = await apiClient.post<SectionContentResponse<T>>(
     `/admin/groups/${groupId}/sections/${code}/review`,
     { decision, comment }
   );
+  return data;
+}
+
+export async function adminUpdateSectionContent<T>(
+  groupId: number,
+  code: string,
+  content: T
+): Promise<SectionContentResponse<T>> {
+  const { data } = await apiClient.put<SectionContentResponse<T>>(
+    `/admin/groups/${groupId}/sections/${code}/content`,
+    content
+  );
+  return data;
+}
+
+export async function resetGroupSection<T>(groupId: number, code: string): Promise<SectionContentResponse<T>> {
+  const { data } = await apiClient.delete<SectionContentResponse<T>>(`/admin/groups/${groupId}/sections/${code}`);
   return data;
 }
 

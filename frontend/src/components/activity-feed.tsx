@@ -1,4 +1,4 @@
-import { Activity, CheckCircle2, RotateCcw, Send, LogIn } from "lucide-react";
+import { Activity, CheckCircle2, RotateCcw, Send, LogIn, Undo2, Trash2, Pencil } from "lucide-react";
 import { timeAgo } from "@/lib/utils";
 import type { ActivityEntryDto } from "@/types/api";
 
@@ -22,6 +22,21 @@ const ACTION_CONFIG: Record<string, { label: (a: ActivityEntryDto) => string; ic
     label: (a) => `L'administrateur a renvoyé ${a.sectionCode} pour révision (${a.groupName})`,
     icon: RotateCcw,
     color: "text-amber-500 dark:text-amber-400",
+  },
+  RETURN_TO_GROUP: {
+    label: (a) => `L'administrateur a redonné la main sur ${a.sectionCode} à ${a.groupName}`,
+    icon: Undo2,
+    color: "text-amber-500 dark:text-amber-400",
+  },
+  RESET: {
+    label: (a) => `L'administrateur a réinitialisé ${a.sectionCode} pour ${a.groupName}`,
+    icon: Trash2,
+    color: "text-red-500 dark:text-red-400",
+  },
+  ADMIN_EDIT: {
+    label: (a) => `L'administrateur a modifié ${a.sectionCode} pour ${a.groupName}`,
+    icon: Pencil,
+    color: "text-blue-500 dark:text-blue-400",
   },
   LOGIN: {
     label: (a) => `${a.userFullName ?? a.groupName} s'est connecté(e)`,

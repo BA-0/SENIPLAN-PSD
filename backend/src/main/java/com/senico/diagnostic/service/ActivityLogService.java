@@ -23,6 +23,9 @@ public class ActivityLogService {
     public static final String ACTION_SUBMIT = "SUBMIT";
     public static final String ACTION_VALIDATE = "VALIDATE";
     public static final String ACTION_REQUEST_REVISION = "REQUEST_REVISION";
+    public static final String ACTION_RETURN_TO_GROUP = "RETURN_TO_GROUP";
+    public static final String ACTION_RESET = "RESET";
+    public static final String ACTION_ADMIN_EDIT = "ADMIN_EDIT";
     public static final String ACTION_LOGIN = "LOGIN";
 
     /** Autosaves on the same group+section within this window update the existing entry instead of creating a new one. */

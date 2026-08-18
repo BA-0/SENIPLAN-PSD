@@ -5,20 +5,39 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, RotateCcw } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Pencil, RotateCcw, Save, Trash2, Undo2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NativeSelect } from "@/components/ui/native-select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { SectionFormRouter } from "@/components/sections/section-form-router";
 import { VersionHistory } from "@/components/sections/version-history";
-import { getGroupSectionContent, listGroupSections, reviewSection } from "@/lib/api/admin";
+import {
+  adminUpdateSectionContent,
+  getGroupSectionContent,
+  listGroupSections,
+  resetGroupSection,
+  reviewSection,
+} from "@/lib/api/admin";
 import { listGroups } from "@/lib/api/groups";
 import { extractErrorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
 import type { SectionType } from "@/types/common";
+
+const RETURNABLE_STATUSES = new Set(["SUBMITTED", "VALIDATED"]);
 
 export default function AdminSectionReviewPage() {
   const params = useParams<{ groupId: string; code: string }>();
@@ -27,6 +46,7 @@ export default function AdminSectionReviewPage() {
   const groupId = Number(params.groupId);
   const code = params.code;
   const [comment, setComment] = useState("");
+  const [editContent, setEditContent] = useState<unknown>(null);
 
   const { data: groups } = useQuery({ queryKey: ["admin", "groups"], queryFn: listGroups });
   const { data: sections } = useQuery({
@@ -38,18 +58,49 @@ export default function AdminSectionReviewPage() {
     queryFn: () => getGroupSectionContent(groupId, code),
   });
 
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["admin", "section-content", groupId, code] });
+    queryClient.invalidateQueries({ queryKey: ["admin", "group-sections", groupId] });
+    queryClient.invalidateQueries({ queryKey: ["admin", "matrix"] });
+    queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+  };
+
   const reviewMutation = useMutation({
-    mutationFn: (decision: "VALIDATE" | "REQUEST_REVISION") => reviewSection(groupId, code, decision, comment),
+    mutationFn: (decision: "VALIDATE" | "REQUEST_REVISION" | "RETURN_TO_GROUP") =>
+      reviewSection(groupId, code, decision, comment),
     onSuccess: (_, decision) => {
-      toast.success(decision === "VALIDATE" ? "Section validée" : "Révision demandée");
+      const messages: Record<string, string> = {
+        VALIDATE: "Section validée",
+        REQUEST_REVISION: "Révision demandée",
+        RETURN_TO_GROUP: "La main a été redonnée au groupe",
+      };
+      toast.success(messages[decision]);
       setComment("");
-      queryClient.invalidateQueries({ queryKey: ["admin", "section-content", groupId, code] });
-      queryClient.invalidateQueries({ queryKey: ["admin", "group-sections", groupId] });
-      queryClient.invalidateQueries({ queryKey: ["admin", "matrix"] });
-      queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+      invalidateAll();
     },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'action")),
   });
+
+  const updateContentMutation = useMutation({
+    mutationFn: (content: unknown) => adminUpdateSectionContent(groupId, code, content),
+    onSuccess: () => {
+      toast.success("Section mise à jour");
+      setEditContent(null);
+      invalidateAll();
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'enregistrement")),
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: () => resetGroupSection(groupId, code),
+    onSuccess: () => {
+      toast.success("Section réinitialisée");
+      invalidateAll();
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec de la réinitialisation")),
+  });
+
+  const editing = editContent !== null;
 
   return (
     <div className="space-y-5">
@@ -89,10 +140,40 @@ export default function AdminSectionReviewPage() {
         <div className="h-96 bg-muted rounded-xl animate-pulse" />
       ) : (
         <>
-          <div className="flex items-center gap-2.5">
-            <span className="text-muted-foreground text-sm">{data.code}</span>
-            <h1>{data.title}</h1>
-            <StatusBadge status={data.status} />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="text-muted-foreground text-sm">{data.code}</span>
+              <h1>{data.title}</h1>
+              <StatusBadge status={data.status} />
+            </div>
+
+            {!editing && (
+              <div className="flex items-center gap-2">
+                <Button variant="secondary" size="sm" onClick={() => setEditContent(data.content)}>
+                  <Pencil className="h-4 w-4" /> Modifier
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructiveGhost" size="sm">
+                      <Trash2 className="h-4 w-4" /> Supprimer
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Supprimer le contenu de cette section ?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Le contenu saisi sera effacé et la section repassera à &quot;Non commencé&quot;, comme si le
+                        groupe n&apos;avait rien rempli. L&apos;historique des versions reste consultable pour audit.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => resetMutation.mutate()}>Supprimer</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-x-6 gap-y-1.5 rounded-lg border border-border bg-muted/50 px-4 py-3 text-[13px]">
@@ -103,9 +184,29 @@ export default function AdminSectionReviewPage() {
             <MetaItem label="Dernière activité" value={formatDateTime(data.lastActivityAt) || "—"} />
           </div>
 
-          <SectionFormRouter type={data.type as SectionType} content={data.content} onChange={() => {}} readOnly />
+          <SectionFormRouter
+            type={data.type as SectionType}
+            content={editing ? editContent : data.content}
+            onChange={(updater) => setEditContent((prev: unknown) => updater(prev))}
+            readOnly={!editing}
+          />
 
-          {data.status === "SUBMITTED" && (
+          {editing && (
+            <div className="flex gap-2">
+              <Button
+                variant="primary"
+                onClick={() => updateContentMutation.mutate(editContent)}
+                loading={updateContentMutation.isPending}
+              >
+                <Save className="h-4 w-4" /> Enregistrer les modifications
+              </Button>
+              <Button variant="secondary" onClick={() => setEditContent(null)}>
+                <X className="h-4 w-4" /> Annuler
+              </Button>
+            </div>
+          )}
+
+          {!editing && RETURNABLE_STATUSES.has(data.status) && (
             <Card>
               <CardHeader>
                 <CardTitle>Revue de la section</CardTitle>
@@ -117,13 +218,34 @@ export default function AdminSectionReviewPage() {
                   onChange={(e) => setComment(e.target.value)}
                   rows={3}
                 />
-                <div className="flex gap-2">
-                  <Button variant="primary" onClick={() => reviewMutation.mutate("VALIDATE")} loading={reviewMutation.isPending}>
-                    <CheckCircle2 className="h-4 w-4" /> Valider la section
-                  </Button>
-                  <Button variant="secondary" onClick={() => reviewMutation.mutate("REQUEST_REVISION")} loading={reviewMutation.isPending}>
-                    <RotateCcw className="h-4 w-4" /> Renvoyer pour révision
-                  </Button>
+                <div className="flex flex-wrap gap-2">
+                  {data.status === "SUBMITTED" && (
+                    <>
+                      <Button
+                        variant="primary"
+                        onClick={() => reviewMutation.mutate("VALIDATE")}
+                        loading={reviewMutation.isPending}
+                      >
+                        <CheckCircle2 className="h-4 w-4" /> Valider la section
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => reviewMutation.mutate("REQUEST_REVISION")}
+                        loading={reviewMutation.isPending}
+                      >
+                        <RotateCcw className="h-4 w-4" /> Renvoyer pour révision
+                      </Button>
+                    </>
+                  )}
+                  {RETURNABLE_STATUSES.has(data.status) && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => reviewMutation.mutate("RETURN_TO_GROUP")}
+                      loading={reviewMutation.isPending}
+                    >
+                      <Undo2 className="h-4 w-4" /> Redonner la main au groupe
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

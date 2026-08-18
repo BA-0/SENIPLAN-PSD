@@ -1,5 +1,6 @@
 package com.senico.diagnostic.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.senico.diagnostic.domain.User;
 import com.senico.diagnostic.dto.section.AdminReviewRequest;
 import com.senico.diagnostic.dto.section.SectionContentResponse;
@@ -49,6 +50,27 @@ public class AdminSectionController {
         User admin = userRepository.findById(principal.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable"));
         return ResponseEntity.ok(sectionEngineService.adminReview(groupId, code, request, admin));
+    }
+
+    @PutMapping("/{code}/content")
+    public ResponseEntity<SectionContentResponse> updateContent(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long groupId,
+            @PathVariable String code,
+            @RequestBody JsonNode content) {
+        User admin = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable"));
+        return ResponseEntity.ok(sectionEngineService.adminUpdateContent(groupId, code, content, admin));
+    }
+
+    @DeleteMapping("/{code}")
+    public ResponseEntity<SectionContentResponse> reset(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long groupId,
+            @PathVariable String code) {
+        User admin = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable"));
+        return ResponseEntity.ok(sectionEngineService.adminReset(groupId, code, admin));
     }
 
     @GetMapping("/{code}/history")

@@ -3,6 +3,7 @@ package com.senico.diagnostic.controller;
 import com.senico.diagnostic.dto.dashboard.ActivityEntryDto;
 import com.senico.diagnostic.dto.dashboard.AdminDashboardDto;
 import com.senico.diagnostic.dto.dashboard.MatrixCellDto;
+import com.senico.diagnostic.dto.dashboard.SubmissionSummaryDto;
 import com.senico.diagnostic.dto.section.SectionContentResponse;
 import com.senico.diagnostic.service.AdminDashboardService;
 import com.senico.diagnostic.service.SectionEngineService;
@@ -32,6 +33,11 @@ public class AdminDashboardController {
     @GetMapping("/matrix")
     public ResponseEntity<List<MatrixCellDto>> matrix() {
         return ResponseEntity.ok(adminDashboardService.matrix());
+    }
+
+    @GetMapping("/submissions")
+    public ResponseEntity<List<SubmissionSummaryDto>> submissions() {
+        return ResponseEntity.ok(adminDashboardService.submissions());
     }
 
     @GetMapping("/activity")

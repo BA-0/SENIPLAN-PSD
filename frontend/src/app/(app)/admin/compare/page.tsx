@@ -6,8 +6,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SectionFormRouter } from "@/components/sections/section-form-router";
+import { StatusBadge } from "@/components/status-badge";
 import { listGroups } from "@/lib/api/groups";
 import { compareSection } from "@/lib/api/admin";
+import { formatDateTime } from "@/lib/utils";
 import { SECTION_CODES } from "@/types/common";
 import type { SectionType } from "@/types/common";
 
@@ -31,13 +33,13 @@ export default function ComparePage() {
     <div className="space-y-5">
       <div>
         <h1>Vue comparative</h1>
-        <p className="text-[13px] text-slate-500 mt-1">Comparer les réponses de plusieurs groupes sur une même section</p>
+        <p className="text-[13px] text-muted-foreground mt-1">Comparer les réponses de plusieurs groupes sur une même section</p>
       </div>
 
       <Card>
         <CardContent className="pt-5 flex flex-wrap items-start gap-6">
           <div className="space-y-1.5">
-            <p className="text-[13px] font-medium text-slate-700">Section</p>
+            <p className="text-[13px] font-medium text-foreground/90">Section</p>
             <NativeSelect value={sectionCode} onChange={(e) => setSectionCode(e.target.value)} className="w-64">
               {SECTION_CODES.map((code) => (
                 <option key={code} value={code}>
@@ -47,7 +49,7 @@ export default function ComparePage() {
             </NativeSelect>
           </div>
           <div className="space-y-1.5">
-            <p className="text-[13px] font-medium text-slate-700">Groupes à comparer</p>
+            <p className="text-[13px] font-medium text-foreground/90">Groupes à comparer</p>
             <div className="flex flex-wrap gap-2 max-w-xl">
               {groups?.map((g) => (
                 <button
@@ -58,7 +60,7 @@ export default function ComparePage() {
                     "text-[13px] rounded-full px-3 py-1.5 border transition-colors " +
                     (selectedGroupIds.includes(g.id)
                       ? "bg-primary-500 text-white border-primary-500"
-                      : "bg-white text-slate-600 border-slate-200 hover:border-primary-300")
+                      : "bg-card text-muted-foreground border-border hover:border-primary-300")
                   }
                 >
                   {g.name}
@@ -70,17 +72,25 @@ export default function ComparePage() {
       </Card>
 
       {selectedGroupIds.length === 0 && (
-        <p className="text-center text-slate-400 py-16">Sélectionnez au moins un groupe pour afficher la comparaison</p>
+        <p className="text-center text-muted-foreground py-16">Sélectionnez au moins un groupe pour afficher la comparaison</p>
       )}
 
-      {isFetching && <div className="h-64 bg-slate-200 rounded-xl animate-pulse" />}
+      {isFetching && <div className="h-64 bg-muted rounded-xl animate-pulse" />}
 
       {comparisons && comparisons.length > 0 && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {comparisons.map((response) => (
             <Card key={response.groupId}>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
                 <CardTitle className="text-[15px]">{response.groupName}</CardTitle>
+                <div className="flex items-center gap-2 shrink-0">
+                  <StatusBadge status={response.status} />
+                  {response.submittedAt && (
+                    <span className="text-[12px] text-muted-foreground whitespace-nowrap">
+                      Soumis le {formatDateTime(response.submittedAt)}
+                    </span>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <SectionFormRouter type={response.type as SectionType} content={response.content} onChange={() => {}} readOnly />

@@ -134,7 +134,7 @@ export default function AdminGroupsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1>Groupes de travail</h1>
-          <p className="text-[13px] text-slate-500 mt-1">Départements participant au diagnostic stratégique</p>
+          <p className="text-[13px] text-muted-foreground mt-1">Départements participant au plan stratégique</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={handleExportExcel} loading={exportingExcel}>
@@ -159,7 +159,7 @@ export default function AdminGroupsPage() {
               <div className="space-y-1.5">
                 <Label required>Nom du groupe (département)</Label>
                 <Input {...register("name")} error={!!errors.name} placeholder="ex. Direction Marketing" />
-                {errors.name && <p className="text-[13px] text-accent-700">{errors.name.message}</p>}
+                {errors.name && <p className="text-[13px] text-accent-700 dark:text-accent-300">{errors.name.message}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>Description</Label>
@@ -169,12 +169,12 @@ export default function AdminGroupsPage() {
                 <div className="space-y-1.5">
                   <Label required>Identifiant du chef de groupe</Label>
                   <Input {...register("leaderUsername")} error={!!errors.leaderUsername} placeholder="ex. dir.marketing" />
-                  {errors.leaderUsername && <p className="text-[13px] text-accent-700">{errors.leaderUsername.message}</p>}
+                  {errors.leaderUsername && <p className="text-[13px] text-accent-700 dark:text-accent-300">{errors.leaderUsername.message}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <Label required>Nom complet du chef de groupe</Label>
                   <Input {...register("leaderFullName")} error={!!errors.leaderFullName} />
-                  {errors.leaderFullName && <p className="text-[13px] text-accent-700">{errors.leaderFullName.message}</p>}
+                  {errors.leaderFullName && <p className="text-[13px] text-accent-700 dark:text-accent-300">{errors.leaderFullName.message}</p>}
                 </div>
               </div>
               <div className="space-y-1.5">
@@ -185,8 +185,8 @@ export default function AdminGroupsPage() {
                   error={!!errors.leaderPassword}
                   placeholder="Laisser vide pour générer automatiquement"
                 />
-                {errors.leaderPassword && <p className="text-[13px] text-accent-700">{errors.leaderPassword.message}</p>}
-                <p className="text-[13px] text-slate-500">
+                {errors.leaderPassword && <p className="text-[13px] text-accent-700 dark:text-accent-300">{errors.leaderPassword.message}</p>}
+                <p className="text-[13px] text-muted-foreground">
                   Si laissé vide, un mot de passe temporaire sera généré automatiquement et affiché après la création.
                 </p>
               </div>
@@ -206,18 +206,18 @@ export default function AdminGroupsPage() {
           <CardTitle>{groups?.length ?? 0} groupe(s)</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="divide-y divide-slate-100">
-            {isLoading && <p className="px-5 py-8 text-center text-slate-400">Chargement…</p>}
+          <div className="divide-y divide-border/60">
+            {isLoading && <p className="px-5 py-8 text-center text-muted-foreground">Chargement…</p>}
             {groups?.map((g) => (
               <div key={g.id} className="flex items-center justify-between px-5 py-4 gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <Link href={`/admin/groups/${g.id}/sections/S01`} className="text-[14px] font-medium text-slate-800 hover:text-primary-600">
+                    <Link href={`/admin/groups/${g.id}/sections/S01`} className="text-[14px] font-medium text-foreground hover:text-primary-600">
                       {g.name}
                     </Link>
-                    {!g.enabled && <span className="text-[11px] rounded-full bg-slate-100 text-slate-500 px-2 py-0.5">Désactivé</span>}
+                    {!g.enabled && <span className="text-[11px] rounded-full bg-muted text-muted-foreground px-2 py-0.5">Désactivé</span>}
                   </div>
-                  <p className="text-[12px] text-slate-500 mt-0.5">
+                  <p className="text-[12px] text-muted-foreground mt-0.5">
                     {g.leaderFullName} · {g.leaderUsername} · Dernière activité : {g.lastActivityAt ? formatDateTime(g.lastActivityAt) : "—"}
                   </p>
                 </div>
@@ -267,7 +267,7 @@ export default function AdminGroupsPage() {
                     title={g.enabled ? "Désactiver le groupe" : "Activer le groupe"}
                     onClick={() => toggleMutation.mutate({ id: g.id, enabled: !g.enabled })}
                   >
-                    <Power className={g.enabled ? "h-4 w-4 text-primary-500" : "h-4 w-4 text-slate-400"} />
+                    <Power className={g.enabled ? "h-4 w-4 text-primary-500" : "h-4 w-4 text-muted-foreground"} />
                   </Button>
                 </div>
               </div>
@@ -288,7 +288,7 @@ export default function AdminGroupsPage() {
             <div className="space-y-1.5">
               <Label required>Nom du groupe (département)</Label>
               <Input {...registerEdit("name")} error={!!editErrors.name} />
-              {editErrors.name && <p className="text-[13px] text-accent-700">{editErrors.name.message}</p>}
+              {editErrors.name && <p className="text-[13px] text-accent-700 dark:text-accent-300">{editErrors.name.message}</p>}
             </div>
             <div className="space-y-1.5">
               <Label>Description</Label>
@@ -297,7 +297,7 @@ export default function AdminGroupsPage() {
             <div className="space-y-1.5">
               <Label required>Nom complet du chef de groupe</Label>
               <Input {...registerEdit("leaderFullName")} error={!!editErrors.leaderFullName} />
-              {editErrors.leaderFullName && <p className="text-[13px] text-accent-700">{editErrors.leaderFullName.message}</p>}
+              {editErrors.leaderFullName && <p className="text-[13px] text-accent-700 dark:text-accent-300">{editErrors.leaderFullName.message}</p>}
             </div>
             <DialogFooter>
               <Button type="submit" variant="primary" loading={updateMutation.isPending}>
@@ -314,16 +314,16 @@ export default function AdminGroupsPage() {
             <DialogTitle>Identifiants générés</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-[13px] text-slate-500">
+            <p className="text-[13px] text-muted-foreground">
               Communiquez ces identifiants au chef de groupe. Ce mot de passe ne sera plus affiché ensuite.
             </p>
-            <div className="rounded-lg bg-slate-50 p-4 space-y-1.5 font-mono text-sm">
+            <div className="rounded-lg bg-muted p-4 space-y-1.5 font-mono text-sm">
               <p>
-                <span className="text-slate-500">Identifiant : </span>
+                <span className="text-muted-foreground">Identifiant : </span>
                 {newCredentials?.username}
               </p>
               <p>
-                <span className="text-slate-500">Mot de passe : </span>
+                <span className="text-muted-foreground">Mot de passe : </span>
                 {newCredentials?.password}
               </p>
             </div>

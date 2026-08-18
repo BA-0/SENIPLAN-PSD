@@ -31,11 +31,11 @@ export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<
           <CardTitle>Parties prenantes (Section 1)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {content.stakeholders.length === 0 && <p className="text-[13px] text-slate-400 italic">Aucune donnée</p>}
+          {content.stakeholders.length === 0 && <p className="text-[13px] text-muted-foreground italic">Aucune donnée</p>}
           {content.stakeholders.map((s, i) => (
-            <div key={i} className="text-[13px] rounded-lg border border-slate-100 p-2.5">
-              <span className="font-medium text-slate-800">{s.actor || "—"}</span>
-              <span className="text-slate-500"> · {s.roles}</span>
+            <div key={i} className="text-[13px] rounded-lg border border-border/60 p-2.5">
+              <span className="font-medium text-foreground">{s.actor || "—"}</span>
+              <span className="text-muted-foreground"> · {s.roles}</span>
             </div>
           ))}
         </CardContent>
@@ -47,10 +47,10 @@ export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {content.pestel.map((p, i) => (
-            <div key={i} className="text-[13px] rounded-lg border border-slate-100 p-2.5">
-              <p className="font-medium text-slate-800 mb-1">{PESTEL_LABELS[p.axis] ?? p.axis}</p>
-              <p className="text-slate-500">Menaces : {p.threats || "—"}</p>
-              <p className="text-slate-500">Opportunités : {p.opportunities || "—"}</p>
+            <div key={i} className="text-[13px] rounded-lg border border-border/60 p-2.5">
+              <p className="font-medium text-foreground mb-1">{PESTEL_LABELS[p.axis] ?? p.axis}</p>
+              <p className="text-muted-foreground">Menaces : {p.threats || "—"}</p>
+              <p className="text-muted-foreground">Opportunités : {p.opportunities || "—"}</p>
             </div>
           ))}
         </CardContent>
@@ -75,8 +75,8 @@ export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<
         <CardContent className="space-y-2">
           {content.causalAnalysis.map((c, i) => (
             <div key={i} className="text-[13px]">
-              <span className="font-medium text-slate-800">{CAUSAL_LABELS[c.source] ?? c.source} : </span>
-              <span className="text-slate-500">{c.items.filter(Boolean).join(", ") || "—"}</span>
+              <span className="font-medium text-foreground">{CAUSAL_LABELS[c.source] ?? c.source} : </span>
+              <span className="text-muted-foreground">{c.items.filter(Boolean).join(", ") || "—"}</span>
             </div>
           ))}
         </CardContent>
@@ -90,7 +90,7 @@ function SwotMini({ label, items, variant }: { label: string; items: string[]; v
     <div>
       <Label className="mb-1.5 block">{label}</Label>
       <div className="flex flex-wrap gap-1">
-        {items.length === 0 && <span className="text-[13px] text-slate-400 italic">—</span>}
+        {items.length === 0 && <span className="text-[13px] text-muted-foreground italic">—</span>}
         {items.map((item, i) => (
           <Badge key={i} variant={variant as never} className="font-normal">
             {item}

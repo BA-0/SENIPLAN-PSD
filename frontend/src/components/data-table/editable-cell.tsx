@@ -23,11 +23,11 @@ export function EditableCell({
   className,
 }: EditableCellProps) {
   const baseClass = cn(
-    "w-full min-w-[140px] rounded-md border border-slate-200 bg-slate-50/70 px-2.5 py-1.5 text-sm text-slate-800 shadow-sm transition-colors duration-150",
-    "placeholder:text-slate-400",
-    "hover:border-slate-300 hover:bg-white",
-    "focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none",
-    "disabled:cursor-default disabled:border-transparent disabled:bg-transparent disabled:shadow-none disabled:text-slate-500",
+    "w-full min-w-[140px] rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-sm text-foreground shadow-sm transition-colors duration-150",
+    "placeholder:text-muted-foreground/70",
+    "hover:border-input hover:bg-card",
+    "focus:bg-card focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none",
+    "disabled:cursor-default disabled:border-transparent disabled:bg-transparent disabled:shadow-none disabled:text-muted-foreground",
     align === "right" && "text-right tabular-nums",
     className
   );
@@ -72,10 +72,10 @@ export function EditableNumberCell({ value, onChange, readOnly, className }: Edi
       onChange={(e) => onChange(e.target.valueAsNumber || 0)}
       disabled={readOnly}
       className={cn(
-        "w-full min-w-[100px] rounded-md border border-slate-200 bg-slate-50/70 px-2.5 py-1.5 text-sm text-slate-800 text-right tabular-nums shadow-sm transition-colors duration-150",
-        "hover:border-slate-300 hover:bg-white",
-        "focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none",
-        "disabled:cursor-default disabled:border-transparent disabled:bg-transparent disabled:shadow-none disabled:text-slate-500",
+        "w-full min-w-[100px] rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-sm text-foreground text-right tabular-nums shadow-sm transition-colors duration-150",
+        "hover:border-input hover:bg-card",
+        "focus:bg-card focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none",
+        "disabled:cursor-default disabled:border-transparent disabled:bg-transparent disabled:shadow-none disabled:text-muted-foreground",
         className
       )}
     />

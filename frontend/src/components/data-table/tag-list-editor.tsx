@@ -35,7 +35,7 @@ export function TagListEditor({ items, onChange, readOnly, placeholder = "Saisir
             onChange={(e) => updateItem(index, e.target.value)}
             disabled={readOnly}
             placeholder={placeholder}
-            className="bg-white"
+            className="bg-card"
           />
           {!readOnly && (
             <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)} title="Supprimer">
@@ -49,7 +49,7 @@ export function TagListEditor({ items, onChange, readOnly, placeholder = "Saisir
           <Plus className="h-3.5 w-3.5" /> Ajouter un élément
         </Button>
       )}
-      {items.length === 0 && readOnly && <p className="text-[13px] text-slate-400 italic">Aucun élément</p>}
+      {items.length === 0 && readOnly && <p className="text-[13px] text-muted-foreground italic">Aucun élément</p>}
     </div>
   );
 }

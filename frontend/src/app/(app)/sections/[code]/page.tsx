@@ -60,8 +60,8 @@ export default function SectionFormPage() {
   if (isLoading || !data || content === null) {
     return (
       <div className="space-y-4 animate-pulse">
-        <div className="h-8 w-96 bg-slate-200 rounded" />
-        <div className="h-96 bg-slate-200 rounded-xl" />
+        <div className="h-8 w-96 bg-muted rounded" />
+        <div className="h-96 bg-muted rounded-xl" />
       </div>
     );
   }

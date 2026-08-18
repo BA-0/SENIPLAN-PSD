@@ -80,7 +80,7 @@ export function StakeholdersForm({ content, onChange, readOnly }: SectionFormPro
           ))}
           {content.rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-slate-400 py-8">
+              <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                 Aucune partie prenante renseignée
               </TableCell>
             </TableRow>

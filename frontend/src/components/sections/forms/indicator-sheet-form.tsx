@@ -58,7 +58,7 @@ export function IndicatorSheetForm({ content, onChange, readOnly }: SectionFormP
           ))}
           {content.rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-slate-400 py-8">Aucun indicateur renseigné</TableCell>
+              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Aucun indicateur renseigné</TableCell>
             </TableRow>
           )}
         </TableBody>

@@ -58,7 +58,7 @@ export function PerformanceFrameworkForm({ content, onChange, readOnly }: Sectio
               <h3 className="mb-2">{LOGFRAME_LABELS[group.level] ?? group.level}</h3>
               {group.syncedEffects && group.syncedEffects.length > 0 && (
                 <div className="mb-2 flex flex-wrap gap-1.5">
-                  <span className="text-[12px] text-slate-500">Effets (OS) définis en Section 10 :</span>
+                  <span className="text-[12px] text-muted-foreground">Effets (OS) définis en Section 10 :</span>
                   {group.syncedEffects.map((e, i) => (
                     <span key={i} className="text-[12px] rounded-full bg-primary-50 text-primary-700 px-2 py-0.5">
                       {e.osCode}

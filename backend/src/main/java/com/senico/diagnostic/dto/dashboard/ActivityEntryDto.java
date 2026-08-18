@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 
 @Builder
 public record ActivityEntryDto(
+        Long id,
         Long groupId,
         String groupName,
         String userFullName,

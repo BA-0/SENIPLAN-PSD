@@ -7,6 +7,8 @@ import com.senico.diagnostic.domain.*;
 import com.senico.diagnostic.dto.realtime.SectionProgressEvent;
 import com.senico.diagnostic.dto.section.AdminReviewRequest;
 import com.senico.diagnostic.dto.section.SectionContentResponse;
+import com.senico.diagnostic.dto.section.SectionRevisionContentResponse;
+import com.senico.diagnostic.dto.section.SectionRevisionSummaryDto;
 import com.senico.diagnostic.dto.section.SectionStatusSummary;
 import com.senico.diagnostic.exception.ResourceNotFoundException;
 import com.senico.diagnostic.exception.SectionLockedException;
@@ -18,7 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -33,6 +37,7 @@ public class SectionEngineService {
     private final GroupSectionStatusRepository groupSectionStatusRepository;
     private final SectionResponseRepository sectionResponseRepository;
     private final SectionResponseRevisionRepository revisionRepository;
+    private final UserRepository userRepository;
 
     private final SectionContentValidator contentValidator;
     private final DefaultSectionContentFactory defaultContentFactory;
@@ -180,6 +185,80 @@ public class SectionEngineService {
         SectionResponse response = sectionResponseRepository
                 .findByGroupIdAndSectionId(groupId, section.getId()).orElse(null);
         return buildResponse(group, section, response, status);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SectionRevisionSummaryDto> getHistory(Long groupId, String sectionCode) {
+        SectionDef section = resolveSection(sectionCode);
+        SectionResponse response = sectionResponseRepository
+                .findByGroupIdAndSectionId(groupId, section.getId()).orElse(null);
+        if (response == null) {
+            return List.of();
+        }
+
+        List<SectionResponseRevision> revisions = revisionRepository
+                .findBySectionResponseIdOrderByCreatedAtDesc(response.getId());
+
+        Set<Long> userIds = new java.util.HashSet<>(revisions.stream().map(SectionResponseRevision::getCreatedBy).toList());
+        userIds.add(response.getUpdatedBy());
+        Map<Long, String> namesById = userRepository.findAllById(userIds).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, User::getFullName));
+
+        List<SectionRevisionSummaryDto> history = new java.util.ArrayList<>();
+        history.add(SectionRevisionSummaryDto.builder()
+                .version(response.getVersion())
+                .createdAt(response.getUpdatedAt())
+                .createdByName(namesById.get(response.getUpdatedBy()))
+                .current(true)
+                .build());
+        revisions.forEach(r -> history.add(SectionRevisionSummaryDto.builder()
+                .version(r.getVersion())
+                .createdAt(r.getCreatedAt())
+                .createdByName(namesById.get(r.getCreatedBy()))
+                .current(false)
+                .build()));
+
+        return history.stream()
+                .sorted(Comparator.comparing(SectionRevisionSummaryDto::version).reversed())
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public SectionRevisionContentResponse getHistoryContent(Long groupId, String sectionCode, Integer version) {
+        SectionDef section = resolveSection(sectionCode);
+        SectionResponse response = sectionResponseRepository
+                .findByGroupIdAndSectionId(groupId, section.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Aucune reponse pour cette section"));
+
+        if (version.equals(response.getVersion())) {
+            User author = response.getUpdatedBy() != null ? userRepository.findById(response.getUpdatedBy()).orElse(null) : null;
+            return SectionRevisionContentResponse.builder()
+                    .code(section.getCode())
+                    .title(section.getTitle())
+                    .type(section.getType().name())
+                    .version(response.getVersion())
+                    .createdAt(response.getUpdatedAt())
+                    .createdByName(author != null ? author.getFullName() : null)
+                    .content(parseJson(response.getContentJson()))
+                    .build();
+        }
+
+        SectionResponseRevision revision = revisionRepository
+                .findBySectionResponseIdOrderByCreatedAtDesc(response.getId()).stream()
+                .filter(r -> version.equals(r.getVersion()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Version introuvable : " + version));
+        User author = revision.getCreatedBy() != null ? userRepository.findById(revision.getCreatedBy()).orElse(null) : null;
+
+        return SectionRevisionContentResponse.builder()
+                .code(section.getCode())
+                .title(section.getTitle())
+                .type(section.getType().name())
+                .version(revision.getVersion())
+                .createdAt(revision.getCreatedAt())
+                .createdByName(author != null ? author.getFullName() : null)
+                .content(parseJson(revision.getContentJson()))
+                .build();
     }
 
     // ---------------------------------------------------------------------

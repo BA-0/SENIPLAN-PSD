@@ -12,10 +12,10 @@ const QUADRANTS: {
   accent: string;
   bg: string;
 }[] = [
-  { key: "strengths", label: "Forces", scope: "Interne", accent: "border-primary-300", bg: "bg-primary-50" },
-  { key: "weaknesses", label: "Faiblesses", scope: "Interne", accent: "border-accent-200", bg: "bg-accent-50" },
-  { key: "opportunities", label: "Opportunités", scope: "Externe", accent: "border-blue-200", bg: "bg-blue-50" },
-  { key: "threats", label: "Menaces", scope: "Externe", accent: "border-amber-200", bg: "bg-amber-50" },
+  { key: "strengths", label: "Forces", scope: "Interne", accent: "border-primary-300 dark:border-primary-500/40", bg: "bg-primary-50 dark:bg-primary-500/10" },
+  { key: "weaknesses", label: "Faiblesses", scope: "Interne", accent: "border-accent-200 dark:border-accent-500/40", bg: "bg-accent-50 dark:bg-accent-500/10" },
+  { key: "opportunities", label: "Opportunités", scope: "Externe", accent: "border-blue-200 dark:border-blue-500/40", bg: "bg-blue-50 dark:bg-blue-500/10" },
+  { key: "threats", label: "Menaces", scope: "Externe", accent: "border-amber-200 dark:border-amber-500/40", bg: "bg-amber-50 dark:bg-amber-500/10" },
 ];
 
 export function SwotForm({ content, onChange, readOnly }: SectionFormProps<SwotContent>) {
@@ -24,8 +24,8 @@ export function SwotForm({ content, onChange, readOnly }: SectionFormProps<SwotC
       {QUADRANTS.map((q) => (
         <div key={q.key} className={cn("rounded-xl border-2 p-4", q.accent, q.bg)}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-slate-800">{q.label}</h3>
-            <span className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">{q.scope}</span>
+            <h3 className="text-foreground">{q.label}</h3>
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">{q.scope}</span>
           </div>
           <TagListEditor
             items={content[q.key] as string[]}

@@ -35,7 +35,7 @@ function YearlyBlockTable({
           const computed = COMPUTED_ROW_LABELS.has(row.label);
           return (
             <TableRow key={row.label} total={computed}>
-              <TableCell className={computed ? "" : "font-medium text-slate-700 text-[13px]"}>
+              <TableCell className={computed ? "" : "font-medium text-foreground/90 text-[13px]"}>
                 {labels[row.label] ?? row.label}
               </TableCell>
               {PLAN_YEARS.map((y) => (

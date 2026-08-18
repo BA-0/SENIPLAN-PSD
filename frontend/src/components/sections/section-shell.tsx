@@ -57,7 +57,7 @@ export function SectionShell({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="rounded-md bg-primary-50 px-2 py-0.5 text-[13px] font-semibold text-primary-700">
+            <span className="rounded-md bg-primary-50 dark:bg-primary-500/15 px-2 py-0.5 text-[13px] font-semibold text-primary-700 dark:text-primary-300">
               {code}
             </span>
             <h1>{title}</h1>
@@ -103,28 +103,28 @@ export function SectionShell({
       </div>
 
       {locked && (
-        <div className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-[13px] text-slate-600">
+        <div className="flex items-center gap-2.5 rounded-lg border border-border bg-muted px-4 py-3 text-[13px] text-muted-foreground">
           <Lock className="h-4 w-4 shrink-0" />
           Cette section est {status === "VALIDATED" ? "validée" : "soumise"} et n&apos;est plus modifiable.
         </div>
       )}
 
       {!locked && submitBlockedReason && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-700">
+        <div className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-[13px] text-amber-700 dark:text-amber-300">
           {submitBlockedReason}
         </div>
       )}
 
       {status === "REVISION_REQUESTED" && adminComment && (
-        <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-[13px] text-orange-700">
+        <div className="rounded-lg border border-orange-200 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 px-4 py-3 text-[13px] text-orange-700 dark:text-orange-300">
           <span className="font-medium">Révision demandée par l&apos;administrateur : </span>
           {adminComment}
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">{children}</div>
+      <div className="rounded-xl border border-border bg-card p-5 shadow-sm">{children}</div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-slate-200">
+      <div className="flex items-center justify-between pt-4 border-t border-border">
         {prevSection ? (
           <Button asChild variant="secondary" size="sm">
             <Link href={`/sections/${prevSection.code}`}>

@@ -10,9 +10,9 @@ import type { SectionFormProps } from "./types";
 function RefList({ label, items, tone }: { label: string; items: string[]; tone: string }) {
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-wide font-semibold text-slate-500 mb-1.5">{label}</p>
+      <p className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground mb-1.5">{label}</p>
       {items.length === 0 ? (
-        <p className="text-[13px] text-slate-400 italic">Aucun élément (voir Section 4 — SWOT)</p>
+        <p className="text-[13px] text-muted-foreground italic">Aucun élément (voir Section 4 — SWOT)</p>
       ) : (
         <ul className="space-y-1">
           {items.map((item, i) => (
@@ -71,10 +71,10 @@ export function TowsMatrixForm({ content, onChange, readOnly }: SectionFormProps
           <CardTitle>Rappel — Analyse SWOT (Section 4)</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <RefList label="Forces" items={content.strengths} tone="bg-primary-50 text-primary-700" />
-          <RefList label="Faiblesses" items={content.weaknesses} tone="bg-accent-50 text-accent-700" />
-          <RefList label="Opportunités" items={content.opportunities} tone="bg-blue-50 text-blue-700" />
-          <RefList label="Menaces" items={content.threats} tone="bg-amber-50 text-amber-700" />
+          <RefList label="Forces" items={content.strengths} tone="bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-300" />
+          <RefList label="Faiblesses" items={content.weaknesses} tone="bg-accent-50 dark:bg-accent-500/10 text-accent-700 dark:text-accent-300" />
+          <RefList label="Opportunités" items={content.opportunities} tone="bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300" />
+          <RefList label="Menaces" items={content.threats} tone="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300" />
         </CardContent>
       </Card>
 

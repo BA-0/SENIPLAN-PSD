@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle2, RotateCcw } from "lucide-react";
+import { ArrowLeft, CheckCircle2, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,9 +13,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NativeSelect } from "@/components/ui/native-select";
 import { StatusBadge } from "@/components/status-badge";
 import { SectionFormRouter } from "@/components/sections/section-form-router";
+import { VersionHistory } from "@/components/sections/version-history";
 import { getGroupSectionContent, listGroupSections, reviewSection } from "@/lib/api/admin";
 import { listGroups } from "@/lib/api/groups";
 import { extractErrorMessage } from "@/lib/api-client";
+import { formatDateTime } from "@/lib/utils";
 import type { SectionType } from "@/types/common";
 
 export default function AdminSectionReviewPage() {
@@ -50,6 +53,13 @@ export default function AdminSectionReviewPage() {
 
   return (
     <div className="space-y-5">
+      <Link
+        href="/admin/submissions"
+        className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-primary-600 transition-colors"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Retour aux soumissions
+      </Link>
+
       <div className="flex flex-wrap items-center gap-3">
         <NativeSelect
           value={groupId}
@@ -76,13 +86,21 @@ export default function AdminSectionReviewPage() {
       </div>
 
       {isLoading || !data ? (
-        <div className="h-96 bg-slate-200 rounded-xl animate-pulse" />
+        <div className="h-96 bg-muted rounded-xl animate-pulse" />
       ) : (
         <>
           <div className="flex items-center gap-2.5">
-            <span className="text-slate-400 text-sm">{data.code}</span>
+            <span className="text-muted-foreground text-sm">{data.code}</span>
             <h1>{data.title}</h1>
             <StatusBadge status={data.status} />
+          </div>
+
+          <div className="flex flex-wrap gap-x-6 gap-y-1.5 rounded-lg border border-border bg-muted/50 px-4 py-3 text-[13px]">
+            <MetaItem label="Chef de groupe" value={groups?.find((g) => g.id === groupId)?.leaderFullName ?? "—"} />
+            <MetaItem label="Version" value={data.version > 0 ? String(data.version) : "—"} />
+            <MetaItem label="Soumis le" value={formatDateTime(data.submittedAt) || "—"} />
+            <MetaItem label="Validé le" value={formatDateTime(data.validatedAt) || "—"} />
+            <MetaItem label="Dernière activité" value={formatDateTime(data.lastActivityAt) || "—"} />
           </div>
 
           <SectionFormRouter type={data.type as SectionType} content={data.content} onChange={() => {}} readOnly />
@@ -112,13 +130,24 @@ export default function AdminSectionReviewPage() {
           )}
 
           {data.adminComment && data.status !== "SUBMITTED" && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-[13px] text-slate-600">
+            <div className="rounded-lg border border-border bg-muted px-4 py-3 text-[13px] text-muted-foreground">
               <span className="font-medium">Dernier commentaire : </span>
               {data.adminComment}
             </div>
           )}
+
+          <VersionHistory groupId={groupId} code={code} />
         </>
       )}
     </div>
+  );
+}
+
+function MetaItem({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="text-muted-foreground">
+      <span className="font-medium text-foreground/80">{label} : </span>
+      {value}
+    </span>
   );
 }

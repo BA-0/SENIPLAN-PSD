@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Lock, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ export default function LoginPage() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -51,50 +52,101 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white px-4">
-      <div className="w-full max-w-sm">
-        <div className="flex justify-center mb-10">
-          <Image src="/logo-senico.png" alt="SENICO" width={514} height={98} priority className="h-auto w-[260px]" />
+    <div className="relative min-h-screen overflow-hidden bg-background flex items-center justify-center px-4">
+      <BackgroundDecor />
+
+      <div className="relative z-10 w-full max-w-sm">
+        <div className="flex justify-center mb-8 animate-fade-in">
+          <div className="bg-white rounded-2xl px-6 py-4 shadow-lg shadow-black/10 dark:shadow-black/30 ring-1 ring-black/5">
+            <Image src="/logo-senico.png" alt="SENICO" width={514} height={98} priority className="h-auto w-[200px]" />
+          </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-lg shadow-slate-200/50 p-8">
-          <h1 className="text-center mb-1">Diagnostic Stratégique</h1>
-          <p className="text-center text-[13px] text-slate-500 mb-7">PSD 2027-2031 — Connexion</p>
+        <div className="relative rounded-2xl border border-border bg-card shadow-xl shadow-primary-900/10 dark:shadow-black/50 p-8 pt-9 animate-fade-in-up overflow-hidden">
+          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary-500 via-accent-500 to-primary-500" />
+          <h1 className="text-center mb-1">Plan Stratégique</h1>
+          <p className="text-center text-[13px] text-muted-foreground mb-7">PSD 2027-2031 — Connexion</p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="username" required>
                 Identifiant
               </Label>
-              <Input id="username" autoComplete="username" placeholder="ex. dir.commerciale" error={!!errors.username} {...register("username")} />
-              {errors.username && <p className="text-[13px] text-accent-700">{errors.username.message}</p>}
+              <div className="relative">
+                <User className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="username"
+                  autoComplete="username"
+                  autoFocus
+                  error={!!errors.username}
+                  className="pl-9"
+                  {...register("username")}
+                />
+              </div>
+              {errors.username && (
+                <p className="text-[13px] text-accent-700 dark:text-accent-300">{errors.username.message}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="password" required>
                 Mot de passe
               </Label>
-              <Input id="password" type="password" autoComplete="current-password" placeholder="••••••••" error={!!errors.password} {...register("password")} />
-              {errors.password && <p className="text-[13px] text-accent-700">{errors.password.message}</p>}
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  error={!!errors.password}
+                  className="pl-9 pr-9"
+                  {...register("password")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  tabIndex={-1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  title={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-[13px] text-accent-700 dark:text-accent-300">{errors.password.message}</p>
+              )}
             </div>
 
             {serverError && (
-              <div className="flex items-start gap-2 rounded-lg bg-accent-50 border border-accent-100 px-3 py-2.5 text-[13px] text-accent-700">
+              <div className="flex items-start gap-2 rounded-lg bg-accent-50 dark:bg-accent-500/10 border border-accent-100 dark:border-accent-500/30 px-3 py-2.5 text-[13px] text-accent-700 dark:text-accent-300 animate-fade-in">
                 <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                 <span>{serverError}</span>
               </div>
             )}
 
-            <Button type="submit" variant="primary" size="lg" className="w-full" loading={submitting}>
+            <Button type="submit" variant="submit" size="lg" className="w-full" loading={submitting}>
               Se connecter
             </Button>
           </form>
         </div>
 
-        <p className="text-center text-[13px] text-slate-400 mt-6">
+        <p className="text-center text-[13px] text-muted-foreground mt-6 animate-fade-in">
           SENICO SA — Sénégalaise Industrie &amp; Commerce
         </p>
       </div>
+    </div>
+  );
+}
+
+function BackgroundDecor() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
+      <div className="absolute -top-24 -left-20 h-80 w-80 rounded-full bg-primary-400/20 dark:bg-primary-500/15 blur-3xl animate-float" />
+      <div className="absolute top-1/3 -right-24 h-96 w-96 rounded-full bg-accent-500/10 blur-3xl animate-float-slow" />
+      <div
+        className="absolute -bottom-28 left-1/4 h-72 w-72 rounded-full bg-sky-400/10 dark:bg-sky-500/10 blur-3xl animate-float"
+        style={{ animationDelay: "2s" }}
+      />
     </div>
   );
 }

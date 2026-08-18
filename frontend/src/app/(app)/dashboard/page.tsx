@@ -23,12 +23,12 @@ export default function GroupDashboardPage() {
       <div>
         <h1>Tableau de bord — {data.groupName}</h1>
         <p className="text-[13px] text-muted-foreground mt-1">
-          Suivi de l&apos;avancement du diagnostic stratégique PSD 2027-2031
+          Suivi de l&apos;avancement du plan stratégique PSD 2027-2031
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1 bg-violet-200/70 border-violet-300 dark:bg-violet-500/30 dark:border-violet-500/40">
           <CardContent className="flex flex-col items-center justify-center pt-6">
             <CompletionGauge percent={data.completionPercent} />
             <p className="text-[13px] text-muted-foreground mt-3">17 sections au total</p>
@@ -36,10 +36,10 @@ export default function GroupDashboardPage() {
         </Card>
 
         <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-          <KpiCard icon={Circle} label="Non commencées" value={data.sectionsNotStarted} color="slate" />
-          <KpiCard icon={Loader2} label="En cours" value={data.sectionsInProgress} color="blue" />
-          <KpiCard icon={Send} label="Soumises" value={data.sectionsSubmitted} color="violet" />
-          <KpiCard icon={CheckCircle2} label="Validées" value={data.sectionsValidated} color="emerald" />
+          <KpiCard icon={Circle} label="Non commencées" value={data.sectionsNotStarted} subtitle="sur 17 sections" color="slate" />
+          <KpiCard icon={Loader2} label="En cours" value={data.sectionsInProgress} subtitle="en cours de saisie" color="blue" />
+          <KpiCard icon={Send} label="Soumises" value={data.sectionsSubmitted} subtitle="en attente de validation" color="orange" />
+          <KpiCard icon={CheckCircle2} label="Validées" value={data.sectionsValidated} subtitle="validées par l'admin" color="emerald" />
         </div>
       </div>
 

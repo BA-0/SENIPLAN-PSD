@@ -55,7 +55,7 @@ export function LogicalFrameworkForm({ content, onChange, readOnly }: SectionFor
               {axis.rows.map((row, rowIndex) => (
                 <TableRow key={row.level}>
                   <TableCell className="align-top">
-                    <p className="text-[12px] font-semibold text-slate-500 uppercase mb-1">
+                    <p className="text-[12px] font-semibold text-muted-foreground uppercase mb-1">
                       {LOGFRAME_LABELS[row.level] ?? row.level}
                     </p>
                     <EditableCell

@@ -26,7 +26,7 @@ export function ResourcesMatrixForm({ content, onChange, readOnly }: SectionForm
       <TableBody>
         {content.rows.map((row, index) => (
           <TableRow key={row.resourceKey}>
-            <TableCell className="border-l-2 border-l-primary-300 py-2.5 align-top font-medium text-slate-700 text-[13px] leading-snug">
+            <TableCell className="border-l-2 border-l-primary-300 py-2.5 align-top font-medium text-foreground/90 text-[13px] leading-snug">
               {RESOURCE_LABELS[row.resourceKey] ?? row.resourceKey}
             </TableCell>
             <TableCell className="py-2.5 align-top">

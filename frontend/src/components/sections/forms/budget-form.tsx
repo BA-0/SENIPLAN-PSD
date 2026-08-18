@@ -120,7 +120,7 @@ export function BudgetForm({ content, onChange, readOnly }: SectionFormProps<Bud
                             />
                           </TableCell>
                         ))}
-                        <TableCell className="text-right tabular-nums font-medium text-slate-700">
+                        <TableCell className="text-right tabular-nums font-medium text-foreground/90">
                           {formatFcfa(row.rowTotal)}
                         </TableCell>
                         <TableCell>
@@ -157,14 +157,14 @@ export function BudgetForm({ content, onChange, readOnly }: SectionFormProps<Bud
             </Button>
           )}
           <div className="flex justify-end">
-            <div className="rounded-lg bg-primary-50 px-4 py-2 text-[13px] font-semibold text-primary-700">
+            <div className="rounded-lg bg-primary-50 dark:bg-primary-500/15 px-4 py-2 text-[13px] font-semibold text-primary-700 dark:text-primary-300">
               Total axe : {formatFcfa(axis.axisTotal)}
             </div>
           </div>
         </TabsContent>
       ))}
 
-      <div className="flex justify-end mt-4 pt-4 border-t border-slate-200">
+      <div className="flex justify-end mt-4 pt-4 border-t border-border">
         <div className="rounded-lg bg-primary-500 px-5 py-2.5 text-[15px] font-bold text-white">
           Total général : {formatFcfa(content.grandTotal)}
         </div>

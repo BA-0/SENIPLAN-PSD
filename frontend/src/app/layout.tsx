@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SENICO Diagnostic Stratégique",
-  description: "Diagnostic stratégique du Plan Stratégique de Développement (PSD) 2027-2031 — SENICO SA",
+  title: "SENICO Plan Stratégique",
+  description: "Plan Stratégique de Développement (PSD) 2027-2031 — SENICO SA",
   icons: { icon: "/favicon-mark.png" },
 };
 

@@ -6,8 +6,11 @@ import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfWriter;
 import com.lowagie.text.pdf.draw.LineSeparator;
 import java.awt.Color;
+import com.senico.diagnostic.domain.GroupSectionStatus;
 import com.senico.diagnostic.domain.SectionDef;
+import com.senico.diagnostic.domain.SectionResponse;
 import com.senico.diagnostic.domain.WorkGroup;
+import com.senico.diagnostic.repository.GroupSectionStatusRepository;
 import com.senico.diagnostic.repository.SectionDefRepository;
 import com.senico.diagnostic.repository.SectionResponseRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +30,9 @@ public class PdfExportService {
 
     private final SectionDefRepository sectionDefRepository;
     private final SectionResponseRepository sectionResponseRepository;
+    private final GroupSectionStatusRepository groupSectionStatusRepository;
+    private final SectionExportRenderer sectionExportRenderer;
+    private final PdfBlockEmitter pdfBlockEmitter;
     private final ObjectMapper objectMapper;
 
     public byte[] exportGroupRecap(WorkGroup group) {
@@ -60,7 +66,7 @@ public class PdfExportService {
         spacer.setSpacingAfter(120);
         document.add(spacer);
 
-        Paragraph title = new Paragraph("SENICO SA — Diagnostic Stratégique", titleFont);
+        Paragraph title = new Paragraph("SENICO SA — Plan Stratégique", titleFont);
         title.setAlignment(Element.ALIGN_CENTER);
         document.add(title);
 
@@ -84,8 +90,6 @@ public class PdfExportService {
 
     private void addSectionPage(Document document, SectionDef section, WorkGroup group) throws DocumentException {
         Font headerFont = new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY);
-        Font bodyFont = new Font(Font.HELVETICA, 10, Font.NORMAL, Color.DARK_GRAY);
-        Font emptyFont = new Font(Font.HELVETICA, 10, Font.ITALIC, SLATE);
 
         Paragraph header = new Paragraph(section.getCode() + " — " + section.getTitle(), headerFont);
         header.setSpacingAfter(4);
@@ -96,31 +100,23 @@ public class PdfExportService {
         document.add(new Chunk(separator));
         document.add(new Paragraph(" "));
 
-        JsonNode content = loadContent(group.getId(), section.getId());
-        List<JsonContentRenderer.Line> lines = JsonContentRenderer.render(content);
-
-        if (lines.isEmpty()) {
-            document.add(new Paragraph("Aucune donnée saisie pour cette section.", emptyFont));
-            return;
-        }
-
-        for (JsonContentRenderer.Line line : lines) {
-            Paragraph p = new Paragraph(line.text(), bodyFont);
-            p.setIndentationLeft(line.indent() * 16f);
-            p.setSpacingAfter(2);
-            document.add(p);
-        }
+        List<ExportBlock> blocks = sectionExportRenderer.render(loadExportData(group.getId(), section));
+        pdfBlockEmitter.emit(document, blocks);
     }
 
-    private JsonNode loadContent(Long groupId, Integer sectionId) {
-        return sectionResponseRepository.findByGroupIdAndSectionId(groupId, sectionId)
-                .map(r -> {
-                    try {
-                        return objectMapper.readTree(r.getContentJson());
-                    } catch (Exception e) {
-                        return objectMapper.createObjectNode();
-                    }
-                })
-                .orElseGet(objectMapper::createObjectNode);
+    private ExportSectionData loadExportData(Long groupId, SectionDef section) {
+        SectionResponse response = sectionResponseRepository.findByGroupIdAndSectionId(groupId, section.getId()).orElse(null);
+        GroupSectionStatus status = groupSectionStatusRepository.findByGroupIdAndSectionId(groupId, section.getId()).orElse(null);
+        JsonNode content = response != null ? parseJson(response.getContentJson()) : objectMapper.createObjectNode();
+        Integer version = response != null ? response.getVersion() : 0;
+        return new ExportSectionData(section, content, version, status);
+    }
+
+    private JsonNode parseJson(String json) {
+        try {
+            return objectMapper.readTree(json);
+        } catch (Exception e) {
+            return objectMapper.createObjectNode();
+        }
     }
 }

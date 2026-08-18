@@ -1,6 +1,11 @@
 import { apiClient } from "@/lib/api-client";
-import type { ActivityEntryDto, AdminDashboardDto, MatrixCellDto } from "@/types/api";
-import type { SectionContentResponse, SectionStatusSummary } from "@/types/common";
+import type { ActivityEntryDto, AdminDashboardDto, MatrixCellDto, SubmissionSummaryDto } from "@/types/api";
+import type {
+  SectionContentResponse,
+  SectionRevisionContentResponse,
+  SectionRevisionSummaryDto,
+  SectionStatusSummary,
+} from "@/types/common";
 
 export async function getAdminDashboard(): Promise<AdminDashboardDto> {
   const { data } = await apiClient.get<AdminDashboardDto>("/admin/dashboard");
@@ -14,6 +19,27 @@ export async function getAdminMatrix(): Promise<MatrixCellDto[]> {
 
 export async function getAdminActivity(limit = 50): Promise<ActivityEntryDto[]> {
   const { data } = await apiClient.get<ActivityEntryDto[]>("/admin/activity", { params: { limit } });
+  return data;
+}
+
+export async function getAdminSubmissions(): Promise<SubmissionSummaryDto[]> {
+  const { data } = await apiClient.get<SubmissionSummaryDto[]>("/admin/submissions");
+  return data;
+}
+
+export async function getSectionHistory(groupId: number, code: string): Promise<SectionRevisionSummaryDto[]> {
+  const { data } = await apiClient.get<SectionRevisionSummaryDto[]>(`/admin/groups/${groupId}/sections/${code}/history`);
+  return data;
+}
+
+export async function getSectionHistoryContent<T>(
+  groupId: number,
+  code: string,
+  version: number
+): Promise<SectionRevisionContentResponse<T>> {
+  const { data } = await apiClient.get<SectionRevisionContentResponse<T>>(
+    `/admin/groups/${groupId}/sections/${code}/history/${version}`
+  );
   return data;
 }
 

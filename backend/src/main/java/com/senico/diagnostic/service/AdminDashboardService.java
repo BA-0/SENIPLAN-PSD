@@ -4,8 +4,10 @@ import com.senico.diagnostic.domain.*;
 import com.senico.diagnostic.dto.dashboard.ActivityEntryDto;
 import com.senico.diagnostic.dto.dashboard.AdminDashboardDto;
 import com.senico.diagnostic.dto.dashboard.MatrixCellDto;
+import com.senico.diagnostic.dto.dashboard.SubmissionSummaryDto;
 import com.senico.diagnostic.repository.GroupSectionStatusRepository;
 import com.senico.diagnostic.repository.SectionDefRepository;
+import com.senico.diagnostic.repository.SectionResponseRepository;
 import com.senico.diagnostic.repository.WorkGroupRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -25,6 +28,7 @@ public class AdminDashboardService {
     private final WorkGroupRepository workGroupRepository;
     private final SectionDefRepository sectionDefRepository;
     private final GroupSectionStatusRepository groupSectionStatusRepository;
+    private final SectionResponseRepository sectionResponseRepository;
     private final ProgressService progressService;
     private final ActivityLogService activityLogService;
 
@@ -107,6 +111,38 @@ public class AdminDashboardService {
     }
 
     @Transactional(readOnly = true)
+    public List<SubmissionSummaryDto> submissions() {
+        Map<String, Integer> versionsByGroupAndSection = sectionResponseRepository.findAll().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        r -> r.getGroup().getId() + ":" + r.getSection().getId(),
+                        r -> r.getVersion(),
+                        (a, b) -> b));
+
+        return groupSectionStatusRepository.findAll().stream()
+                .map(s -> {
+                    String key = s.getGroup().getId() + ":" + s.getSection().getId();
+                    return SubmissionSummaryDto.builder()
+                            .groupId(s.getGroup().getId())
+                            .groupName(s.getGroup().getName())
+                            .leaderFullName(s.getGroup().getLeader() != null ? s.getGroup().getLeader().getFullName() : null)
+                            .sectionId(s.getSection().getId())
+                            .sectionCode(s.getSection().getCode())
+                            .sectionTitle(s.getSection().getTitle())
+                            .sectionOrder(s.getSection().getOrder())
+                            .status(s.getStatus().name())
+                            .version(versionsByGroupAndSection.getOrDefault(key, 0))
+                            .submittedAt(s.getSubmittedAt())
+                            .validatedAt(s.getValidatedAt())
+                            .lastActivityAt(s.getLastActivityAt())
+                            .adminComment(s.getAdminComment())
+                            .build();
+                })
+                .sorted(Comparator.comparing(SubmissionSummaryDto::groupName)
+                        .thenComparing(SubmissionSummaryDto::sectionOrder))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<ActivityEntryDto> recentActivity(int limit) {
         return activityLogService.recent(limit).stream()
                 .map(this::toActivityDto)
@@ -115,6 +151,7 @@ public class AdminDashboardService {
 
     private ActivityEntryDto toActivityDto(ActivityLog log) {
         return ActivityEntryDto.builder()
+                .id(log.getId())
                 .groupId(log.getGroup() != null ? log.getGroup().getId() : null)
                 .groupName(log.getGroup() != null ? log.getGroup().getName() : null)
                 .userFullName(log.getUser() != null ? log.getUser().getFullName() : null)

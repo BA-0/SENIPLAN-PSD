@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -24,11 +25,28 @@ public class ActivityLogService {
     public static final String ACTION_REQUEST_REVISION = "REQUEST_REVISION";
     public static final String ACTION_LOGIN = "LOGIN";
 
+    /** Autosaves on the same group+section within this window update the existing entry instead of creating a new one. */
+    private static final Duration DRAFT_COALESCE_WINDOW = Duration.ofMinutes(5);
+
     private final ActivityLogRepository activityLogRepository;
     private final RealtimeEventPublisher realtimeEventPublisher;
 
     @Transactional
     public void log(WorkGroup group, User user, String action, SectionDef section) {
+        if (ACTION_SAVE_DRAFT.equals(action) && group != null && section != null && user != null) {
+            ActivityLog recentDraft = activityLogRepository
+                    .findFirstByGroupIdAndSectionIdAndUserIdAndActionOrderByTimestampDesc(
+                            group.getId(), section.getId(), user.getId(), action)
+                    .filter(entry -> entry.getTimestamp().isAfter(LocalDateTime.now().minus(DRAFT_COALESCE_WINDOW)))
+                    .orElse(null);
+            if (recentDraft != null) {
+                recentDraft.setTimestamp(LocalDateTime.now());
+                activityLogRepository.save(recentDraft);
+                publish(recentDraft);
+                return;
+            }
+        }
+
         ActivityLog entry = ActivityLog.builder()
                 .group(group)
                 .user(user)
@@ -37,12 +55,18 @@ public class ActivityLogService {
                 .timestamp(LocalDateTime.now())
                 .build();
         activityLogRepository.save(entry);
+        publish(entry);
+    }
 
+    private void publish(ActivityLog entry) {
+        WorkGroup group = entry.getGroup();
+        SectionDef section = entry.getSection();
         realtimeEventPublisher.publishActivity(ActivityEvent.builder()
+                .id(entry.getId())
                 .groupId(group != null ? group.getId() : null)
                 .groupName(group != null ? group.getName() : null)
-                .userFullName(user != null ? user.getFullName() : null)
-                .action(action)
+                .userFullName(entry.getUser() != null ? entry.getUser().getFullName() : null)
+                .action(entry.getAction())
                 .sectionCode(section != null ? section.getCode() : null)
                 .sectionTitle(section != null ? section.getTitle() : null)
                 .timestamp(entry.getTimestamp())

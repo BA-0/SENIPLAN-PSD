@@ -99,8 +99,8 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {orientation.actions.map((action, actionIndex) => (
-                    <div key={actionIndex} className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr_auto] gap-2 items-start rounded-lg bg-slate-50 p-2.5">
-                      <span className="text-[12px] font-medium text-slate-500 pt-2.5 sm:pt-0 sm:self-center">
+                    <div key={actionIndex} className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr_auto] gap-2 items-start rounded-lg bg-muted/50 p-2.5">
+                      <span className="text-[12px] font-medium text-muted-foreground pt-2.5 sm:pt-0 sm:self-center">
                         Action {orientationIndex + 1}.{actionIndex + 1}
                       </span>
                       <Input
@@ -108,7 +108,7 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
                         onChange={(e) => updateAction(axisIndex, orientationIndex, actionIndex, { label: e.target.value })}
                         disabled={readOnly}
                         placeholder="Intitulé de l'action…"
-                        className="bg-white"
+                        className="bg-card"
                       />
                       <Input
                         value={action.constraintsOrOpportunities}
@@ -117,7 +117,7 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
                         }
                         disabled={readOnly}
                         placeholder="Contraintes à lever / opportunités à saisir…"
-                        className="bg-white"
+                        className="bg-card"
                       />
                       {!readOnly && (
                         <RemoveRowButton onConfirm={() => removeAction(axisIndex, orientationIndex, actionIndex)} />

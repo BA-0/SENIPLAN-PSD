@@ -26,7 +26,7 @@ export function PestelForm({ content, onChange, readOnly }: SectionFormProps<Pes
       <TableBody>
         {content.rows.map((row, index) => (
           <TableRow key={row.axis}>
-            <TableCell className="font-medium text-slate-700 text-[13px]">{PESTEL_LABELS[row.axis] ?? row.axis}</TableCell>
+            <TableCell className="font-medium text-foreground/90 text-[13px]">{PESTEL_LABELS[row.axis] ?? row.axis}</TableCell>
             <TableCell>
               <EditableCell value={row.threats} onChange={(v) => updateRow(index, { threats: v })} readOnly={readOnly} multiline />
             </TableCell>

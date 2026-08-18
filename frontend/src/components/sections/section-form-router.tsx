@@ -67,7 +67,7 @@ export function SectionFormRouter({ type, content, onChange, readOnly }: Section
     case "STRATEGIC_SUMMARY":
       return <StrategicSummaryForm {...props} />;
     default:
-      return <p className="text-slate-500">Type de section non pris en charge : {type}</p>;
+      return <p className="text-muted-foreground">Type de section non pris en charge : {type}</p>;
   }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */

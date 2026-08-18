@@ -2,8 +2,11 @@ package com.senico.diagnostic.export;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.senico.diagnostic.domain.GroupSectionStatus;
 import com.senico.diagnostic.domain.SectionDef;
+import com.senico.diagnostic.domain.SectionResponse;
 import com.senico.diagnostic.domain.WorkGroup;
+import com.senico.diagnostic.repository.GroupSectionStatusRepository;
 import com.senico.diagnostic.repository.SectionDefRepository;
 import com.senico.diagnostic.repository.SectionResponseRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,9 @@ public class WordExportService {
 
     private final SectionDefRepository sectionDefRepository;
     private final SectionResponseRepository sectionResponseRepository;
+    private final GroupSectionStatusRepository groupSectionStatusRepository;
+    private final SectionExportRenderer sectionExportRenderer;
+    private final WordBlockEmitter wordBlockEmitter;
     private final ObjectMapper objectMapper;
 
     public byte[] exportGroupRecap(WorkGroup group) {
@@ -47,7 +53,7 @@ public class WordExportService {
         title.setAlignment(ParagraphAlignment.CENTER);
         title.setSpacingBefore(2000);
         XWPFRun titleRun = title.createRun();
-        titleRun.setText("SENICO SA — Diagnostic Stratégique");
+        titleRun.setText("SENICO SA — Plan Stratégique");
         titleRun.setBold(true);
         titleRun.setFontSize(22);
         titleRun.setColor(PRIMARY_HEX);
@@ -84,36 +90,23 @@ public class WordExportService {
         headerRun.setColor(PRIMARY_HEX);
         header.setBorderBottom(Borders.SINGLE);
 
-        JsonNode content = loadContent(group.getId(), section.getId());
-        List<JsonContentRenderer.Line> lines = JsonContentRenderer.render(content);
-
-        if (lines.isEmpty()) {
-            XWPFParagraph empty = doc.createParagraph();
-            XWPFRun emptyRun = empty.createRun();
-            emptyRun.setText("Aucune donnée saisie pour cette section.");
-            emptyRun.setItalic(true);
-            emptyRun.setColor("64748B");
-            return;
-        }
-
-        for (JsonContentRenderer.Line line : lines) {
-            XWPFParagraph p = doc.createParagraph();
-            p.setIndentationLeft(line.indent() * 300);
-            XWPFRun run = p.createRun();
-            run.setText(line.text());
-            run.setFontSize(10);
-        }
+        List<ExportBlock> blocks = sectionExportRenderer.render(loadExportData(group.getId(), section));
+        wordBlockEmitter.emit(doc, blocks);
     }
 
-    private JsonNode loadContent(Long groupId, Integer sectionId) {
-        return sectionResponseRepository.findByGroupIdAndSectionId(groupId, sectionId)
-                .map(r -> {
-                    try {
-                        return objectMapper.readTree(r.getContentJson());
-                    } catch (Exception e) {
-                        return objectMapper.createObjectNode();
-                    }
-                })
-                .orElseGet(objectMapper::createObjectNode);
+    private ExportSectionData loadExportData(Long groupId, SectionDef section) {
+        SectionResponse response = sectionResponseRepository.findByGroupIdAndSectionId(groupId, section.getId()).orElse(null);
+        GroupSectionStatus status = groupSectionStatusRepository.findByGroupIdAndSectionId(groupId, section.getId()).orElse(null);
+        JsonNode content = response != null ? parseJson(response.getContentJson()) : objectMapper.createObjectNode();
+        Integer version = response != null ? response.getVersion() : 0;
+        return new ExportSectionData(section, content, version, status);
+    }
+
+    private JsonNode parseJson(String json) {
+        try {
+            return objectMapper.readTree(json);
+        } catch (Exception e) {
+            return objectMapper.createObjectNode();
+        }
     }
 }

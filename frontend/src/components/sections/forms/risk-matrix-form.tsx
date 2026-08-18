@@ -89,7 +89,7 @@ export function RiskMatrixForm({ content, onChange, readOnly }: SectionFormProps
           ))}
           {content.rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={9} className="text-center text-slate-400 py-8">Aucun risque renseigné</TableCell>
+              <TableCell colSpan={9} className="text-center text-muted-foreground py-8">Aucun risque renseigné</TableCell>
             </TableRow>
           )}
         </TableBody>

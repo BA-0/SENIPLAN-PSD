@@ -52,6 +52,23 @@ export interface SectionContentResponse<T = unknown> {
   lastActivityAt: string | null;
 }
 
+export interface SectionRevisionSummaryDto {
+  version: number;
+  createdAt: string;
+  createdByName: string | null;
+  current: boolean;
+}
+
+export interface SectionRevisionContentResponse<T = unknown> {
+  code: string;
+  title: string;
+  type: SectionType;
+  version: number;
+  createdAt: string;
+  createdByName: string | null;
+  content: T;
+}
+
 export const SECTION_CODES = [
   "S01", "S02", "S03", "S04", "S05", "S06", "S07", "S08", "S09",
   "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S17",

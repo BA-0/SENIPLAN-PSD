@@ -3,6 +3,8 @@ package com.senico.diagnostic.controller;
 import com.senico.diagnostic.domain.User;
 import com.senico.diagnostic.dto.section.AdminReviewRequest;
 import com.senico.diagnostic.dto.section.SectionContentResponse;
+import com.senico.diagnostic.dto.section.SectionRevisionContentResponse;
+import com.senico.diagnostic.dto.section.SectionRevisionSummaryDto;
 import com.senico.diagnostic.dto.section.SectionStatusSummary;
 import com.senico.diagnostic.exception.ResourceNotFoundException;
 import com.senico.diagnostic.repository.UserRepository;
@@ -47,5 +49,18 @@ public class AdminSectionController {
         User admin = userRepository.findById(principal.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable"));
         return ResponseEntity.ok(sectionEngineService.adminReview(groupId, code, request, admin));
+    }
+
+    @GetMapping("/{code}/history")
+    public ResponseEntity<List<SectionRevisionSummaryDto>> history(@PathVariable Long groupId, @PathVariable String code) {
+        return ResponseEntity.ok(sectionEngineService.getHistory(groupId, code));
+    }
+
+    @GetMapping("/{code}/history/{version}")
+    public ResponseEntity<SectionRevisionContentResponse> historyContent(
+            @PathVariable Long groupId,
+            @PathVariable String code,
+            @PathVariable Integer version) {
+        return ResponseEntity.ok(sectionEngineService.getHistoryContent(groupId, code, version));
     }
 }

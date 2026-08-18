@@ -78,6 +78,7 @@ export interface MatrixCellDto {
 }
 
 export interface ActivityEntryDto {
+  id: number;
   groupId: number | null;
   groupName: string | null;
   userFullName: string | null;
@@ -99,6 +100,22 @@ export interface MyDashboardDto {
   checklist: import("./common").SectionStatusSummary[];
   nextSections: import("./common").SectionStatusSummary[];
   sectionsWithAdminComment: import("./common").SectionStatusSummary[];
+}
+
+export interface SubmissionSummaryDto {
+  groupId: number;
+  groupName: string;
+  leaderFullName: string | null;
+  sectionId: number;
+  sectionCode: string;
+  sectionTitle: string;
+  sectionOrder: number;
+  status: SectionStatus;
+  version: number;
+  submittedAt: string | null;
+  validatedAt: string | null;
+  lastActivityAt: string | null;
+  adminComment: string | null;
 }
 
 export interface ApiErrorBody {

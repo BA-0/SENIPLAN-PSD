@@ -27,11 +27,11 @@ export function FinancingPlanForm({ content, onChange, readOnly }: SectionFormPr
       <TableBody>
         {content.rows.map((row, index) => (
           <TableRow key={row.source}>
-            <TableCell className="font-medium text-slate-700 text-[13px]">{FINANCING_LABELS[row.source] ?? row.source}</TableCell>
+            <TableCell className="font-medium text-foreground/90 text-[13px]">{FINANCING_LABELS[row.source] ?? row.source}</TableCell>
             <TableCell>
               <EditableNumberCell value={row.amount} onChange={(v) => updateRow(index, { amount: v })} readOnly={readOnly} />
             </TableCell>
-            <TableCell className="text-right tabular-nums text-slate-600">{formatNumber(row.percent)}%</TableCell>
+            <TableCell className="text-right tabular-nums text-muted-foreground">{formatNumber(row.percent)}%</TableCell>
             <TableCell>
               <EditableCell value={row.modalities} onChange={(v) => updateRow(index, { modalities: v })} readOnly={readOnly} />
             </TableCell>

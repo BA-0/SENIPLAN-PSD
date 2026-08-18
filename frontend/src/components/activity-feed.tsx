@@ -36,13 +36,13 @@ export function ActivityFeed({ entries }: { entries: ActivityEntryDto[] }) {
   }
 
   return (
-    <ul className="space-y-3">
-      {entries.map((entry, i) => {
+    <ul className="space-y-3" aria-live="polite" aria-atomic="false">
+      {entries.map((entry) => {
         const config = ACTION_CONFIG[entry.action] ?? ACTION_CONFIG.SAVE_DRAFT;
         const Icon = config.icon;
         return (
-          <li key={i} className="flex items-start gap-3">
-            <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${config.color}`} />
+          <li key={entry.id} className="flex items-start gap-3">
+            <Icon aria-hidden="true" className={`h-4 w-4 mt-0.5 shrink-0 ${config.color}`} />
             <div className="min-w-0">
               <p className="text-[13px] text-foreground">{config.label(entry)}</p>
               <p className="text-[12px] text-muted-foreground">{timeAgo(entry.timestamp)}</p>

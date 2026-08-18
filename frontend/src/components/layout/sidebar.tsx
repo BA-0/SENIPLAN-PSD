@@ -8,6 +8,7 @@ import { useState } from "react";
 import {
   LayoutDashboard,
   Users,
+  Inbox,
   Columns3,
   FileDown,
   MonitorPlay,
@@ -53,7 +54,7 @@ export function Sidebar() {
         {!collapsed && (
           <div className="min-w-0">
             <p className="text-white text-sm font-semibold truncate">SENICO</p>
-            <p className="text-[11px] text-white/50 truncate">Diagnostic Stratégique</p>
+            <p className="text-[11px] text-white/50 truncate">Plan Stratégique</p>
           </div>
         )}
       </div>
@@ -81,6 +82,13 @@ export function Sidebar() {
         {isAdmin ? (
           <>
             <NavItem href="/admin" icon={LayoutDashboard} label="Tableau de bord" active={pathname === "/admin"} collapsed={collapsed} />
+            <NavItem
+              href="/admin/submissions"
+              icon={Inbox}
+              label="Soumissions"
+              active={pathname.startsWith("/admin/submissions")}
+              collapsed={collapsed}
+            />
             <NavItem
               href="/admin/groups"
               icon={Users}

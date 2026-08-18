@@ -103,7 +103,7 @@ function ProjectionPage() {
             <Image src="/logo-senico.png" alt="SENICO" width={514} height={98} className="h-10 w-10 object-contain" />
           </div>
           <div className="min-w-0 animate-fade-in-up" style={{ animationDelay: "80ms" }}>
-            <p className="text-[22px] font-bold leading-tight truncate">Diagnostic Stratégique — SENICO</p>
+            <p className="text-[22px] font-bold leading-tight truncate">Plan Stratégique — SENICO</p>
             <p className="text-[13px] text-white/60 truncate">
               Plan Stratégique de Développement 2027-2031 · Séance de travail des groupes
             </p>

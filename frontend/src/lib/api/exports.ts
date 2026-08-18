@@ -17,17 +17,17 @@ async function downloadBlob(url: string, fallbackFilename: string) {
 }
 
 export function downloadMyGroupPdf() {
-  return downloadBlob("/me/exports/pdf", "diagnostic-strategique.pdf");
+  return downloadBlob("/me/exports/pdf", "plan-strategique.pdf");
 }
 
 export function downloadGroupPdf(groupId: number) {
-  return downloadBlob(`/admin/exports/groups/${groupId}/pdf`, "diagnostic-strategique.pdf");
+  return downloadBlob(`/admin/exports/groups/${groupId}/pdf`, "plan-strategique.pdf");
 }
 
 export function downloadGroupWord(groupId: number) {
-  return downloadBlob(`/admin/exports/groups/${groupId}/word`, "diagnostic-strategique.docx");
+  return downloadBlob(`/admin/exports/groups/${groupId}/word`, "plan-strategique.docx");
 }
 
 export function downloadConsolidatedExcel() {
-  return downloadBlob("/admin/exports/consolidated/excel", "diagnostic-strategique-consolide.xlsx");
+  return downloadBlob("/admin/exports/consolidated/excel", "plan-strategique-consolide.xlsx");
 }

@@ -20,7 +20,7 @@ export function GroupProgressChart({ groups }: { groups: GroupProgressDto[] }) {
             background: "hsl(var(--card))",
             color: "hsl(var(--card-foreground))",
           }}
-          formatter={(value: number) => [`${value}%`, "Complétion"]}
+          formatter={(value: number) => [`${value}%`, "Sections soumises ou validées"]}
         />
         <Bar dataKey="percent" fill="#2D7A45" radius={[0, 6, 6, 0]} barSize={20} />
       </BarChart>

@@ -44,6 +44,26 @@
     font-feature-settings: "cv11", "ss01";
   }
 
+  /*
+   * Chrome repeint les champs remplis automatiquement en bleu-blanc et force
+   * la couleur du texte, via des styles UA qu'une règle normale ne peut pas
+   * surcharger. Deux contournements standards :
+   *  - une transition de fond quasi infinie, pour que la couleur d'autofill
+   *    n'arrive jamais et que le fond du champ reste celui du thème ;
+   *  - `-webkit-text-fill-color`, seule propriété qui l'emporte sur la
+   *    couleur de texte imposée.
+   * Les champs sur fond sombre (page de connexion) surchargent le
+   * text-fill-color en blanc à leur niveau.
+   */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    caret-color: hsl(var(--foreground));
+    transition: background-color 600000s 0s, color 600000s 0s;
+  }
+
   h1 {
     @apply text-2xl font-semibold text-foreground;
   }

@@ -131,12 +131,12 @@ export default function AdminGroupsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1>Groupes de travail</h1>
           <p className="text-[13px] text-muted-foreground mt-1">Départements participant au plan stratégique</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={handleExportExcel} loading={exportingExcel}>
             <FileDown className="h-4 w-4" /> Export Excel consolidé
           </Button>
@@ -209,7 +209,7 @@ export default function AdminGroupsPage() {
           <div className="divide-y divide-border/60">
             {isLoading && <p className="px-5 py-8 text-center text-muted-foreground">Chargement…</p>}
             {groups?.map((g) => (
-              <div key={g.id} className="flex items-center justify-between px-5 py-4 gap-4">
+              <div key={g.id} className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <Link href={`/admin/groups/${g.id}/sections/S01`} className="text-[14px] font-medium text-foreground hover:text-primary-600">
@@ -221,7 +221,7 @@ export default function AdminGroupsPage() {
                     {g.leaderFullName} · {g.leaderUsername} · Dernière activité : {g.lastActivityAt ? formatDateTime(g.lastActivityAt) : "—"}
                   </p>
                 </div>
-                <div className="flex items-center gap-4 shrink-0">
+                <div className="flex flex-wrap items-center gap-4 sm:shrink-0">
                   <span className="text-[13px] font-semibold text-primary-600 w-12 text-right">{g.completionPercent}%</span>
                   <Button variant="ghost" size="icon" title="Modifier le groupe" onClick={() => openEditDialog(g)}>
                     <Pencil className="h-4 w-4" />

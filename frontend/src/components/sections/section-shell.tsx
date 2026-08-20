@@ -124,24 +124,24 @@ export function SectionShell({
 
       <div className="rounded-xl border border-border bg-card p-5 shadow-sm">{children}</div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-border">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-4 border-t border-border">
         {prevSection ? (
-          <Button asChild variant="secondary" size="sm">
-            <Link href={`/sections/${prevSection.code}`}>
-              <ChevronLeft className="h-4 w-4" /> {prevSection.code} — {prevSection.title}
+          <Button asChild variant="secondary" size="sm" className="justify-start sm:justify-center">
+            <Link href={`/sections/${prevSection.code}`} className="min-w-0">
+              <ChevronLeft className="h-4 w-4 shrink-0" /> <span className="truncate">{prevSection.code} — {prevSection.title}</span>
             </Link>
           </Button>
         ) : (
-          <span />
+          <span className="hidden sm:inline" />
         )}
         {nextSection ? (
-          <Button asChild variant="secondary" size="sm">
-            <Link href={`/sections/${nextSection.code}`}>
-              {nextSection.code} — {nextSection.title} <ChevronRight className="h-4 w-4" />
+          <Button asChild variant="secondary" size="sm" className="justify-end sm:justify-center">
+            <Link href={`/sections/${nextSection.code}`} className="min-w-0">
+              <span className="truncate">{nextSection.code} — {nextSection.title}</span> <ChevronRight className="h-4 w-4 shrink-0" />
             </Link>
           </Button>
         ) : (
-          <span />
+          <span className="hidden sm:inline" />
         )}
       </div>
     </div>

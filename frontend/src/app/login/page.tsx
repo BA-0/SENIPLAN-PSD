@@ -224,15 +224,29 @@ function BackgroundPhoto() {
           « Se connecter ») et la vague au rouge (#ED141B). Le masque vient de
           la différence de luminance avec `login-bg-clean.jpg`, où le lettrage
           est effacé — les treillis sont donc conservés au pixel près.
-          Régénération : scripts/greenify.ps1. */}
+          Régénération : scripts/greenify.ps1.
+
+          Sous `lg`, `BrandLockup` affiche déjà ce même lettrage en net devant
+          la carte : on garde ici `login-bg-clean.jpg` (sans lettrage) pour ne
+          pas superposer les deux logos, ce qui arrivait dès que la fenêtre
+          rendait la page sous 1024px CSS (zoom navigateur, mise à l'échelle
+          Windows) sans que `BrandLockup` ait disparu du cadre. */}
       <div className={COVER_BOX}>
+        <Image
+          src="/login-bg-clean.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover [filter:saturate(1.08)_contrast(1.06)] lg:hidden"
+        />
         <Image
           src="/login-bg-vert.jpg"
           alt=""
           fill
           priority
           sizes="100vw"
-          className="object-cover [filter:saturate(1.08)_contrast(1.06)]"
+          className="hidden object-cover [filter:saturate(1.08)_contrast(1.06)] lg:block"
         />
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -68,6 +68,8 @@ function ProjectionPage() {
   const [submitAllBanner, setSubmitAllBanner] = useState<{ entry: ActivityEntryDto; key: number } | null>(null);
   const bannerKeyRef = useRef(0);
 
+  const dismissSubmitAllBanner = useCallback(() => setSubmitAllBanner(null), []);
+
   useRealtimeAdmin({
     voice: true,
     onSubmitAll: (entry) => {
@@ -118,7 +120,7 @@ function ProjectionPage() {
         <SubmitAllBanner
           key={submitAllBanner.key}
           entry={submitAllBanner.entry}
-          onDismiss={() => setSubmitAllBanner(null)}
+          onDismiss={dismissSubmitAllBanner}
         />
       )}
 

@@ -80,11 +80,11 @@ public class ActivityLogService {
 
     @Transactional(readOnly = true)
     public List<ActivityLog> recent(int limit) {
-        return activityLogRepository.findAllByOrderByTimestampDesc(PageRequest.of(0, limit));
+        return activityLogRepository.findAllWithDetailsOrderByTimestampDesc(PageRequest.of(0, limit));
     }
 
     @Transactional(readOnly = true)
     public List<ActivityLog> recentForGroup(Long groupId, int limit) {
-        return activityLogRepository.findByGroupIdOrderByTimestampDesc(groupId, PageRequest.of(0, limit));
+        return activityLogRepository.findByGroupIdWithDetailsOrderByTimestampDesc(groupId, PageRequest.of(0, limit));
     }
 }

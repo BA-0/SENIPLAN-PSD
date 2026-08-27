@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -36,14 +37,23 @@ public class WorkGroupService {
             "#2563EB", "#16A34A", "#D97706", "#DC2626", "#7C3AED", "#0891B2", "#DB2777", "#65A30D"
     };
 
+    private static final ProgressService.GroupProgress EMPTY_PROGRESS =
+            new ProgressService.GroupProgress(0, 0, 0, null);
+
     @Transactional(readOnly = true)
     public List<WorkGroupDto> listAll() {
-        return workGroupRepository.findAll().stream().map(this::toDto).toList();
+        List<WorkGroup> groups = workGroupRepository.findAllWithLeader();
+        Map<Long, ProgressService.GroupProgress> progressByGroup =
+                progressService.summarizeByGroup(groupSectionStatusRepository.findAll());
+        return groups.stream()
+                .map(g -> toDto(g, progressByGroup.getOrDefault(g.getId(), EMPTY_PROGRESS)))
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public WorkGroupDto getById(Long id) {
-        return toDto(findGroupOrThrow(id));
+        WorkGroup group = findGroupOrThrow(id);
+        return toDto(group, progressService.progressFor(id));
     }
 
     @Transactional
@@ -154,6 +164,10 @@ public class WorkGroupService {
     }
 
     private WorkGroupDto toDto(WorkGroup group) {
+        return toDto(group, progressService.progressFor(group.getId()));
+    }
+
+    private WorkGroupDto toDto(WorkGroup group, ProgressService.GroupProgress progress) {
         return WorkGroupDto.builder()
                 .id(group.getId())
                 .name(group.getName())
@@ -164,10 +178,10 @@ public class WorkGroupService {
                 .leaderUsername(group.getLeader() != null ? group.getLeader().getUsername() : null)
                 .leaderFullName(group.getLeader() != null ? group.getLeader().getFullName() : null)
                 .createdAt(group.getCreatedAt())
-                .completionPercent(progressService.completionPercent(group.getId()))
-                .sectionsSubmitted((int) progressService.countByStatus(group.getId(), SectionStatus.SUBMITTED))
-                .sectionsValidated((int) progressService.countByStatus(group.getId(), SectionStatus.VALIDATED))
-                .lastActivityAt(progressService.lastActivity(group.getId()).orElse(null))
+                .completionPercent(progress.completionPercent())
+                .sectionsSubmitted(progress.submitted())
+                .sectionsValidated(progress.validated())
+                .lastActivityAt(progress.lastActivityAt())
                 .build();
     }
 }

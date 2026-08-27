@@ -24,6 +24,8 @@ import java.util.Set;
 public class AdminDashboardService {
 
     private static final Set<SectionStatus> COMPLETED = Set.of(SectionStatus.SUBMITTED, SectionStatus.VALIDATED);
+    private static final ProgressService.GroupProgress EMPTY_PROGRESS =
+            new ProgressService.GroupProgress(0, 0, 0, null);
 
     private final WorkGroupRepository workGroupRepository;
     private final SectionDefRepository sectionDefRepository;
@@ -34,15 +36,18 @@ public class AdminDashboardService {
 
     @Transactional(readOnly = true)
     public AdminDashboardDto dashboard() {
-        List<WorkGroup> groups = workGroupRepository.findAll();
+        List<WorkGroup> groups = workGroupRepository.findAllWithLeader();
         List<SectionDef> sections = sectionDefRepository.findAllByOrderByOrderAsc();
         List<GroupSectionStatus> allStatuses = groupSectionStatusRepository.findAll();
+        Map<Long, ProgressService.GroupProgress> progressByGroup = progressService.summarizeByGroup(allStatuses);
 
         int totalGroups = groups.size();
         int activeGroups = (int) groups.stream().filter(WorkGroup::isEnabled).count();
 
         int totalCompletion = groups.isEmpty() ? 0 : (int) Math.round(
-                groups.stream().mapToInt(g -> progressService.completionPercent(g.getId())).average().orElse(0));
+                groups.stream()
+                        .mapToInt(g -> progressByGroup.getOrDefault(g.getId(), EMPTY_PROGRESS).completionPercent())
+                        .average().orElse(0));
 
         long submitted = allStatuses.stream().filter(s -> s.getStatus() == SectionStatus.SUBMITTED).count();
         long validated = allStatuses.stream().filter(s -> s.getStatus() == SectionStatus.VALIDATED).count();
@@ -54,17 +59,20 @@ public class AdminDashboardService {
                 .count();
 
         List<AdminDashboardDto.GroupProgressDto> groupProgress = groups.stream()
-                .map(g -> AdminDashboardDto.GroupProgressDto.builder()
-                        .groupId(g.getId())
-                        .groupName(g.getName())
-                        .color(g.getColor())
-                        .leaderFullName(g.getLeader() != null ? g.getLeader().getFullName() : null)
-                        .enabled(g.isEnabled())
-                        .completionPercent(progressService.completionPercent(g.getId()))
-                        .submitted((int) progressService.countByStatus(g.getId(), SectionStatus.SUBMITTED))
-                        .validated((int) progressService.countByStatus(g.getId(), SectionStatus.VALIDATED))
-                        .lastActivityAt(progressService.lastActivity(g.getId()).orElse(null))
-                        .build())
+                .map(g -> {
+                    ProgressService.GroupProgress progress = progressByGroup.getOrDefault(g.getId(), EMPTY_PROGRESS);
+                    return AdminDashboardDto.GroupProgressDto.builder()
+                            .groupId(g.getId())
+                            .groupName(g.getName())
+                            .color(g.getColor())
+                            .leaderFullName(g.getLeader() != null ? g.getLeader().getFullName() : null)
+                            .enabled(g.isEnabled())
+                            .completionPercent(progress.completionPercent())
+                            .submitted(progress.submitted())
+                            .validated(progress.validated())
+                            .lastActivityAt(progress.lastActivityAt())
+                            .build();
+                })
                 .sorted(Comparator.comparing(AdminDashboardDto.GroupProgressDto::groupName))
                 .toList();
 
@@ -100,7 +108,7 @@ public class AdminDashboardService {
 
     @Transactional(readOnly = true)
     public List<MatrixCellDto> matrix() {
-        return groupSectionStatusRepository.findAll().stream()
+        return groupSectionStatusRepository.findAllWithGroupAndSection().stream()
                 .map(s -> MatrixCellDto.builder()
                         .groupId(s.getGroup().getId())
                         .groupName(s.getGroup().getName())
@@ -120,7 +128,7 @@ public class AdminDashboardService {
                         r -> r.getVersion(),
                         (a, b) -> b));
 
-        return groupSectionStatusRepository.findAll().stream()
+        return groupSectionStatusRepository.findAllWithGroupAndSection().stream()
                 .map(s -> {
                     String key = s.getGroup().getId() + ":" + s.getSection().getId();
                     return SubmissionSummaryDto.builder()

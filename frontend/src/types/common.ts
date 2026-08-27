@@ -8,6 +8,7 @@ export type SectionType =
   | "TOWS_MATRIX"
   | "CAUSAL_ANALYSIS"
   | "INVENTORY"
+  | "STRATEGIC_FRAMEWORK"
   | "STRATEGIC_AXES"
   | "LOGICAL_FRAMEWORK"
   | "ACTION_PLAN"
@@ -70,6 +71,6 @@ export interface SectionRevisionContentResponse<T = unknown> {
 }
 
 export const SECTION_CODES = [
-  "S01", "S02", "S03", "S04", "S05", "S06", "S07", "S08", "S09",
+  "S01", "S02", "S03", "S04", "S05", "S06", "S07", "S07B", "S08", "S09",
   "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S17",
 ] as const;

@@ -182,6 +182,7 @@ public class PdfBlockEmitter {
         return switch (bg) {
             case RED -> new Color(0xFE, 0xE2, 0xE2);
             case ORANGE -> new Color(0xFF, 0xED, 0xD5);
+            case BLUE -> new Color(0xDB, 0xEA, 0xFE);
             case GREEN -> new Color(0xDC, 0xFC, 0xE7);
             case GREY -> new Color(0xF1, 0xF5, 0xF9);
             case PRIMARY_LIGHT -> new Color(0xE3, 0xF3, 0xE8);

@@ -13,6 +13,11 @@ const ACTION_CONFIG: Record<string, { label: (a: ActivityEntryDto) => string; ic
     icon: Send,
     color: "text-violet-500 dark:text-violet-400",
   },
+  SUBMIT_ALL: {
+    label: (a) => `${a.groupName} a soumis la totalité de ses sections`,
+    icon: CheckCircle2,
+    color: "text-emerald-600 dark:text-emerald-400",
+  },
   VALIDATE: {
     label: (a) => `L'administrateur a validé ${a.sectionCode} pour ${a.groupName}`,
     icon: CheckCircle2,

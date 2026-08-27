@@ -21,6 +21,8 @@ public class ActivityLogService {
 
     public static final String ACTION_SAVE_DRAFT = "SAVE_DRAFT";
     public static final String ACTION_SUBMIT = "SUBMIT";
+    /** Emis en plus de ACTION_SUBMIT lorsque la soumission complete la totalite des sections du groupe. */
+    public static final String ACTION_SUBMIT_ALL = "SUBMIT_ALL";
     public static final String ACTION_VALIDATE = "VALIDATE";
     public static final String ACTION_REQUEST_REVISION = "REQUEST_REVISION";
     public static final String ACTION_RETURN_TO_GROUP = "RETURN_TO_GROUP";

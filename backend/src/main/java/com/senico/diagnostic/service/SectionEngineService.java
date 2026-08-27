@@ -209,6 +209,9 @@ public class SectionEngineService {
         groupSectionStatusRepository.save(status);
 
         activityLogService.log(group, actingUser, ActivityLogService.ACTION_SUBMIT, section);
+        if (progressService.completionPercent(groupId) == 100) {
+            activityLogService.log(group, actingUser, ActivityLogService.ACTION_SUBMIT_ALL, null);
+        }
         publishProgress(group, section, status);
 
         return buildResponse(group, section, response, status);

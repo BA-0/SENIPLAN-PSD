@@ -62,6 +62,7 @@ public class DefaultSectionContentFactory {
                 n.put("synthesisNote", "");
                 yield n;
             }
+            case STRATEGIC_FRAMEWORK -> strategicFramework();
             case STRATEGIC_AXES -> strategicAxes();
             case LOGICAL_FRAMEWORK -> logicalFramework();
             case ACTION_PLAN -> actionPlanOrBudget(false);
@@ -157,6 +158,14 @@ public class DefaultSectionContentFactory {
         return n;
     }
 
+    private ObjectNode strategicFramework() {
+        ObjectNode n = F.objectNode();
+        n.set("mission", F.arrayNode());
+        n.set("values", F.arrayNode());
+        n.put("vision", "");
+        return n;
+    }
+
     private ObjectNode strategicAxes() {
         ObjectNode n = F.objectNode();
         ArrayNode axes = F.arrayNode();
@@ -164,7 +173,8 @@ public class DefaultSectionContentFactory {
             ObjectNode axis = F.objectNode();
             axis.put("axisCode", code);
             axis.put("title", "");
-            axis.put("description", "");
+            axis.put("objective", "");
+            axis.set("specificObjectives", F.arrayNode());
             axes.add(axis);
         }
         n.set("axes", axes);

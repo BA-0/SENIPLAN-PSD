@@ -2,8 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { TagListEditor } from "@/components/data-table/tag-list-editor";
 import type { StrategicAxesContent } from "@/types/sections";
 import type { SectionFormProps } from "./types";
 
@@ -22,13 +22,24 @@ export function StrategicAxesForm({ content, onChange, readOnly }: SectionFormPr
             <CardTitle className="text-[15px]">{axis.axisCode.replace("AXE", "Axe ")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="space-y-1.5">
-              <Label required>Intitulé</Label>
-              <Input value={axis.title} onChange={(e) => updateAxis(index, { title: e.target.value })} disabled={readOnly} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label required>Orientation stratégique</Label>
+                <Input value={axis.title} onChange={(e) => updateAxis(index, { title: e.target.value })} disabled={readOnly} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Objectif de l&apos;axe</Label>
+                <Input value={axis.objective ?? ""} onChange={(e) => updateAxis(index, { objective: e.target.value })} disabled={readOnly} />
+              </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Description</Label>
-              <Textarea value={axis.description} onChange={(e) => updateAxis(index, { description: e.target.value })} disabled={readOnly} rows={3} />
+              <Label>Objectif spécifique</Label>
+              <TagListEditor
+                items={axis.specificObjectives}
+                onChange={(items) => updateAxis(index, { specificObjectives: items })}
+                readOnly={readOnly}
+                placeholder="Saisir un objectif spécifique…"
+              />
             </div>
           </CardContent>
         </Card>

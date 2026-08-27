@@ -1,21 +1,13 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getStompClient } from "@/lib/ws-client";
-import { useVoiceNotificationsStore } from "@/store/voice-notifications-store";
-import { speak } from "@/lib/voice";
 import type { ActivityEntryDto } from "@/types/api";
-
-/** Messages vocaux pour un chef de groupe : retours de l'administrateur sur ses sections. */
-const GROUP_VOICE_MESSAGES: Partial<Record<string, (entry: ActivityEntryDto) => string>> = {
-  VALIDATE: (e) => `Bonne nouvelle : la section ${e.sectionTitle ?? e.sectionCode ?? ""} a été validée.`,
-  REQUEST_REVISION: (e) =>
-    `L'administrateur demande une révision sur la section ${e.sectionTitle ?? e.sectionCode ?? ""}.`,
-};
 
 /**
  * Abonnement STOMP aux evenements temps reel du groupe de l'utilisateur connecte
  * (retours de l'administrateur : validation, demande de revision).
- * Invalide les caches React Query correspondants et annonce vocalement l'evenement.
+ * Invalide les caches React Query correspondants.
+ * Aucune annonce vocale ici : les notifications sonores sont reservees a la session projection.
  */
 export function useRealtimeGroup(groupId: number | null | undefined) {
   const queryClient = useQueryClient();
@@ -35,9 +27,6 @@ export function useRealtimeGroup(groupId: number | null | undefined) {
           if (entry.sectionCode) {
             queryClient.invalidateQueries({ queryKey: ["me", "section", entry.sectionCode] });
           }
-          if (!useVoiceNotificationsStore.getState().enabled) return;
-          const buildMessage = GROUP_VOICE_MESSAGES[entry.action];
-          if (buildMessage) speak(buildMessage(entry));
         } catch {
           // ignore malformed activity payloads
         }

@@ -54,14 +54,20 @@ export function Header() {
           </div>
         </div>
         <ThemeToggle />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleVoice}
-          title={voiceEnabled ? "Désactiver les notifications vocales" : "Activer les notifications vocales"}
-        >
-          {voiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-        </Button>
+        {user?.role === "ADMIN" && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleVoice}
+            title={
+              voiceEnabled
+                ? "Désactiver les notifications vocales (session projection)"
+                : "Activer les notifications vocales (session projection)"
+            }
+          >
+            {voiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+          </Button>
+        )}
         <Button variant="ghost" size="icon" onClick={logout} title="Déconnexion">
           <LogOut className="h-4 w-4" />
         </Button>

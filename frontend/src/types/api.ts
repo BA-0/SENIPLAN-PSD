@@ -20,6 +20,7 @@ export interface WorkGroupDto {
   id: number;
   name: string;
   description: string | null;
+  color: string | null;
   enabled: boolean;
   leaderUserId: number | null;
   leaderUsername: string | null;
@@ -52,6 +53,7 @@ export interface AdminDashboardDto {
 export interface GroupProgressDto {
   groupId: number;
   groupName: string;
+  color: string | null;
   leaderFullName: string | null;
   enabled: boolean;
   completionPercent: number;
@@ -72,6 +74,7 @@ export interface SectionAdvancementDto {
 export interface MatrixCellDto {
   groupId: number;
   groupName: string;
+  color: string | null;
   sectionId: number;
   sectionCode: string;
   status: SectionStatus;

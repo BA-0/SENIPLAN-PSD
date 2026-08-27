@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getStompClient } from "@/lib/ws-client";
 import { usePresenceStore } from "@/store/presence-store";
@@ -7,25 +7,32 @@ import { useConnectionStore } from "@/store/connection-store";
 import { speak } from "@/lib/voice";
 import type { ActivityEntryDto } from "@/types/api";
 
-/** Messages vocaux pour les actions marquantes du flux d'activite admin (les autres actions restent silencieuses). */
+/**
+ * Messages vocaux pour les actions marquantes du flux d'activite admin (les autres actions restent silencieuses).
+ * Seule la soumission complete de toutes les sections d'une direction declenche une annonce
+ * (SUBMIT_ALL) : les soumissions section par section restent silencieuses.
+ */
 const ADMIN_VOICE_MESSAGES: Partial<Record<string, (entry: ActivityEntryDto) => string>> = {
-  SUBMIT: (e) => `${e.groupName ?? "Un groupe"} a soumis la section ${e.sectionTitle ?? e.sectionCode ?? ""}.`,
-  VALIDATE: (e) => `Section ${e.sectionTitle ?? e.sectionCode ?? ""} validée pour ${e.groupName ?? "un groupe"}.`,
-  REQUEST_REVISION: (e) =>
-    `Révision demandée sur la section ${e.sectionTitle ?? e.sectionCode ?? ""} pour ${e.groupName ?? "un groupe"}.`,
+  SUBMIT_ALL: (e) => `${e.groupName ?? "Une direction"} a soumis la totalité de ses sections.`,
 };
 
 /**
  * Abonnement STOMP aux evenements temps reel du dashboard admin.
- * Invalide les caches React Query correspondants a chaque evenement recu et
- * annonce vocalement les evenements marquants (soumission, validation, revision).
+ * Invalide les caches React Query correspondants a chaque evenement recu.
+ * Les annonces vocales sont reservees a la session projection (options.voice)
+ * et ne se declenchent que lorsqu'une direction a soumis la totalite de ses sections.
+ * options.onSubmitAll permet a l'appelant de reagir visuellement (bandeau, etc.)
+ * a ce meme evenement, independamment du reglage vocal.
  * Le polling (refetchInterval: 15s) configure sur les queries sert de repli
  * si la connexion WebSocket est indisponible.
  */
-export function useRealtimeAdmin() {
+export function useRealtimeAdmin(options?: { voice?: boolean; onSubmitAll?: (entry: ActivityEntryDto) => void }) {
+  const voice = options?.voice ?? false;
   const queryClient = useQueryClient();
   const setPresence = usePresenceStore((s) => s.setPresence);
   const setConnected = useConnectionStore((s) => s.setConnected);
+  const onSubmitAllRef = useRef(options?.onSubmitAll);
+  onSubmitAllRef.current = options?.onSubmitAll;
 
   useEffect(() => {
     const client = getStompClient();
@@ -38,9 +45,10 @@ export function useRealtimeAdmin() {
       });
       client.subscribe("/topic/admin/activity", (message) => {
         queryClient.invalidateQueries({ queryKey: ["admin", "activity"] });
-        if (!useVoiceNotificationsStore.getState().enabled) return;
         try {
           const entry = JSON.parse(message.body) as ActivityEntryDto;
+          if (entry.action === "SUBMIT_ALL") onSubmitAllRef.current?.(entry);
+          if (!voice || !useVoiceNotificationsStore.getState().enabled) return;
           const buildMessage = ADMIN_VOICE_MESSAGES[entry.action];
           if (buildMessage) speak(buildMessage(entry));
         } catch {
@@ -70,5 +78,5 @@ export function useRealtimeAdmin() {
     return () => {
       client.onConnect = () => {};
     };
-  }, [queryClient, setPresence, setConnected]);
+  }, [queryClient, setPresence, setConnected, voice]);
 }

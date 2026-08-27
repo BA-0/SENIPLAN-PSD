@@ -28,6 +28,8 @@ export function downloadGroupWord(groupId: number) {
   return downloadBlob(`/admin/exports/groups/${groupId}/word`, "plan-strategique.docx");
 }
 
-export function downloadConsolidatedExcel() {
-  return downloadBlob("/admin/exports/consolidated/excel", "plan-strategique-consolide.xlsx");
+export function downloadConsolidatedExcel(months: number = 4, referenceDate?: string) {
+  const params = new URLSearchParams({ months: String(months) });
+  if (referenceDate) params.set("referenceDate", referenceDate);
+  return downloadBlob(`/admin/exports/consolidated/excel?${params.toString()}`, "plan-strategique-consolide.xlsx");
 }

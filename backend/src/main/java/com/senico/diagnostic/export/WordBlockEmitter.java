@@ -188,6 +188,7 @@ public class WordBlockEmitter {
         return switch (bg) {
             case RED -> "FEE2E2";
             case ORANGE -> "FFEDD5";
+            case BLUE -> "DBEAFE";
             case GREEN -> "DCFCE7";
             case GREY -> "F1F5F9";
             case PRIMARY_LIGHT -> "E3F3E8";

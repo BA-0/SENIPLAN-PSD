@@ -31,6 +31,11 @@ public class WorkGroupService {
     private final PasswordGeneratorService passwordGeneratorService;
     private final ProgressService progressService;
 
+    /** Palette de secours utilisee pour assigner automatiquement une couleur a chaque nouvelle direction. */
+    private static final String[] COLOR_PALETTE = {
+            "#2563EB", "#16A34A", "#D97706", "#DC2626", "#7C3AED", "#0891B2", "#DB2777", "#65A30D"
+    };
+
     @Transactional(readOnly = true)
     public List<WorkGroupDto> listAll() {
         return workGroupRepository.findAll().stream().map(this::toDto).toList();
@@ -47,9 +52,14 @@ public class WorkGroupService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Cet identifiant de chef de groupe existe deja");
         }
 
+        String color = (request.color() != null && !request.color().isBlank())
+                ? request.color()
+                : nextPaletteColor();
+
         WorkGroup group = WorkGroup.builder()
                 .name(request.name())
                 .description(request.description())
+                .color(color)
                 .enabled(true)
                 .build();
         group = workGroupRepository.save(group);
@@ -81,6 +91,9 @@ public class WorkGroupService {
         WorkGroup group = findGroupOrThrow(id);
         group.setName(request.name());
         group.setDescription(request.description());
+        if (request.color() != null && !request.color().isBlank()) {
+            group.setColor(request.color());
+        }
         if (request.enabled() != null) {
             group.setEnabled(request.enabled());
             if (group.getLeader() != null) {
@@ -118,6 +131,11 @@ public class WorkGroupService {
         return new ResetPasswordResponse(group.getLeader().getUsername(), rawPassword);
     }
 
+    private String nextPaletteColor() {
+        long count = workGroupRepository.count();
+        return COLOR_PALETTE[(int) (count % COLOR_PALETTE.length)];
+    }
+
     private void initSectionStatuses(WorkGroup group) {
         List<SectionDef> sections = sectionDefRepository.findAll();
         List<GroupSectionStatus> statuses = sections.stream()
@@ -140,6 +158,7 @@ public class WorkGroupService {
                 .id(group.getId())
                 .name(group.getName())
                 .description(group.getDescription())
+                .color(group.getColor())
                 .enabled(group.isEnabled())
                 .leaderUserId(group.getLeader() != null ? group.getLeader().getId() : null)
                 .leaderUsername(group.getLeader() != null ? group.getLeader().getUsername() : null)

@@ -14,7 +14,7 @@ const badgeVariants = cva(
         validated: "bg-primary-500 text-white dark:bg-primary-500/80",
         revision: "bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
         criticalHigh: "bg-accent-100 text-accent-700 dark:bg-accent-500/15 dark:text-accent-300",
-        criticalMedium: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+        criticalMedium: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
         criticalLow: "bg-primary-100 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300",
       },
     },

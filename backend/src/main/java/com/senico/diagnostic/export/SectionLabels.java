@@ -2,6 +2,7 @@ package com.senico.diagnostic.export;
 
 import com.senico.diagnostic.validation.DefaultSectionContentFactory;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -13,6 +14,34 @@ import java.util.Set;
 final class SectionLabels {
 
     private SectionLabels() {
+    }
+
+    static final Map<String, String> STAKEHOLDER_CATEGORY_LABELS = Map.of(
+            "MAIRIE", "Mairie",
+            "BANQUE", "Banque",
+            "ETAT", "État",
+            "PRESTATAIRE", "Prestataire",
+            "FOURNISSEUR", "Fournisseur",
+            "AUTRE", "Autre"
+    );
+
+    static final Map<String, String> STAKEHOLDER_SCOPE_LABELS = Map.of(
+            "INTERNE", "Interne",
+            "EXTERNE", "Externe"
+    );
+
+    static final Map<String, String> TOWS_ACTION_LABELS = new LinkedHashMap<>();
+    static {
+        TOWS_ACTION_LABELS.put("maximizeStrengths", "Comment maximiser les forces ?");
+        TOWS_ACTION_LABELS.put("minimizeWeaknesses", "Comment minimiser les faiblesses ?");
+        TOWS_ACTION_LABELS.put("strengthsControlWeaknesses", "En quoi les forces permettent-elles de maîtriser les faiblesses ?");
+        TOWS_ACTION_LABELS.put("maximizeOpportunities", "Comment maximiser les opportunités ?");
+        TOWS_ACTION_LABELS.put("strengthsForOpportunities", "Comment utiliser les forces pour tirer parti des opportunités ?");
+        TOWS_ACTION_LABELS.put("correctWeaknessesViaOpportunities", "Comment corriger les faiblesses en tirant parti des opportunités ?");
+        TOWS_ACTION_LABELS.put("minimizeThreats", "Comment minimiser les menaces ?");
+        TOWS_ACTION_LABELS.put("strengthsReduceThreats", "Comment utiliser les forces pour réduire les menaces ?");
+        TOWS_ACTION_LABELS.put("minimizeWeaknessesAndThreats", "Comment minimiser les faiblesses et les menaces ?");
+        TOWS_ACTION_LABELS.put("opportunitiesMinimizeThreats", "En quoi les opportunités permettent-elles de minimiser les menaces ?");
     }
 
     static final Map<String, String> RESOURCE_LABELS = Map.ofEntries(
@@ -85,6 +114,14 @@ final class SectionLabels {
 
     static final String[] YEARS = toStrings(DefaultSectionContentFactory.YEARS);
 
+    static String stakeholderCategory(String key) {
+        return STAKEHOLDER_CATEGORY_LABELS.getOrDefault(key, key);
+    }
+
+    static String stakeholderScope(String key) {
+        return STAKEHOLDER_SCOPE_LABELS.getOrDefault(key, key);
+    }
+
     static String resource(String key) {
         return RESOURCE_LABELS.getOrDefault(key, key);
     }
@@ -127,7 +164,7 @@ final class SectionLabels {
         if (label == null) return ExportBlock.Background.NONE;
         return switch (label) {
             case "ELEVEE" -> ExportBlock.Background.RED;
-            case "MOYENNE" -> ExportBlock.Background.ORANGE;
+            case "MOYENNE" -> ExportBlock.Background.BLUE;
             case "FAIBLE" -> ExportBlock.Background.GREEN;
             default -> ExportBlock.Background.NONE;
         };

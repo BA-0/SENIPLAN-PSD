@@ -1,7 +1,7 @@
 package com.senico.diagnostic.domain;
 
 /**
- * Les 17 types de formulaires du canevas. Determine la structure JSON attendue
+ * Les 18 types de formulaires du canevas. Determine la structure JSON attendue
  * dans SectionResponse.contentJson (voir validation/SectionContentValidator).
  */
 public enum SectionType {
@@ -12,6 +12,7 @@ public enum SectionType {
     TOWS_MATRIX,             // S05
     CAUSAL_ANALYSIS,        // S06
     INVENTORY,               // S07
+    STRATEGIC_FRAMEWORK,     // S07B - Cadre strategique (Mission, Valeurs, Vision), avant les axes
     STRATEGIC_AXES,          // S08
     LOGICAL_FRAMEWORK,       // S09
     ACTION_PLAN,             // S10

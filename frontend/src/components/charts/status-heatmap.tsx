@@ -17,6 +17,7 @@ const CELL_COLOR: Record<SectionStatus, string> = {
 export function StatusHeatmap({ cells }: { cells: MatrixCellDto[] }) {
   const groupIds = Array.from(new Set(cells.map((c) => c.groupId)));
   const groupNames = new Map(cells.map((c) => [c.groupId, c.groupName]));
+  const groupColors = new Map(cells.map((c) => [c.groupId, c.color]));
 
   function statusFor(groupId: number, sectionCode: string): SectionStatus {
     return (cells.find((c) => c.groupId === groupId && c.sectionCode === sectionCode)?.status ?? "NOT_STARTED") as SectionStatus;
@@ -41,7 +42,13 @@ export function StatusHeatmap({ cells }: { cells: MatrixCellDto[] }) {
           {groupIds.map((groupId) => (
             <tr key={groupId}>
               <td className="sticky left-0 bg-card text-[13px] text-foreground px-3 py-1.5 whitespace-nowrap border-t border-border">
-                {groupNames.get(groupId)}
+                <span className="inline-flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full border border-border/60"
+                    style={{ backgroundColor: groupColors.get(groupId) ?? "transparent" }}
+                  />
+                  {groupNames.get(groupId)}
+                </span>
               </td>
               {SECTION_CODES.map((code) => {
                 const status = statusFor(groupId, code);

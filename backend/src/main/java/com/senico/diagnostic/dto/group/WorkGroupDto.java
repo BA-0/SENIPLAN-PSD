@@ -9,6 +9,7 @@ public record WorkGroupDto(
         Long id,
         String name,
         String description,
+        String color,
         boolean enabled,
         Long leaderUserId,
         String leaderUsername,

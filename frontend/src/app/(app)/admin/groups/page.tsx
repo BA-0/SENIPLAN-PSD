@@ -12,6 +12,7 @@ import { FileDown, FileText, KeyRound, Pencil, Plus, Power } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -36,6 +37,7 @@ import type { WorkGroupDto } from "@/types/api";
 const schema = z.object({
   name: z.string().min(1, "Le nom du groupe est requis"),
   description: z.string().optional(),
+  color: z.string().optional(),
   leaderUsername: z.string().min(1, "L'identifiant est requis"),
   leaderFullName: z.string().min(1, "Le nom complet est requis"),
   leaderPassword: z.union([z.string().min(6, "Au moins 6 caractères"), z.literal("")]).optional(),
@@ -44,6 +46,7 @@ const schema = z.object({
 const editSchema = z.object({
   name: z.string().min(1, "Le nom du groupe est requis"),
   description: z.string().optional(),
+  color: z.string().optional(),
   leaderFullName: z.string().min(1, "Le nom complet est requis"),
 });
 
@@ -53,11 +56,12 @@ export default function AdminGroupsPage() {
   const [editingGroup, setEditingGroup] = useState<WorkGroupDto | null>(null);
   const [newCredentials, setNewCredentials] = useState<{ username: string; password: string } | null>(null);
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportPeriodMonths, setExportPeriodMonths] = useState(4);
 
   async function handleExportExcel() {
     setExportingExcel(true);
     try {
-      await downloadConsolidatedExcel();
+      await downloadConsolidatedExcel(exportPeriodMonths);
     } catch (error) {
       toast.error(extractErrorMessage(error, "Échec de l'export Excel"));
     } finally {
@@ -86,6 +90,7 @@ export default function AdminGroupsPage() {
     resetEdit({
       name: group.name,
       description: group.description ?? "",
+      color: group.color ?? "#2563EB",
       leaderFullName: group.leaderFullName ?? "",
     });
   }
@@ -137,6 +142,14 @@ export default function AdminGroupsPage() {
           <p className="text-[13px] text-muted-foreground mt-1">Départements participant au plan stratégique</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <NativeSelect
+            value={String(exportPeriodMonths)}
+            onChange={(e) => setExportPeriodMonths(Number(e.target.value))}
+            className="w-40"
+          >
+            <option value="4">Période : 4 mois</option>
+            <option value="1">Période : mensuel</option>
+          </NativeSelect>
           <Button variant="secondary" onClick={handleExportExcel} loading={exportingExcel}>
             <FileDown className="h-4 w-4" /> Export Excel consolidé
           </Button>
@@ -164,6 +177,15 @@ export default function AdminGroupsPage() {
               <div className="space-y-1.5">
                 <Label>Description</Label>
                 <Textarea {...register("description")} rows={2} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Couleur de la direction</Label>
+                <input
+                  {...register("color")}
+                  type="color"
+                  defaultValue="#2563EB"
+                  className="h-10 w-16 rounded-lg border border-border bg-card p-1"
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
@@ -212,6 +234,11 @@ export default function AdminGroupsPage() {
               <div key={g.id} className="flex flex-col sm:flex-row sm:items-center justify-between px-5 py-4 gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
+                    <span
+                      className="h-3 w-3 shrink-0 rounded-full border border-border/60"
+                      style={{ backgroundColor: g.color ?? "transparent" }}
+                      title={g.color ?? undefined}
+                    />
                     <Link href={`/admin/groups/${g.id}/sections/S01`} className="text-[14px] font-medium text-foreground hover:text-primary-600">
                       {g.name}
                     </Link>
@@ -293,6 +320,14 @@ export default function AdminGroupsPage() {
             <div className="space-y-1.5">
               <Label>Description</Label>
               <Textarea {...registerEdit("description")} rows={2} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Couleur de la direction</Label>
+              <input
+                {...registerEdit("color")}
+                type="color"
+                className="h-10 w-16 rounded-lg border border-border bg-card p-1"
+              />
             </div>
             <div className="space-y-1.5">
               <Label required>Nom complet du chef de groupe</Label>

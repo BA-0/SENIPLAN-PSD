@@ -28,6 +28,10 @@ public class WorkGroup {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    /** Couleur hexadecimale (ex. #2D7A45) associee a la direction/departement, utilisee pour la distinguer dans les vues et exports consolides. */
+    @Column(length = 9)
+    private String color;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "leader_user_id")
     private User leader;

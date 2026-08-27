@@ -72,7 +72,7 @@ export function PerformanceFrameworkForm({ content, onChange, readOnly }: Sectio
                   <TableRow>
                     <TableHead className="min-w-[180px]">Résultat / Extrant</TableHead>
                     <TableHead className="min-w-[180px]">Indicateur (IOV)</TableHead>
-                    <TableHead className="min-w-[100px]">Réf. 2026</TableHead>
+                    <TableHead className="min-w-[140px]">Réf. 2026</TableHead>
                     {PLAN_YEARS.map((y) => (
                       <TableHead key={y} className="min-w-[90px]">{y}</TableHead>
                     ))}
@@ -84,10 +84,10 @@ export function PerformanceFrameworkForm({ content, onChange, readOnly }: Sectio
                   {group.rows.map((row, rowIndex) => (
                     <TableRow key={rowIndex}>
                       <TableCell>
-                        <EditableCell value={row.resultOrExtrant} onChange={(v) => updateRow(axisIndex, groupIndex, rowIndex, { resultOrExtrant: v })} readOnly={readOnly} />
+                        <EditableCell value={row.resultOrExtrant} onChange={(v) => updateRow(axisIndex, groupIndex, rowIndex, { resultOrExtrant: v })} readOnly={readOnly} multiline />
                       </TableCell>
                       <TableCell>
-                        <EditableCell value={row.indicator} onChange={(v) => updateRow(axisIndex, groupIndex, rowIndex, { indicator: v })} readOnly={readOnly} />
+                        <EditableCell value={row.indicator} onChange={(v) => updateRow(axisIndex, groupIndex, rowIndex, { indicator: v })} readOnly={readOnly} multiline />
                       </TableCell>
                       <TableCell>
                         <EditableCell value={row.ref2026} onChange={(v) => updateRow(axisIndex, groupIndex, rowIndex, { ref2026: v })} readOnly={readOnly} />

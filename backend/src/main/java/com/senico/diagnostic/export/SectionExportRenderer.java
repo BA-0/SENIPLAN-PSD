@@ -45,8 +45,9 @@ public class SectionExportRenderer {
             case PESTEL -> List.of(RowsTableRenderer.render(JsonUtil.arr(content, "rows"), pestelColumns()));
             case SWOT -> List.of(swotQuadrant(content));
             case TOWS_MATRIX -> renderTowsMatrix(content);
-            case CAUSAL_ANALYSIS -> renderCausalAnalysis(JsonUtil.arr(content, "rows"));
+            case CAUSAL_ANALYSIS -> renderCausalAnalysisFull(content);
             case INVENTORY -> renderInventory(content);
+            case STRATEGIC_FRAMEWORK -> renderStrategicFramework(content);
             case STRATEGIC_AXES -> renderStrategicAxes(content);
             case LOGICAL_FRAMEWORK -> renderLogicalFramework(content);
             case ACTION_PLAN -> renderActionPlan(content);
@@ -84,7 +85,8 @@ public class SectionExportRenderer {
 
     private List<JsonUtil.Column> stakeholdersColumns() {
         return List.of(
-                new JsonUtil.Column("Acteur", n -> JsonUtil.text(n, "actor")),
+                new JsonUtil.Column("Catégorie", n -> SectionLabels.stakeholderCategory(JsonUtil.text(n, "category"))),
+                new JsonUtil.Column("Portée", n -> SectionLabels.stakeholderScope(JsonUtil.text(n, "scope"))),
                 new JsonUtil.Column("Rôles", n -> JsonUtil.text(n, "roles")),
                 new JsonUtil.Column("Attentes", n -> JsonUtil.text(n, "expectations")),
                 new JsonUtil.Column("Stratégie d'adaptation", n -> JsonUtil.text(n, "adaptationStrategy")),
@@ -146,6 +148,26 @@ public class SectionExportRenderer {
     }
 
     // ---- S06 ----
+    private List<ExportBlock> renderCausalAnalysisFull(JsonNode content) {
+        List<ExportBlock> blocks = new ArrayList<>();
+        JsonNode synced = content.get("syncedTowsActions");
+        if (synced != null && !synced.isMissingNode()) {
+            List<ExportBlock.KeyValue> pairs = new ArrayList<>();
+            for (Map.Entry<String, String> entry : SectionLabels.TOWS_ACTION_LABELS.entrySet()) {
+                String value = JsonUtil.text(synced, entry.getKey());
+                if (!value.isBlank()) {
+                    pairs.add(new ExportBlock.KeyValue(entry.getValue(), value));
+                }
+            }
+            if (!pairs.isEmpty()) {
+                blocks.add(new ExportBlock.Heading("Actions (SWOT / matrice de confrontation)", 3));
+                blocks.add(new ExportBlock.KeyValueList(null, pairs, false));
+            }
+        }
+        blocks.addAll(renderCausalAnalysis(JsonUtil.arr(content, "rows")));
+        return blocks;
+    }
+
     private List<ExportBlock> renderCausalAnalysis(List<JsonNode> rows) {
         List<ExportBlock> blocks = new ArrayList<>();
         for (JsonNode row : rows) {
@@ -176,14 +198,35 @@ public class SectionExportRenderer {
         return blocks;
     }
 
+    // ---- S07B ----
+    private List<ExportBlock> renderStrategicFramework(JsonNode content) {
+        List<ExportBlock> blocks = new ArrayList<>();
+        blocks.add(new ExportBlock.Heading("Vision", 3));
+        blocks.add(new ExportBlock.Paragraph(JsonUtil.dash(JsonUtil.text(content, "vision"))));
+        blocks.add(new ExportBlock.BulletList("Mission", JsonUtil.strList(content, "mission")));
+        blocks.add(new ExportBlock.BulletList("Valeurs", JsonUtil.strList(content, "values")));
+        return blocks;
+    }
+
     // ---- S08 ----
     private List<ExportBlock> renderStrategicAxes(JsonNode content) {
-        List<JsonUtil.Column> columns = List.of(
-                new JsonUtil.Column("Axe", n -> JsonUtil.text(n, "axisCode")),
-                new JsonUtil.Column("Titre", n -> JsonUtil.text(n, "title")),
-                new JsonUtil.Column("Description", n -> JsonUtil.text(n, "description"))
-        );
-        return List.of(RowsTableRenderer.render(JsonUtil.arr(content, "axes"), columns));
+        List<ExportBlock> blocks = new ArrayList<>();
+        for (JsonNode axis : JsonUtil.arr(content, "axes")) {
+            blocks.add(new ExportBlock.Heading(JsonUtil.text(axis, "axisCode").replace("AXE", "Axe "), 3));
+            blocks.add(new ExportBlock.KeyValueList(null, List.of(
+                    new ExportBlock.KeyValue("Orientation stratégique", JsonUtil.text(axis, "title")),
+                    new ExportBlock.KeyValue("Objectif de l'axe", JsonUtil.text(axis, "objective"))
+            ), true));
+            List<String> specificObjectives = JsonUtil.strList(axis, "specificObjectives");
+            if (specificObjectives.isEmpty()) {
+                String legacyDescription = JsonUtil.text(axis, "description");
+                if (!legacyDescription.isBlank()) {
+                    specificObjectives = List.of(legacyDescription);
+                }
+            }
+            blocks.add(new ExportBlock.BulletList("Objectif spécifique", specificObjectives));
+        }
+        return blocks;
     }
 
     private String axisTitle(JsonNode axis) {

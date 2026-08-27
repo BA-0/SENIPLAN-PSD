@@ -3,12 +3,20 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EditableCell } from "@/components/data-table/editable-cell";
 import { AddRowButton, RemoveRowButton } from "@/components/data-table/row-actions";
+import { NativeSelect } from "@/components/ui/native-select";
 import { LevelSelect } from "./level-select";
 import type { SectionFormProps } from "./types";
+import {
+  STAKEHOLDER_CATEGORIES,
+  STAKEHOLDER_CATEGORY_LABELS,
+  STAKEHOLDER_SCOPES,
+  STAKEHOLDER_SCOPE_LABELS,
+} from "@/types/sections";
 import type { StakeholderRow, StakeholdersContent } from "@/types/sections";
 
 const EMPTY_ROW: StakeholderRow = {
-  actor: "",
+  category: "",
+  scope: "",
   roles: "",
   expectations: "",
   adaptationStrategy: "",
@@ -37,7 +45,8 @@ export function StakeholdersForm({ content, onChange, readOnly }: SectionFormPro
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[160px]">Acteur (PP)</TableHead>
+            <TableHead className="min-w-[150px]">Catégorie (PP)</TableHead>
+            <TableHead className="min-w-[110px]">Portée</TableHead>
             <TableHead className="min-w-[180px]">Rôles / Responsabilités</TableHead>
             <TableHead className="min-w-[200px]">Attentes / Intérêt / Priorités</TableHead>
             <TableHead className="min-w-[200px]">Stratégie d&apos;adaptation</TableHead>
@@ -51,7 +60,34 @@ export function StakeholdersForm({ content, onChange, readOnly }: SectionFormPro
           {content.rows.map((row, index) => (
             <TableRow key={index}>
               <TableCell>
-                <EditableCell value={row.actor} onChange={(v) => updateRow(index, { actor: v })} readOnly={readOnly} />
+                <NativeSelect
+                  cellStyle
+                  value={row.category}
+                  disabled={readOnly}
+                  onChange={(e) => updateRow(index, { category: e.target.value as StakeholderRow["category"] })}
+                >
+                  <option value="">—</option>
+                  {STAKEHOLDER_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {STAKEHOLDER_CATEGORY_LABELS[c]}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </TableCell>
+              <TableCell>
+                <NativeSelect
+                  cellStyle
+                  value={row.scope}
+                  disabled={readOnly}
+                  onChange={(e) => updateRow(index, { scope: e.target.value as StakeholderRow["scope"] })}
+                >
+                  <option value="">—</option>
+                  {STAKEHOLDER_SCOPES.map((s) => (
+                    <option key={s} value={s}>
+                      {STAKEHOLDER_SCOPE_LABELS[s]}
+                    </option>
+                  ))}
+                </NativeSelect>
               </TableCell>
               <TableCell>
                 <EditableCell value={row.roles} onChange={(v) => updateRow(index, { roles: v })} readOnly={readOnly} multiline />
@@ -80,7 +116,7 @@ export function StakeholdersForm({ content, onChange, readOnly }: SectionFormPro
           ))}
           {content.rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                 Aucune partie prenante renseignée
               </TableCell>
             </TableRow>

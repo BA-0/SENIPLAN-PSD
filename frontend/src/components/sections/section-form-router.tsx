@@ -7,6 +7,7 @@ import { SwotForm } from "./forms/swot-form";
 import { TowsMatrixForm } from "./forms/tows-matrix-form";
 import { CausalAnalysisForm } from "./forms/causal-analysis-form";
 import { InventoryForm } from "./forms/inventory-form";
+import { StrategicFrameworkForm } from "./forms/strategic-framework-form";
 import { StrategicAxesForm } from "./forms/strategic-axes-form";
 import { LogicalFrameworkForm } from "./forms/logical-framework-form";
 import { ActionPlanForm } from "./forms/action-plan-form";
@@ -46,6 +47,8 @@ export function SectionFormRouter({ type, content, onChange, readOnly }: Section
       return <CausalAnalysisForm {...props} />;
     case "INVENTORY":
       return <InventoryForm {...props} />;
+    case "STRATEGIC_FRAMEWORK":
+      return <StrategicFrameworkForm {...props} />;
     case "STRATEGIC_AXES":
       return <StrategicAxesForm {...props} />;
     case "LOGICAL_FRAMEWORK":

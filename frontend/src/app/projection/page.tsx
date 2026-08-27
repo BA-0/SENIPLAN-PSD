@@ -7,7 +7,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
   CheckCircle2,
-  LogIn,
   Maximize2,
   Minimize2,
   RotateCcw,
@@ -25,19 +24,23 @@ import { useIsGroupTyping } from "@/store/presence-store";
 import { cn, timeAgo } from "@/lib/utils";
 import type { ActivityEntryDto, AdminDashboardDto } from "@/types/api";
 
+/** Seuls les jalons marquants sont affiches sur cet ecran projete : les brouillons et actions techniques (SAVE_DRAFT, ADMIN_EDIT, RESET, RETURN_TO_GROUP, LOGIN) sont volontairement masques pour ne pas noyer l'audience. */
+const MILESTONE_ACTIONS = new Set(["SUBMIT", "SUBMIT_ALL", "VALIDATE", "REQUEST_REVISION"]);
+const PROJECTION_ACTIVITY_DISPLAY_LIMIT = 14;
+
 const ACTION_CONFIG: Record<
   string,
   { label: (a: ActivityEntryDto) => string; icon: React.ElementType; color: string }
 > = {
-  SAVE_DRAFT: {
-    label: (a) => `${a.groupName} enregistre un brouillon — ${a.sectionCode}`,
-    icon: Activity,
-    color: "text-sky-300",
-  },
   SUBMIT: {
     label: (a) => `${a.groupName} a soumis la Section ${a.sectionCode?.replace("S", "")}`,
     icon: Send,
     color: "text-primary-300",
+  },
+  SUBMIT_ALL: {
+    label: (a) => `${a.groupName} a soumis la totalité de ses sections`,
+    icon: CheckCircle2,
+    color: "text-emerald-300",
   },
   VALIDATE: {
     label: (a) => `${a.sectionCode} validée pour ${a.groupName}`,
@@ -49,12 +52,9 @@ const ACTION_CONFIG: Record<
     icon: RotateCcw,
     color: "text-amber-300",
   },
-  LOGIN: {
-    label: (a) => `${a.userFullName ?? a.groupName} s'est connecté(e)`,
-    icon: LogIn,
-    color: "text-white/50",
-  },
 };
+
+const DEFAULT_ACTION_CONFIG = { label: (a: ActivityEntryDto) => `${a.groupName}`, icon: Activity, color: "text-white/50" };
 
 export default function ProjectionRoute() {
   return (
@@ -65,7 +65,16 @@ export default function ProjectionRoute() {
 }
 
 function ProjectionPage() {
-  useRealtimeAdmin();
+  const [submitAllBanner, setSubmitAllBanner] = useState<{ entry: ActivityEntryDto; key: number } | null>(null);
+  const bannerKeyRef = useRef(0);
+
+  useRealtimeAdmin({
+    voice: true,
+    onSubmitAll: (entry) => {
+      bannerKeyRef.current += 1;
+      setSubmitAllBanner({ entry, key: bannerKeyRef.current });
+    },
+  });
   const connected = useConnectionStore((s) => s.connected);
 
   const { data, isLoading } = useQuery({
@@ -76,9 +85,17 @@ function ProjectionPage() {
 
   const { data: activity } = useQuery({
     queryKey: ["admin", "activity"],
-    queryFn: () => getAdminActivity(14),
+    queryFn: () => getAdminActivity(50),
     refetchInterval: 15_000,
   });
+
+  const milestoneActivity = useMemo(
+    () =>
+      (activity ?? [])
+        .filter((entry) => MILESTONE_ACTIONS.has(entry.action))
+        .slice(0, PROJECTION_ACTIVITY_DISPLAY_LIMIT),
+    [activity]
+  );
 
   const now = useClock();
   const { isFullscreen, toggleFullscreen } = useFullscreen();
@@ -96,6 +113,14 @@ function ProjectionPage() {
   return (
     <div className="relative h-screen w-full overflow-y-auto overflow-x-hidden bg-gradient-to-br from-[#0d1220] via-[#151d33] to-[#0d1220] text-white flex flex-col">
       <BackgroundDecor />
+
+      {submitAllBanner && (
+        <SubmitAllBanner
+          key={submitAllBanner.key}
+          entry={submitAllBanner.entry}
+          onDismiss={() => setSubmitAllBanner(null)}
+        />
+      )}
 
       <header className="relative z-10 flex items-center justify-between gap-4 px-8 py-5 border-b border-white/10 shrink-0 backdrop-blur-sm">
         <div className="flex items-center gap-4 min-w-0">
@@ -208,10 +233,10 @@ function ProjectionPage() {
                 <h2 className="text-[15px] font-semibold uppercase tracking-wide text-white/80">Activité en direct</h2>
               </div>
               <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4 scrollbar-thin">
-                {!activity || activity.length === 0 ? (
+                {milestoneActivity.length === 0 ? (
                   <p className="text-white/40 text-[13px] italic">Aucune activité pour l&apos;instant</p>
                 ) : (
-                  activity.map((entry, i) => (
+                  milestoneActivity.map((entry, i) => (
                     <ActivityRow
                       key={`${entry.timestamp}-${entry.groupId}-${entry.action}-${entry.sectionCode}`}
                       entry={entry}
@@ -329,8 +354,45 @@ function GroupRow({ rank, group }: { rank: number; group: AdminDashboardDto["gro
   );
 }
 
+function SubmitAllBanner({ entry, onDismiss }: { entry: ActivityEntryDto; onDismiss: () => void }) {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const showTimer = setTimeout(() => setShow(true), 20);
+    const hideTimer = setTimeout(() => setShow(false), 5000);
+    const dismissTimer = setTimeout(onDismiss, 5600);
+    return () => {
+      clearTimeout(showTimer);
+      clearTimeout(hideTimer);
+      clearTimeout(dismissTimer);
+    };
+  }, [entry, onDismiss]);
+
+  return (
+    <div
+      className={cn(
+        "pointer-events-none fixed inset-x-0 top-6 z-50 flex justify-center px-4 transition-all duration-500 ease-out",
+        show ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
+      )}
+    >
+      <div className="flex items-center gap-4 rounded-2xl border border-emerald-300/40 bg-emerald-600 px-6 py-4 shadow-2xl shadow-emerald-950/50">
+        <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15">
+          <span className="absolute inset-0 rounded-full bg-white/25 animate-glow-pulse" />
+          <CheckCircle2 className="relative h-6 w-6 text-white" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[16px] font-bold text-white leading-tight">
+            {entry.groupName ?? "Une direction"} a soumis la totalité de ses sections !
+          </p>
+          <p className="text-[12px] text-white/80 mt-0.5">Toutes les sections ont été transmises pour validation.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ActivityRow({ entry, isNewest }: { entry: ActivityEntryDto; isNewest: boolean }) {
-  const config = ACTION_CONFIG[entry.action] ?? ACTION_CONFIG.SAVE_DRAFT;
+  const config = ACTION_CONFIG[entry.action] ?? DEFAULT_ACTION_CONFIG;
   const Icon = config.icon;
   return (
     <div

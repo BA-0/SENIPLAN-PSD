@@ -61,5 +61,5 @@ public sealed interface ExportBlock {
 
     enum Align { LEFT, CENTER, RIGHT }
 
-    enum Background { NONE, RED, ORANGE, GREEN, GREY, PRIMARY_LIGHT }
+    enum Background { NONE, RED, ORANGE, BLUE, GREEN, GREY, PRIMARY_LIGHT }
 }

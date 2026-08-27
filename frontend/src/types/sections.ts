@@ -5,8 +5,27 @@
 export type Level = "FORT" | "MOYEN" | "FAIBLE";
 
 // ---- S01 : Analyse des parties prenantes ----
+export const STAKEHOLDER_CATEGORIES = ["MAIRIE", "BANQUE", "ETAT", "PRESTATAIRE", "FOURNISSEUR", "AUTRE"] as const;
+export type StakeholderCategory = (typeof STAKEHOLDER_CATEGORIES)[number];
+export const STAKEHOLDER_CATEGORY_LABELS: Record<StakeholderCategory, string> = {
+  MAIRIE: "Mairie",
+  BANQUE: "Banque",
+  ETAT: "État",
+  PRESTATAIRE: "Prestataire",
+  FOURNISSEUR: "Fournisseur",
+  AUTRE: "Autre",
+};
+
+export const STAKEHOLDER_SCOPES = ["INTERNE", "EXTERNE"] as const;
+export type StakeholderScope = (typeof STAKEHOLDER_SCOPES)[number];
+export const STAKEHOLDER_SCOPE_LABELS: Record<StakeholderScope, string> = {
+  INTERNE: "Interne",
+  EXTERNE: "Externe",
+};
+
 export interface StakeholderRow {
-  actor: string;
+  category: StakeholderCategory | "";
+  scope: StakeholderScope | "";
   roles: string;
   expectations: string;
   adaptationStrategy: string;
@@ -78,11 +97,7 @@ export interface SwotContent {
 }
 
 // ---- S05 : Matrice de confrontation SWOT / TOWS ----
-export interface TowsMatrixContent {
-  strengths: string[]; // lecture seule, synchronise depuis S04
-  weaknesses: string[]; // lecture seule
-  opportunities: string[]; // lecture seule
-  threats: string[]; // lecture seule
+export interface TowsActions {
   maximizeStrengths: string;
   minimizeWeaknesses: string;
   strengthsControlWeaknesses: string;
@@ -94,6 +109,12 @@ export interface TowsMatrixContent {
   minimizeWeaknessesAndThreats: string;
   opportunitiesMinimizeThreats: string;
 }
+export interface TowsMatrixContent extends TowsActions {
+  strengths: string[]; // lecture seule, synchronise depuis S04
+  weaknesses: string[]; // lecture seule
+  opportunities: string[]; // lecture seule
+  threats: string[]; // lecture seule
+}
 
 // ---- S06 : Analyse causale ----
 export const CAUSAL_SOURCES = ["MANIFESTATION", "CAUSES_IMMEDIATES", "CAUSES_SOUS_JACENTES", "CAUSES_PROFONDES", "SOLUTIONS"] as const;
@@ -104,12 +125,25 @@ export const CAUSAL_LABELS: Record<string, string> = {
   CAUSES_PROFONDES: "Causes profondes",
   SOLUTIONS: "Solutions",
 };
+export const TOWS_ACTION_LABELS: Record<keyof TowsActions, string> = {
+  maximizeStrengths: "Comment maximiser les forces ?",
+  minimizeWeaknesses: "Comment minimiser les faiblesses ?",
+  strengthsControlWeaknesses: "En quoi les forces permettent-elles de maîtriser les faiblesses ?",
+  maximizeOpportunities: "Comment maximiser les opportunités ?",
+  strengthsForOpportunities: "Comment utiliser les forces pour tirer parti des opportunités ?",
+  correctWeaknessesViaOpportunities: "Comment corriger les faiblesses en tirant parti des opportunités ?",
+  minimizeThreats: "Comment minimiser les menaces ?",
+  strengthsReduceThreats: "Comment utiliser les forces pour réduire les menaces ?",
+  minimizeWeaknessesAndThreats: "Comment minimiser les faiblesses et les menaces ?",
+  opportunitiesMinimizeThreats: "En quoi les opportunités permettent-elles de minimiser les menaces ?",
+};
 export interface CausalRow {
   source: string;
   items: string[];
 }
 export interface CausalAnalysisContent {
   rows: CausalRow[];
+  syncedTowsActions?: TowsActions; // lecture seule, synchronise depuis S05 (actions issues du SWOT)
 }
 
 // ---- S07 : Inventaire (agregation en lecture depuis S01/S03/S04/S06) ----
@@ -121,12 +155,20 @@ export interface InventoryContent {
   causalAnalysis: CausalRow[];
 }
 
+// ---- S07B : Cadre strategique (Mission, Valeurs, Vision) ----
+export interface StrategicFrameworkContent {
+  mission: string[];
+  values: string[];
+  vision: string;
+}
+
 // ---- S08 : Axes strategiques / Orientations ----
 export const AXIS_CODES = ["AXE1", "AXE2", "AXE3", "AXE4"] as const;
 export interface StrategicAxis {
   axisCode: string;
   title: string;
-  description: string;
+  objective: string;
+  specificObjectives: string[];
 }
 export interface StrategicAxesContent {
   axes: StrategicAxis[];

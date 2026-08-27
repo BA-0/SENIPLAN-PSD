@@ -106,7 +106,7 @@ export function BudgetForm({ content, onChange, readOnly }: SectionFormProps<Bud
                     {effect.rows.map((row, rowIndex) => (
                       <TableRow key={rowIndex}>
                         <TableCell>
-                          <EditableCell value={row.extrant} onChange={(v) => updateRow(axisIndex, effectIndex, rowIndex, { extrant: v })} readOnly={readOnly} />
+                          <EditableCell value={row.extrant} onChange={(v) => updateRow(axisIndex, effectIndex, rowIndex, { extrant: v })} readOnly={readOnly} multiline />
                         </TableCell>
                         <TableCell>
                           <EditableCell value={row.activities} onChange={(v) => updateRow(axisIndex, effectIndex, rowIndex, { activities: v })} readOnly={readOnly} multiline />

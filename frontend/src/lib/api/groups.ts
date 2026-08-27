@@ -4,6 +4,7 @@ import type { ResetPasswordResponse, WorkGroupDto } from "@/types/api";
 export interface CreateWorkGroupPayload {
   name: string;
   description?: string;
+  color?: string;
   leaderUsername: string;
   leaderFullName: string;
   leaderPassword?: string;
@@ -12,6 +13,7 @@ export interface CreateWorkGroupPayload {
 export interface UpdateWorkGroupPayload {
   name: string;
   description?: string;
+  color?: string;
   leaderFullName?: string;
   enabled?: boolean;
 }

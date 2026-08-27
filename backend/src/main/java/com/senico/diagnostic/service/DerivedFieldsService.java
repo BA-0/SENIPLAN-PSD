@@ -32,7 +32,14 @@ public class DerivedFieldsService {
     private static final int SECTION_STAKEHOLDERS_ID = 1;
     private static final int SECTION_PESTEL_ID = 3;
     private static final int SECTION_SWOT_ID = 4;
+    private static final int SECTION_TOWS_ID = 5;
     private static final int SECTION_CAUSAL_ID = 6;
+    private static final String[] TOWS_ACTION_FIELDS = {
+            "maximizeStrengths", "minimizeWeaknesses", "strengthsControlWeaknesses",
+            "maximizeOpportunities", "strengthsForOpportunities", "correctWeaknessesViaOpportunities",
+            "minimizeThreats", "strengthsReduceThreats", "minimizeWeaknessesAndThreats",
+            "opportunitiesMinimizeThreats"
+    };
     private static final int SECTION_AXES_ID = 8;
     private static final int SECTION_ACTION_PLAN_ID = 10;
     private static final String EFFETS_IMMEDIATS_LEVEL = "EFFETS_IMMEDIATS";
@@ -43,7 +50,10 @@ public class DerivedFieldsService {
     public ObjectNode apply(SectionType type, Long groupId, ObjectNode content) {
         return switch (type) {
             case TOWS_MATRIX -> applyTowsSync(groupId, content);
+            case CAUSAL_ANALYSIS -> applyCausalSync(groupId, content);
             case INVENTORY -> applyInventoryAggregation(groupId, content);
+            case STAKEHOLDERS -> normalizeStakeholders(content);
+            case STRATEGIC_AXES -> normalizeStrategicAxes(content);
             case LOGICAL_FRAMEWORK, STRATEGIC_SUMMARY, ACTION_PLAN -> applyAxisTitleSync(groupId, content);
             case PERFORMANCE_FRAMEWORK -> applyEffectsSync(groupId, applyAxisTitleSync(groupId, content));
             case BUDGET -> applyBudgetTotals(applyAxisTitleSync(groupId, content));
@@ -74,6 +84,71 @@ public class DerivedFieldsService {
         return content;
     }
 
+    // ---- S06 : analyse causale, actions (matrice TOWS) synchronisees en lecture depuis S05 ----
+    private ObjectNode applyCausalSync(Long groupId, ObjectNode content) {
+        Optional<SectionResponse> towsResponse = sectionResponseRepository
+                .findByGroupIdAndSectionId(groupId, SECTION_TOWS_ID);
+
+        ObjectNode syncedActions = F.objectNode();
+        if (towsResponse.isPresent()) {
+            JsonNode parsed = readTree(towsResponse.get());
+            for (String field : TOWS_ACTION_FIELDS) {
+                syncedActions.put(field, parsed.path(field).asText(""));
+            }
+        } else {
+            for (String field : TOWS_ACTION_FIELDS) {
+                syncedActions.put(field, "");
+            }
+        }
+        content.set("syncedTowsActions", syncedActions);
+        return content;
+    }
+
+    // ---- S01 : compat ascendante - anciennes reponses avec un champ "actor" libre, sans categorie/portee ----
+    private ObjectNode normalizeStakeholders(ObjectNode content) {
+        JsonNode rows = content.get("rows");
+        if (rows == null || !rows.isArray()) {
+            return content;
+        }
+        for (JsonNode rowNode : rows) {
+            if (!(rowNode instanceof ObjectNode row)) {
+                continue;
+            }
+            if (!row.has("category") || row.path("category").asText("").isBlank()) {
+                row.put("category", "AUTRE");
+            }
+            if (!row.has("scope")) {
+                row.put("scope", "");
+            }
+        }
+        return content;
+    }
+
+    // ---- S08 : compat ascendante - anciennes reponses {title, description} -> {title, objective, specificObjectives} ----
+    private ObjectNode normalizeStrategicAxes(ObjectNode content) {
+        JsonNode axes = content.get("axes");
+        if (axes == null || !axes.isArray()) {
+            return content;
+        }
+        for (JsonNode axisNode : axes) {
+            if (!(axisNode instanceof ObjectNode axis)) {
+                continue;
+            }
+            if (!axis.has("objective")) {
+                axis.put("objective", "");
+            }
+            if (!axis.has("specificObjectives") || !axis.get("specificObjectives").isArray()) {
+                ArrayNode specificObjectives = F.arrayNode();
+                String legacyDescription = axis.path("description").asText("");
+                if (!legacyDescription.isBlank()) {
+                    specificObjectives.add(legacyDescription);
+                }
+                axis.set("specificObjectives", specificObjectives);
+            }
+        }
+        return content;
+    }
+
     // ---- S07 : inventaire, agregation en lecture depuis S01/S03/S04/S06 ----
     private ObjectNode applyInventoryAggregation(Long groupId, ObjectNode content) {
         sectionResponseRepository.findByGroupIdAndSectionId(groupId, SECTION_STAKEHOLDERS_ID)
@@ -93,7 +168,14 @@ public class DerivedFieldsService {
                     swotNode.set("opportunities", arrayOrEmpty(swot, "opportunities"));
                     swotNode.set("threats", arrayOrEmpty(swot, "threats"));
                     content.set("swot", swotNode);
-                }, () -> content.set("swot", F.objectNode()));
+                }, () -> {
+                    ObjectNode emptySwot = F.objectNode();
+                    emptySwot.set("strengths", F.arrayNode());
+                    emptySwot.set("weaknesses", F.arrayNode());
+                    emptySwot.set("opportunities", F.arrayNode());
+                    emptySwot.set("threats", F.arrayNode());
+                    content.set("swot", emptySwot);
+                });
 
         sectionResponseRepository.findByGroupIdAndSectionId(groupId, SECTION_CAUSAL_ID)
                 .ifPresentOrElse(r -> content.set("causalAnalysis", arrayOrEmpty(readTree(r), "rows")),

@@ -12,23 +12,25 @@ interface TagListEditorProps {
 }
 
 export function TagListEditor({ items, onChange, readOnly, placeholder = "Saisir un élément…" }: TagListEditorProps) {
+  const safeItems = items ?? [];
+
   function updateItem(index: number, value: string) {
-    const next = [...items];
+    const next = [...safeItems];
     next[index] = value;
     onChange(next);
   }
 
   function removeItem(index: number) {
-    onChange(items.filter((_, i) => i !== index));
+    onChange(safeItems.filter((_, i) => i !== index));
   }
 
   function addItem() {
-    onChange([...items, ""]);
+    onChange([...safeItems, ""]);
   }
 
   return (
     <div className="space-y-2">
-      {items.map((item, index) => (
+      {safeItems.map((item, index) => (
         <div key={index} className="flex items-center gap-2">
           <Input
             value={item}
@@ -49,7 +51,7 @@ export function TagListEditor({ items, onChange, readOnly, placeholder = "Saisir
           <Plus className="h-3.5 w-3.5" /> Ajouter un élément
         </Button>
       )}
-      {items.length === 0 && readOnly && <p className="text-[13px] text-muted-foreground italic">Aucun élément</p>}
+      {safeItems.length === 0 && readOnly && <p className="text-[13px] text-muted-foreground italic">Aucun élément</p>}
     </div>
   );
 }

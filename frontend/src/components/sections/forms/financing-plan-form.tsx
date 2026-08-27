@@ -19,7 +19,7 @@ export function FinancingPlanForm({ content, onChange, readOnly }: SectionFormPr
           <TableHead className="min-w-[200px]">Source</TableHead>
           <TableHead className="text-right">Montant (FCFA)</TableHead>
           <TableHead className="text-right">%</TableHead>
-          <TableHead className="min-w-[160px]">Modalités de mobilisation</TableHead>
+          <TableHead className="min-w-[220px]">Modalités de mobilisation</TableHead>
           <TableHead className="min-w-[120px]">Période</TableHead>
           <TableHead className="min-w-[140px]">Responsables</TableHead>
         </TableRow>
@@ -33,7 +33,7 @@ export function FinancingPlanForm({ content, onChange, readOnly }: SectionFormPr
             </TableCell>
             <TableCell className="text-right tabular-nums text-muted-foreground">{formatNumber(row.percent)}%</TableCell>
             <TableCell>
-              <EditableCell value={row.modalities} onChange={(v) => updateRow(index, { modalities: v })} readOnly={readOnly} />
+              <EditableCell value={row.modalities} onChange={(v) => updateRow(index, { modalities: v })} readOnly={readOnly} multiline />
             </TableCell>
             <TableCell>
               <EditableCell value={row.period} onChange={(v) => updateRow(index, { period: v })} readOnly={readOnly} />

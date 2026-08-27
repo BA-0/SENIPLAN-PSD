@@ -48,6 +48,11 @@ public class SectionContentValidator {
             }
             case CAUSAL_ANALYSIS -> requireArray(content, "rows", strict);
             case INVENTORY -> requireField(content, "synthesisNote");
+            case STRATEGIC_FRAMEWORK -> {
+                requireArray(content, "mission", false);
+                requireArray(content, "values", false);
+                requireField(content, "vision");
+            }
             case STRATEGIC_AXES -> {
                 requireArray(content, "axes", strict);
                 if (content.get("axes").size() > 4) {

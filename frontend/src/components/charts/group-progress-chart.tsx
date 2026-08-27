@@ -1,10 +1,10 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { GroupProgressDto } from "@/types/api";
 
 export function GroupProgressChart({ groups }: { groups: GroupProgressDto[] }) {
-  const data = groups.map((g) => ({ name: g.groupName, percent: g.completionPercent }));
+  const data = groups.map((g) => ({ name: g.groupName, percent: g.completionPercent, color: g.color }));
 
   return (
     <ResponsiveContainer width="100%" height={Math.max(180, data.length * 44)}>
@@ -22,7 +22,11 @@ export function GroupProgressChart({ groups }: { groups: GroupProgressDto[] }) {
           }}
           formatter={(value: number) => [`${value}%`, "Sections soumises ou validées"]}
         />
-        <Bar dataKey="percent" fill="#2D7A45" radius={[0, 6, 6, 0]} barSize={20} />
+        <Bar dataKey="percent" fill="#2D7A45" radius={[0, 6, 6, 0]} barSize={20}>
+          {data.map((entry, index) => (
+            <Cell key={index} fill={entry.color || "#2D7A45"} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

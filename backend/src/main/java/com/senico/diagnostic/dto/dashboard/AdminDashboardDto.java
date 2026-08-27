@@ -20,6 +20,7 @@ public record AdminDashboardDto(
     public record GroupProgressDto(
             Long groupId,
             String groupName,
+            String color,
             String leaderFullName,
             boolean enabled,
             int completionPercent,

@@ -11,6 +11,7 @@ import {
   Inbox,
   Columns3,
   FileDown,
+  Files,
   MonitorPlay,
   ChevronDown,
   ChevronsLeft,
@@ -136,6 +137,13 @@ export function Sidebar() {
               icon={Columns3}
               label="Vue comparative"
               active={pathname.startsWith("/admin/compare")}
+              collapsed={showCollapsed}
+            />
+            <NavItem
+              href="/admin/consolidation"
+              icon={Files}
+              label="Document de consolidation"
+              active={pathname.startsWith("/admin/consolidation")}
               collapsed={showCollapsed}
             />
             <Link

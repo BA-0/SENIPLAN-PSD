@@ -63,6 +63,10 @@ public class SectionExportRenderer {
         return blocks;
     }
 
+    public static String statusLabel(String status) {
+        return STATUS_LABELS.getOrDefault(status, status);
+    }
+
     public ExportBlock.KeyValueList renderMetadataBox(ExportSectionData data) {
         GroupSectionStatus status = data.status();
         SectionStatus statusEnum = status != null ? status.getStatus() : SectionStatus.NOT_STARTED;

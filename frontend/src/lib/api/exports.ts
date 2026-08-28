@@ -33,3 +33,11 @@ export function downloadConsolidatedExcel(months: number = 4, referenceDate?: st
   if (referenceDate) params.set("referenceDate", referenceDate);
   return downloadBlob(`/admin/exports/consolidated/excel?${params.toString()}`, "plan-strategique-consolide.xlsx");
 }
+
+export function downloadConsolidatedPdf() {
+  return downloadBlob("/admin/exports/consolidated/pdf", "diagnostic-strategique-consolide.pdf");
+}
+
+export function downloadConsolidatedExcelFull() {
+  return downloadBlob("/admin/exports/consolidated/excel-complet", "diagnostic-strategique-consolide-complet.xlsx");
+}

@@ -58,6 +58,18 @@ public class AdminExportController {
         return fileResponse(xlsx, XLSX_MEDIA_TYPE, "diagnostic-strategique-consolide.xlsx");
     }
 
+    @GetMapping("/consolidated/pdf")
+    public ResponseEntity<byte[]> exportConsolidatedPdf() {
+        byte[] pdf = pdfExportService.exportConsolidated();
+        return fileResponse(pdf, MediaType.APPLICATION_PDF, "diagnostic-strategique-consolide.pdf");
+    }
+
+    @GetMapping("/consolidated/excel-complet")
+    public ResponseEntity<byte[]> exportConsolidatedExcelFull() {
+        byte[] xlsx = excelExportService.exportConsolidatedFull();
+        return fileResponse(xlsx, XLSX_MEDIA_TYPE, "diagnostic-strategique-consolide-complet.xlsx");
+    }
+
     private WorkGroup resolveGroup(Long groupId) {
         return workGroupRepository.findById(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException("Groupe introuvable : " + groupId));

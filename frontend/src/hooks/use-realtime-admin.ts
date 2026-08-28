@@ -9,20 +9,21 @@ import type { ActivityEntryDto } from "@/types/api";
 
 /**
  * Messages vocaux pour les actions marquantes du flux d'activite admin (les autres actions restent silencieuses).
- * Seule la soumission complete de toutes les sections d'une direction declenche une annonce
- * (SUBMIT_ALL) : les soumissions section par section restent silencieuses.
+ * Chaque soumission de section declenche une annonce courte (SUBMIT) ; lorsque cette soumission
+ * complete la totalite des sections d'une direction, une seconde annonce plus marquante suit (SUBMIT_ALL).
  */
 const ADMIN_VOICE_MESSAGES: Partial<Record<string, (entry: ActivityEntryDto) => string>> = {
+  SUBMIT: (e) => `${e.groupName ?? "Une direction"} a soumis la section ${e.sectionTitle ?? e.sectionCode ?? ""}.`,
   SUBMIT_ALL: (e) => `${e.groupName ?? "Une direction"} a soumis la totalité de ses sections.`,
 };
 
 /**
  * Abonnement STOMP aux evenements temps reel du dashboard admin.
  * Invalide les caches React Query correspondants a chaque evenement recu.
- * Les annonces vocales sont reservees a la session projection (options.voice)
- * et ne se declenchent que lorsqu'une direction a soumis la totalite de ses sections.
+ * Les annonces vocales sont reservees a la session projection (options.voice) : une par soumission
+ * de section, plus une annonce dediee lorsque la direction termine la totalite de ses sections.
  * options.onSubmitAll permet a l'appelant de reagir visuellement (bandeau, etc.)
- * a ce meme evenement, independamment du reglage vocal.
+ * a ce dernier evenement, independamment du reglage vocal.
  * Le polling (refetchInterval: 15s) configure sur les queries sert de repli
  * si la connexion WebSocket est indisponible.
  */

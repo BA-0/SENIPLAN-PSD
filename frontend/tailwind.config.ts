@@ -123,9 +123,9 @@ const config: Config = {
           "0%, 100%": { opacity: "0.55", transform: "scale(1)" },
           "50%": { opacity: "0.15", transform: "scale(1.8)" },
         },
-        "flash-highlight": {
-          "0%": { backgroundColor: "rgba(255,255,255,0.16)" },
-          "100%": { backgroundColor: "rgba(255,255,255,0)" },
+        "spotlight-pulse": {
+          "0%, 100%": { backgroundColor: "rgba(56,189,248,0.16)", boxShadow: "0 0 0 1px rgba(56,189,248,0.35)" },
+          "50%": { backgroundColor: "rgba(56,189,248,0.04)", boxShadow: "0 0 0 1px rgba(56,189,248,0.12)" },
         },
       },
       animation: {
@@ -140,7 +140,7 @@ const config: Config = {
         "gradient-x": "gradient-x 10s ease infinite",
         shimmer: "shimmer 2.2s ease-in-out infinite",
         "glow-pulse": "glow-pulse 2.2s ease-in-out infinite",
-        "flash-highlight": "flash-highlight 1.8s ease-out",
+        "spotlight-pulse": "spotlight-pulse 1.6s ease-in-out infinite",
       },
     },
   },

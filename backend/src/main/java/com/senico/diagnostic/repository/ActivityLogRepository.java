@@ -5,11 +5,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> {
     List<ActivityLog> findAllByOrderByTimestampDesc(Pageable pageable);
+    /** Compte indexe (idx_al_timestamp) - evite de charger les entrees pour ne compter que celles du jour. */
+    long countByTimestampGreaterThanEqual(LocalDateTime since);
     List<ActivityLog> findByGroupIdOrderByTimestampDesc(Long groupId, Pageable pageable);
     Optional<ActivityLog> findFirstByGroupIdAndSectionIdAndUserIdAndActionOrderByTimestampDesc(
             Long groupId, Integer sectionId, Long userId, String action);

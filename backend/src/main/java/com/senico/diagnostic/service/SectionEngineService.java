@@ -55,9 +55,40 @@ public class SectionEngineService {
                 .toList();
     }
 
+    /**
+     * Batch de {@link #getContent} pour eviter le N+1 : les groupes, le statut et la reponse de
+     * chaque groupe pour cette section sont charges en 3 requetes au total plutot qu'en 4 par groupe.
+     */
     @Transactional
     public List<SectionContentResponse> compare(String sectionCode, List<Long> groupIds) {
-        return groupIds.stream().map(groupId -> getContent(groupId, sectionCode)).toList();
+        SectionDef section = resolveSection(sectionCode);
+
+        Map<Long, WorkGroup> groupsById = workGroupRepository.findAllById(groupIds).stream()
+                .collect(java.util.stream.Collectors.toMap(WorkGroup::getId, g -> g));
+
+        Map<Long, GroupSectionStatus> statusByGroupId = groupSectionStatusRepository.findBySectionId(section.getId())
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(s -> s.getGroup().getId(), s -> s));
+
+        Map<Long, SectionResponse> responseByGroupId = sectionResponseRepository.findBySectionId(section.getId())
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(r -> r.getGroup().getId(), r -> r));
+
+        return groupIds.stream()
+                .map(groupId -> {
+                    WorkGroup group = groupsById.get(groupId);
+                    if (group == null) {
+                        throw new ResourceNotFoundException("Groupe introuvable : " + groupId);
+                    }
+                    GroupSectionStatus status = statusByGroupId.computeIfAbsent(groupId, id ->
+                            groupSectionStatusRepository.save(GroupSectionStatus.builder()
+                                    .group(group)
+                                    .section(section)
+                                    .status(SectionStatus.NOT_STARTED)
+                                    .build()));
+                    return buildResponse(group, section, responseByGroupId.get(groupId), status);
+                })
+                .toList();
     }
 
     @Transactional

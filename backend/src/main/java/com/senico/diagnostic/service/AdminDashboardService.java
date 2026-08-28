@@ -53,10 +53,7 @@ public class AdminDashboardService {
         long validated = allStatuses.stream().filter(s -> s.getStatus() == SectionStatus.VALIDATED).count();
         long revision = allStatuses.stream().filter(s -> s.getStatus() == SectionStatus.REVISION_REQUESTED).count();
 
-        LocalDate today = LocalDate.now();
-        long activityToday = activityLogService.recent(500).stream()
-                .filter(a -> a.getTimestamp() != null && a.getTimestamp().toLocalDate().equals(today))
-                .count();
+        long activityToday = activityLogService.countSince(LocalDate.now().atStartOfDay());
 
         List<AdminDashboardDto.GroupProgressDto> groupProgress = groups.stream()
                 .map(g -> {
@@ -122,10 +119,10 @@ public class AdminDashboardService {
 
     @Transactional(readOnly = true)
     public List<SubmissionSummaryDto> submissions() {
-        Map<String, Integer> versionsByGroupAndSection = sectionResponseRepository.findAll().stream()
+        Map<String, Integer> versionsByGroupAndSection = sectionResponseRepository.findAllVersions().stream()
                 .collect(java.util.stream.Collectors.toMap(
-                        r -> r.getGroup().getId() + ":" + r.getSection().getId(),
-                        r -> r.getVersion(),
+                        p -> p.getGroupId() + ":" + p.getSectionId(),
+                        SectionResponseRepository.VersionProjection::getVersion,
                         (a, b) -> b));
 
         return groupSectionStatusRepository.findAllWithGroupAndSection().stream()

@@ -84,6 +84,11 @@ public class ActivityLogService {
     }
 
     @Transactional(readOnly = true)
+    public long countSince(LocalDateTime since) {
+        return activityLogRepository.countByTimestampGreaterThanEqual(since);
+    }
+
+    @Transactional(readOnly = true)
     public List<ActivityLog> recentForGroup(Long groupId, int limit) {
         return activityLogRepository.findByGroupIdWithDetailsOrderByTimestampDesc(groupId, PageRequest.of(0, limit));
     }

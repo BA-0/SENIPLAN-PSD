@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import type { MyDashboardDto } from "@/types/api";
+import type { GroupCycleSectionContentDto, GroupCycleSummaryDto, MyDashboardDto } from "@/types/api";
 import type { SectionContentResponse, SectionStatusSummary } from "@/types/common";
 
 export async function getMyDashboard(): Promise<MyDashboardDto> {
@@ -24,5 +24,23 @@ export async function saveMySectionDraft<T>(code: string, content: T): Promise<S
 
 export async function submitMySection<T>(code: string): Promise<SectionContentResponse<T>> {
   const { data } = await apiClient.post<SectionContentResponse<T>>(`/me/sections/${code}/submit`);
+  return data;
+}
+
+export async function listMyCycles(): Promise<GroupCycleSummaryDto[]> {
+  const { data } = await apiClient.get<GroupCycleSummaryDto[]>("/me/cycles");
+  return data;
+}
+
+export async function getMyCycleSections(cycleNumber: number): Promise<SectionStatusSummary[]> {
+  const { data } = await apiClient.get<SectionStatusSummary[]>(`/me/cycles/${cycleNumber}/sections`);
+  return data;
+}
+
+export async function getMyCycleSectionContent<T>(
+  cycleNumber: number,
+  code: string
+): Promise<GroupCycleSectionContentDto<T>> {
+  const { data } = await apiClient.get<GroupCycleSectionContentDto<T>>(`/me/cycles/${cycleNumber}/sections/${code}`);
   return data;
 }

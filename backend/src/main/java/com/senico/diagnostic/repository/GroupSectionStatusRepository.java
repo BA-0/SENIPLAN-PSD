@@ -12,6 +12,10 @@ public interface GroupSectionStatusRepository extends JpaRepository<GroupSection
     Optional<GroupSectionStatus> findByGroupIdAndSectionId(Long groupId, Integer sectionId);
     List<GroupSectionStatus> findBySectionId(Integer sectionId);
 
+    /** Comme {@link #findByGroupId} mais charge la section en meme temps (evite le N+1 quand on lit section.*). */
+    @Query("select s from GroupSectionStatus s join fetch s.section where s.group.id = :groupId")
+    List<GroupSectionStatus> findByGroupIdWithSection(Long groupId);
+
     /** Charge tous les statuts avec groupe, chef de groupe et section en une seule requete (evite le N+1). */
     @Query("select s from GroupSectionStatus s " +
             "join fetch s.group g " +

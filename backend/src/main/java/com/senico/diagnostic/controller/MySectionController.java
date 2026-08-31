@@ -1,6 +1,8 @@
 package com.senico.diagnostic.controller;
 
 import com.senico.diagnostic.domain.User;
+import com.senico.diagnostic.dto.cycle.GroupCycleSectionContentDto;
+import com.senico.diagnostic.dto.cycle.GroupCycleSummaryDto;
 import com.senico.diagnostic.dto.dashboard.MyDashboardDto;
 import com.senico.diagnostic.dto.section.SaveDraftRequest;
 import com.senico.diagnostic.dto.section.SectionContentResponse;
@@ -62,6 +64,24 @@ public class MySectionController {
             @AuthenticationPrincipal UserPrincipal principal, @PathVariable String code) {
         User user = resolveUser(principal);
         return ResponseEntity.ok(sectionEngineService.submit(requireGroupId(principal), code, user));
+    }
+
+    /** Consultation, en lecture seule, des cycles de saisie precedemment clotures pour son propre groupe. */
+    @GetMapping("/cycles")
+    public ResponseEntity<List<GroupCycleSummaryDto>> listMyCycles(@AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(sectionEngineService.listCycles(requireGroupId(principal)));
+    }
+
+    @GetMapping("/cycles/{cycleNumber}/sections")
+    public ResponseEntity<List<SectionStatusSummary>> myCycleSections(
+            @AuthenticationPrincipal UserPrincipal principal, @PathVariable Integer cycleNumber) {
+        return ResponseEntity.ok(sectionEngineService.getCycleSections(requireGroupId(principal), cycleNumber));
+    }
+
+    @GetMapping("/cycles/{cycleNumber}/sections/{code}")
+    public ResponseEntity<GroupCycleSectionContentDto> myCycleSectionContent(
+            @AuthenticationPrincipal UserPrincipal principal, @PathVariable Integer cycleNumber, @PathVariable String code) {
+        return ResponseEntity.ok(sectionEngineService.getCycleSectionContent(requireGroupId(principal), cycleNumber, code));
     }
 
     private Long requireGroupId(UserPrincipal principal) {

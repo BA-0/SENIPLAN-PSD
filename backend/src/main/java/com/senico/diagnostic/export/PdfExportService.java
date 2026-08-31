@@ -27,6 +27,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -42,6 +44,9 @@ public class PdfExportService {
     private static final Color SLATE = new Color(0x64, 0x74, 0x8B);
     private static final Color BORDER = new Color(0xE2, 0xE8, 0xF0);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final String LOGO_RESOURCE = "/branding/logo-senico.png";
+
+    private byte[] logoBytes;
 
     private final SectionDefRepository sectionDefRepository;
     private final SectionResponseRepository sectionResponseRepository;
@@ -505,35 +510,90 @@ public class PdfExportService {
         return groupId + ":" + sectionId;
     }
 
+    private Image senicoLogo() throws DocumentException {
+        if (logoBytes == null) {
+            try (InputStream in = getClass().getResourceAsStream(LOGO_RESOURCE)) {
+                if (in == null) {
+                    throw new IllegalStateException("Logo SENICO introuvable sur le classpath: " + LOGO_RESOURCE);
+                }
+                logoBytes = in.readAllBytes();
+            } catch (IOException e) {
+                throw new IllegalStateException("Impossible de charger le logo SENICO", e);
+            }
+        }
+        try {
+            Image logo = Image.getInstance(logoBytes);
+            logo.scaleToFit(190, 70);
+            logo.setAlignment(Element.ALIGN_CENTER);
+            return logo;
+        } catch (IOException e) {
+            throw new IllegalStateException("Impossible de charger le logo SENICO", e);
+        }
+    }
+
     private void addConsolidatedCoverPage(Document document) throws DocumentException {
+        Paragraph topSpacer = new Paragraph(" ");
+        topSpacer.setSpacingAfter(70);
+        document.add(topSpacer);
+
+        document.add(senicoLogo());
+
+        Paragraph logoSpacer = new Paragraph(" ");
+        logoSpacer.setSpacingAfter(28);
+        document.add(logoSpacer);
+
+        LineSeparator rule = new LineSeparator();
+        rule.setLineColor(PRIMARY);
+        rule.setLineWidth(1.5f);
+        document.add(new Chunk(rule));
+
         Font titleFont = new Font(Font.HELVETICA, 22, Font.BOLD, PRIMARY);
-        Font subtitleFont = new Font(Font.HELVETICA, 14, Font.NORMAL, SLATE);
-        Font metaFont = new Font(Font.HELVETICA, 11, Font.NORMAL, SLATE);
-
-        Paragraph spacer = new Paragraph(" ");
-        spacer.setSpacingAfter(120);
-        document.add(spacer);
-
         Paragraph title = new Paragraph("SENICO SA — Plan Stratégique", titleFont);
         title.setAlignment(Element.ALIGN_CENTER);
+        title.setSpacingBefore(28);
         document.add(title);
 
+        Font subtitleFont = new Font(Font.HELVETICA, 14, Font.NORMAL, SLATE);
         Paragraph subtitle = new Paragraph("Plan Stratégique de Développement (PSD) 2027-2031", subtitleFont);
         subtitle.setAlignment(Element.ALIGN_CENTER);
         subtitle.setSpacingBefore(10);
         document.add(subtitle);
 
-        Paragraph docTitle = new Paragraph("Document de consolidation", new Font(Font.HELVETICA, 16, Font.BOLD, Color.DARK_GRAY));
-        docTitle.setAlignment(Element.ALIGN_CENTER);
-        docTitle.setSpacingBefore(40);
-        document.add(docTitle);
+        PdfPTable badge = new PdfPTable(1);
+        badge.setWidthPercentage(62);
+        badge.setSpacingBefore(46);
+        badge.setHorizontalAlignment(Element.ALIGN_CENTER);
+        PdfPCell badgeCell = new PdfPCell(new Paragraph("DOCUMENT DE CONSOLIDATION",
+                new Font(Font.HELVETICA, 14, Font.BOLD, Color.WHITE)));
+        badgeCell.setBackgroundColor(PRIMARY);
+        badgeCell.setPadding(14);
+        badgeCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        badgeCell.setBorder(Rectangle.NO_BORDER);
+        badge.addCell(badgeCell);
+        document.add(badge);
+
+        Paragraph description = new Paragraph(
+                "Toutes les réponses de toutes les directions, réunies dans un seul document — "
+                        + "code couleur par direction — pour permettre de trancher directement.",
+                new Font(Font.HELVETICA, 11, Font.ITALIC, SLATE));
+        description.setAlignment(Element.ALIGN_CENTER);
+        description.setSpacingBefore(24);
+        description.setIndentationLeft(50);
+        description.setIndentationRight(50);
+        document.add(description);
 
         Paragraph meta = new Paragraph(
                 "Export généré le " + java.time.LocalDateTime.now().format(DATE_FORMAT),
-                metaFont);
+                new Font(Font.HELVETICA, 11, Font.NORMAL, SLATE));
         meta.setAlignment(Element.ALIGN_CENTER);
-        meta.setSpacingBefore(10);
+        meta.setSpacingBefore(60);
         document.add(meta);
+
+        Paragraph confidential = new Paragraph("Document interne — confidentiel",
+                new Font(Font.HELVETICA, 9, Font.ITALIC, SLATE));
+        confidential.setAlignment(Element.ALIGN_CENTER);
+        confidential.setSpacingBefore(6);
+        document.add(confidential);
     }
 
     private void addSommairePage(Document document, List<SectionDef> sections, List<WorkGroup> groups) throws DocumentException {

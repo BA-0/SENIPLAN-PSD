@@ -178,6 +178,7 @@ public class WorkGroupService {
                 .leaderUsername(group.getLeader() != null ? group.getLeader().getUsername() : null)
                 .leaderFullName(group.getLeader() != null ? group.getLeader().getFullName() : null)
                 .createdAt(group.getCreatedAt())
+                .currentCycle(group.getCurrentCycle())
                 .completionPercent(progress.completionPercent())
                 .sectionsSubmitted(progress.submitted())
                 .sectionsValidated(progress.validated())

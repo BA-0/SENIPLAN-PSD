@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
-import { FileDown, FileText, KeyRound, Pencil, Plus, Power } from "lucide-react";
+import { Archive, FileDown, FileText, KeyRound, Pencil, Plus, Power, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,9 +28,16 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { createGroup, listGroups, resetLeaderPassword, setGroupEnabled, updateGroup } from "@/lib/api/groups";
+import {
+  getGroupCycleSectionContent,
+  getGroupCycleSections,
+  listGroupCycles,
+  startNewCycle,
+} from "@/lib/api/admin";
 import { downloadConsolidatedExcel, downloadGroupPdf, downloadGroupWord } from "@/lib/api/exports";
 import { extractErrorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
+import { CycleArchivePanel } from "@/components/cycles/cycle-archive-panel";
 import type { CreateWorkGroupPayload, UpdateWorkGroupPayload } from "@/lib/api/groups";
 import type { WorkGroupDto } from "@/types/api";
 
@@ -57,6 +64,7 @@ export default function AdminGroupsPage() {
   const [newCredentials, setNewCredentials] = useState<{ username: string; password: string } | null>(null);
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportPeriodMonths, setExportPeriodMonths] = useState(4);
+  const [archiveGroup, setArchiveGroup] = useState<WorkGroupDto | null>(null);
 
   async function handleExportExcel() {
     setExportingExcel(true);
@@ -132,6 +140,15 @@ export default function AdminGroupsPage() {
     mutationFn: resetLeaderPassword,
     onSuccess: (data) => setNewCredentials({ username: data.username, password: data.temporaryPassword }),
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la réinitialisation")),
+  });
+
+  const newCycleMutation = useMutation({
+    mutationFn: (groupId: number) => startNewCycle(groupId),
+    onSuccess: (summary) => {
+      toast.success(`Cycle ${summary.cycleNumber} archivé — nouvelle saisie démarrée pour la direction`);
+      queryClient.invalidateQueries({ queryKey: ["admin", "groups"] });
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec du démarrage du nouveau cycle")),
   });
 
   return (
@@ -243,6 +260,7 @@ export default function AdminGroupsPage() {
                       {g.name}
                     </Link>
                     {!g.enabled && <span className="text-[11px] rounded-full bg-muted text-muted-foreground px-2 py-0.5">Désactivé</span>}
+                    <span className="text-[11px] rounded-full bg-muted text-muted-foreground px-2 py-0.5">Cycle {g.currentCycle}</span>
                   </div>
                   <p className="text-[12px] text-muted-foreground mt-0.5">
                     {g.leaderFullName} · {g.leaderUsername} · Dernière activité : {g.lastActivityAt ? formatDateTime(g.lastActivityAt) : "—"}
@@ -252,6 +270,41 @@ export default function AdminGroupsPage() {
                   <span className="text-[13px] font-semibold text-primary-600 w-12 text-right">{g.completionPercent}%</span>
                   <Button variant="ghost" size="icon" title="Modifier le groupe" onClick={() => openEditDialog(g)}>
                     <Pencil className="h-4 w-4" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={
+                          g.completionPercent === 100
+                            ? "Démarrer un nouveau cycle"
+                            : "Toutes les sections doivent être soumises (100%) pour démarrer un nouveau cycle"
+                        }
+                        disabled={g.completionPercent !== 100}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Démarrer un nouveau cycle ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Le cycle {g.currentCycle} de « {g.name} » sera archivé — la saisie soumise reste consultable
+                          ensuite dans les archives — puis les 17 sections seront remises à zéro pour une nouvelle
+                          saisie (cycle {g.currentCycle + 1}).
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => newCycleMutation.mutate(g.id)}>
+                          Démarrer le cycle {g.currentCycle + 1}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <Button variant="ghost" size="icon" title="Archives des cycles précédents" onClick={() => setArchiveGroup(g)}>
+                    <Archive className="h-4 w-4" />
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -370,6 +423,18 @@ export default function AdminGroupsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {archiveGroup && (
+        <CycleArchivePanel
+          open={!!archiveGroup}
+          onOpenChange={(open) => !open && setArchiveGroup(null)}
+          title={`Cycles archivés — ${archiveGroup.name}`}
+          queryKeyPrefix={["admin", "groups", archiveGroup.id]}
+          listCycles={() => listGroupCycles(archiveGroup.id)}
+          listSections={(cycleNumber) => getGroupCycleSections(archiveGroup.id, cycleNumber)}
+          getSectionContent={(cycleNumber, code) => getGroupCycleSectionContent(archiveGroup.id, cycleNumber, code)}
+        />
+      )}
     </div>
   );
 }

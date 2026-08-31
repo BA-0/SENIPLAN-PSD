@@ -28,6 +28,8 @@ public class ActivityLogService {
     public static final String ACTION_RETURN_TO_GROUP = "RETURN_TO_GROUP";
     public static final String ACTION_RESET = "RESET";
     public static final String ACTION_ADMIN_EDIT = "ADMIN_EDIT";
+    /** Emis lorsque l'admin cloture un cycle de saisie complet et en demarre un nouveau pour la direction. */
+    public static final String ACTION_START_NEW_CYCLE = "START_NEW_CYCLE";
     public static final String ACTION_LOGIN = "LOGIN";
 
     /** Autosaves on the same group+section within this window update the existing entry instead of creating a new one. */

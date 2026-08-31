@@ -26,11 +26,32 @@ export interface WorkGroupDto {
   leaderUsername: string | null;
   leaderFullName: string | null;
   createdAt: string;
+  currentCycle: number;
   completionPercent: number;
   sectionsSubmitted: number;
   sectionsValidated: number;
   lastActivityAt: string | null;
   temporaryPassword?: string | null;
+}
+
+export interface GroupCycleSummaryDto {
+  cycleNumber: number;
+  archivedAt: string;
+  archivedByName: string | null;
+  sectionsCount: number;
+}
+
+export interface GroupCycleSectionContentDto<T = unknown> {
+  code: string;
+  title: string;
+  type: import("./common").SectionType;
+  cycleNumber: number;
+  status: import("./common").SectionStatus;
+  submittedAt: string | null;
+  validatedAt: string | null;
+  adminComment: string | null;
+  archivedAt: string;
+  content: T;
 }
 
 export interface ResetPasswordResponse {
@@ -94,6 +115,7 @@ export interface ActivityEntryDto {
 export interface MyDashboardDto {
   groupId: number;
   groupName: string;
+  currentCycle: number;
   completionPercent: number;
   sectionsNotStarted: number;
   sectionsInProgress: number;

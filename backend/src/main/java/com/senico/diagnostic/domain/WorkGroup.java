@@ -43,4 +43,9 @@ public class WorkGroup {
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    /** Numero du cycle de saisie en cours pour cette direction (incremente a chaque "nouveau cycle"). */
+    @Column(name = "current_cycle", nullable = false)
+    @Builder.Default
+    private Integer currentCycle = 1;
 }

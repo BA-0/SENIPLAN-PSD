@@ -15,6 +15,7 @@ public record WorkGroupDto(
         String leaderUsername,
         String leaderFullName,
         LocalDateTime createdAt,
+        Integer currentCycle,
         Integer completionPercent,
         Integer sectionsSubmitted,
         Integer sectionsValidated,

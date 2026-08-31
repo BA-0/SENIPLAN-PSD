@@ -18,7 +18,6 @@ public class MyDashboardService {
 
     private final WorkGroupRepository workGroupRepository;
     private final SectionEngineService sectionEngineService;
-    private final ProgressService progressService;
 
     @Transactional(readOnly = true)
     public MyDashboardDto build(Long groupId) {
@@ -26,6 +25,11 @@ public class MyDashboardService {
                 .orElseThrow(() -> new ResourceNotFoundException("Groupe introuvable"));
 
         List<SectionStatusSummary> checklist = sectionEngineService.listStatuses(groupId);
+        int submitted = count(checklist, "SUBMITTED");
+        int validated = count(checklist, "VALIDATED");
+        int completionPercent = checklist.isEmpty()
+                ? 0
+                : (int) Math.round((submitted + validated) * 100.0 / checklist.size());
 
         List<SectionStatusSummary> nextSections = checklist.stream()
                 .filter(s -> Set.of("NOT_STARTED", "IN_PROGRESS", "REVISION_REQUESTED").contains(s.status()))
@@ -42,11 +46,12 @@ public class MyDashboardService {
         return MyDashboardDto.builder()
                 .groupId(group.getId())
                 .groupName(group.getName())
-                .completionPercent(progressService.completionPercent(groupId))
+                .currentCycle(group.getCurrentCycle())
+                .completionPercent(completionPercent)
                 .sectionsNotStarted(count(checklist, "NOT_STARTED"))
                 .sectionsInProgress(count(checklist, "IN_PROGRESS"))
-                .sectionsSubmitted(count(checklist, "SUBMITTED"))
-                .sectionsValidated(count(checklist, "VALIDATED"))
+                .sectionsSubmitted(submitted)
+                .sectionsValidated(validated)
                 .sectionsRevisionRequested(count(checklist, "REVISION_REQUESTED"))
                 .checklist(checklist)
                 .nextSections(nextSections)

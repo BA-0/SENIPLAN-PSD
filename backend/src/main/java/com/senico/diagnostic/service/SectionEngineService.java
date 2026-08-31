@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.senico.diagnostic.domain.*;
+import com.senico.diagnostic.dto.cycle.GroupCycleSectionContentDto;
+import com.senico.diagnostic.dto.cycle.GroupCycleSummaryDto;
 import com.senico.diagnostic.dto.realtime.SectionProgressEvent;
 import com.senico.diagnostic.dto.section.AdminReviewRequest;
 import com.senico.diagnostic.dto.section.SectionContentResponse;
@@ -37,6 +39,7 @@ public class SectionEngineService {
     private final GroupSectionStatusRepository groupSectionStatusRepository;
     private final SectionResponseRepository sectionResponseRepository;
     private final SectionResponseRevisionRepository revisionRepository;
+    private final GroupCycleArchiveRepository groupCycleArchiveRepository;
     private final UserRepository userRepository;
 
     private final SectionContentValidator contentValidator;
@@ -49,7 +52,7 @@ public class SectionEngineService {
 
     @Transactional(readOnly = true)
     public List<SectionStatusSummary> listStatuses(Long groupId) {
-        return groupSectionStatusRepository.findByGroupId(groupId).stream()
+        return groupSectionStatusRepository.findByGroupIdWithSection(groupId).stream()
                 .sorted((a, b) -> a.getSection().getOrder().compareTo(b.getSection().getOrder()))
                 .map(this::toSummary)
                 .toList();
@@ -182,6 +185,155 @@ public class SectionEngineService {
         publishProgress(group, section, status);
 
         return buildResponse(group, section, existing, status);
+    }
+
+    /**
+     * Cloture le cycle de saisie en cours pour une direction (toutes les sections doivent
+     * etre soumises ou validees) : chaque section est figee dans group_cycle_archives pour
+     * consultation ulterieure, puis remise a NOT_STARTED avec un contenu vierge pour que la
+     * direction puisse redemarrer une nouvelle saisie. Rien n'est jamais efface : l'ancienne
+     * saisie soumise reste consultable via {@link #listCycles} / {@link #getCycleSectionContent}.
+     */
+    @Transactional
+    public GroupCycleSummaryDto startNewCycle(Long groupId, User adminUser) {
+        WorkGroup group = resolveGroup(groupId);
+
+        if (progressService.completionPercent(groupId) < 100) {
+            throw new SectionLockedException(
+                    "Toutes les sections doivent etre soumises avant de demarrer un nouveau cycle pour cette direction");
+        }
+
+        List<GroupSectionStatus> statuses = groupSectionStatusRepository.findByGroupId(groupId);
+        int closingCycle = group.getCurrentCycle();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (GroupSectionStatus status : statuses) {
+            SectionDef section = status.getSection();
+            SectionResponse response = sectionResponseRepository
+                    .findByGroupIdAndSectionId(groupId, section.getId()).orElse(null);
+            String contentJson = response != null
+                    ? response.getContentJson()
+                    : writeJson(defaultContentFactory.buildDefault(section.getType()));
+
+            groupCycleArchiveRepository.save(GroupCycleArchive.builder()
+                    .group(group)
+                    .cycleNumber(closingCycle)
+                    .section(section)
+                    .contentJson(contentJson)
+                    .status(status.getStatus())
+                    .submittedAt(status.getSubmittedAt())
+                    .validatedAt(status.getValidatedAt())
+                    .adminComment(status.getAdminComment())
+                    .archivedAt(now)
+                    .archivedBy(adminUser.getId())
+                    .build());
+
+            if (response != null) {
+                response.setContentJson(writeJson(defaultContentFactory.buildDefault(section.getType())));
+                response.setVersion(response.getVersion() + 1);
+                response.setUpdatedAt(now);
+                response.setUpdatedBy(adminUser.getId());
+                sectionResponseRepository.save(response);
+            }
+
+            status.setStatus(SectionStatus.NOT_STARTED);
+            status.setSubmittedAt(null);
+            status.setValidatedAt(null);
+            status.setAdminComment(null);
+            status.setLastActivityAt(now);
+            groupSectionStatusRepository.save(status);
+
+            publishProgress(group, section, status);
+        }
+
+        group.setCurrentCycle(closingCycle + 1);
+        workGroupRepository.save(group);
+
+        activityLogService.log(group, adminUser, ActivityLogService.ACTION_START_NEW_CYCLE, null);
+
+        return GroupCycleSummaryDto.builder()
+                .cycleNumber(closingCycle)
+                .archivedAt(now)
+                .archivedByName(adminUser.getFullName())
+                .sectionsCount(statuses.size())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<GroupCycleSummaryDto> listCycles(Long groupId) {
+        List<GroupCycleArchive> all = groupCycleArchiveRepository.findByGroupIdOrderByCycleNumberDesc(groupId);
+        if (all.isEmpty()) {
+            return List.of();
+        }
+
+        Set<Long> userIds = all.stream()
+                .map(GroupCycleArchive::getArchivedBy)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        Map<Long, String> namesById = userRepository.findAllById(userIds).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, User::getFullName));
+
+        return all.stream()
+                .collect(java.util.stream.Collectors.groupingBy(GroupCycleArchive::getCycleNumber))
+                .entrySet().stream()
+                .map(e -> {
+                    GroupCycleArchive first = e.getValue().get(0);
+                    LocalDateTime archivedAt = e.getValue().stream()
+                            .map(GroupCycleArchive::getArchivedAt)
+                            .min(Comparator.naturalOrder())
+                            .orElse(first.getArchivedAt());
+                    return GroupCycleSummaryDto.builder()
+                            .cycleNumber(e.getKey())
+                            .archivedAt(archivedAt)
+                            .archivedByName(namesById.get(first.getArchivedBy()))
+                            .sectionsCount(e.getValue().size())
+                            .build();
+                })
+                .sorted(Comparator.comparing(GroupCycleSummaryDto::cycleNumber).reversed())
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SectionStatusSummary> getCycleSections(Long groupId, Integer cycleNumber) {
+        List<GroupCycleArchive> rows = groupCycleArchiveRepository.findByGroupIdAndCycleNumber(groupId, cycleNumber);
+        if (rows.isEmpty()) {
+            throw new ResourceNotFoundException("Cycle introuvable : " + cycleNumber);
+        }
+        return rows.stream()
+                .sorted(Comparator.comparing(a -> a.getSection().getOrder()))
+                .map(a -> SectionStatusSummary.builder()
+                        .sectionId(a.getSection().getId())
+                        .code(a.getSection().getCode())
+                        .title(a.getSection().getTitle())
+                        .order(a.getSection().getOrder())
+                        .status(a.getStatus().name())
+                        .submittedAt(a.getSubmittedAt())
+                        .validatedAt(a.getValidatedAt())
+                        .lastActivityAt(a.getArchivedAt())
+                        .adminComment(a.getAdminComment())
+                        .build())
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public GroupCycleSectionContentDto getCycleSectionContent(Long groupId, Integer cycleNumber, String sectionCode) {
+        SectionDef section = resolveSection(sectionCode);
+        GroupCycleArchive archive = groupCycleArchiveRepository
+                .findByGroupIdAndCycleNumberAndSectionId(groupId, cycleNumber, section.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Aucune archive pour cette section dans ce cycle"));
+
+        return GroupCycleSectionContentDto.builder()
+                .code(section.getCode())
+                .title(section.getTitle())
+                .type(section.getType().name())
+                .cycleNumber(cycleNumber)
+                .status(archive.getStatus().name())
+                .submittedAt(archive.getSubmittedAt())
+                .validatedAt(archive.getValidatedAt())
+                .adminComment(archive.getAdminComment())
+                .archivedAt(archive.getArchivedAt())
+                .content(parseJson(archive.getContentJson()))
+                .build();
     }
 
     private SectionResponse persistContent(WorkGroup group, SectionDef section, JsonNode rawContent, User actingUser) {

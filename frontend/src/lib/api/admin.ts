@@ -1,5 +1,12 @@
 import { apiClient } from "@/lib/api-client";
-import type { ActivityEntryDto, AdminDashboardDto, MatrixCellDto, SubmissionSummaryDto } from "@/types/api";
+import type {
+  ActivityEntryDto,
+  AdminDashboardDto,
+  GroupCycleSectionContentDto,
+  GroupCycleSummaryDto,
+  MatrixCellDto,
+  SubmissionSummaryDto,
+} from "@/types/api";
 import type {
   SectionContentResponse,
   SectionRevisionContentResponse,
@@ -87,5 +94,33 @@ export async function compareSection<T>(sectionCode: string, groupIds: number[])
   const { data } = await apiClient.get<SectionContentResponse<T>[]>("/admin/compare", {
     params: { sectionCode, groupIds: groupIds.join(",") },
   });
+  return data;
+}
+
+export async function startNewCycle(groupId: number): Promise<GroupCycleSummaryDto> {
+  const { data } = await apiClient.post<GroupCycleSummaryDto>(`/admin/groups/${groupId}/cycles/new`);
+  return data;
+}
+
+export async function listGroupCycles(groupId: number): Promise<GroupCycleSummaryDto[]> {
+  const { data } = await apiClient.get<GroupCycleSummaryDto[]>(`/admin/groups/${groupId}/cycles`);
+  return data;
+}
+
+export async function getGroupCycleSections(groupId: number, cycleNumber: number): Promise<SectionStatusSummary[]> {
+  const { data } = await apiClient.get<SectionStatusSummary[]>(
+    `/admin/groups/${groupId}/cycles/${cycleNumber}/sections`
+  );
+  return data;
+}
+
+export async function getGroupCycleSectionContent<T>(
+  groupId: number,
+  cycleNumber: number,
+  code: string
+): Promise<GroupCycleSectionContentDto<T>> {
+  const { data } = await apiClient.get<GroupCycleSectionContentDto<T>>(
+    `/admin/groups/${groupId}/cycles/${cycleNumber}/sections/${code}`
+  );
   return data;
 }

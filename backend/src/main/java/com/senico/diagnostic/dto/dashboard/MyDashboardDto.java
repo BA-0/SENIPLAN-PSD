@@ -9,6 +9,7 @@ import java.util.List;
 public record MyDashboardDto(
         Long groupId,
         String groupName,
+        int currentCycle,
         int completionPercent,
         int sectionsNotStarted,
         int sectionsInProgress,

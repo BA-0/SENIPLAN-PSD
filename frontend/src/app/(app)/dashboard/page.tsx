@@ -1,18 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Circle, Loader2, MessageSquare, Send } from "lucide-react";
+import { ArrowRight, Archive, CheckCircle2, Circle, Loader2, MessageSquare, Send } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
 import { CompletionGauge } from "@/components/charts/completion-gauge";
 import { KpiCard } from "@/components/kpi-card";
-import { getMyDashboard } from "@/lib/api/me";
+import { CycleArchivePanel } from "@/components/cycles/cycle-archive-panel";
+import { getMyCycleSectionContent, getMyCycleSections, getMyDashboard, listMyCycles } from "@/lib/api/me";
 
 export default function GroupDashboardPage() {
   const { data, isLoading } = useQuery({ queryKey: ["me", "dashboard"], queryFn: getMyDashboard });
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   if (isLoading || !data) {
     return <DashboardSkeleton />;
@@ -20,11 +23,18 @@ export default function GroupDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1>Tableau de bord — {data.groupName}</h1>
-        <p className="text-[13px] text-muted-foreground mt-1">
-          Suivi de l&apos;avancement du plan stratégique PSD 2027-2031
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1>Tableau de bord — {data.groupName}</h1>
+          <p className="text-[13px] text-muted-foreground mt-1">
+            Suivi de l&apos;avancement du plan stratégique PSD 2027-2031 · Cycle {data.currentCycle} en cours
+          </p>
+        </div>
+        {data.currentCycle > 1 && (
+          <Button variant="secondary" onClick={() => setArchiveOpen(true)}>
+            <Archive className="h-4 w-4" /> Cycles précédents
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -103,6 +113,16 @@ export default function GroupDashboardPage() {
           </Button>
         </div>
       )}
+
+      <CycleArchivePanel
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        title="Cycles précédents"
+        queryKeyPrefix={["me", "cycles"]}
+        listCycles={listMyCycles}
+        listSections={getMyCycleSections}
+        getSectionContent={getMyCycleSectionContent}
+      />
     </div>
   );
 }

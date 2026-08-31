@@ -21,7 +21,12 @@ public class SectionContentValidator {
         }
 
         switch (type) {
-            case STAKEHOLDERS -> requireArray(content, "rows", strict);
+            case STAKEHOLDERS -> {
+                requireArray(content, "rows", strict);
+                if (strict) {
+                    requireStakeholderFieldsFilled(content.get("rows"));
+                }
+            }
             case RESOURCES_MATRIX -> requireArray(content, "rows", strict);
             case PESTEL -> requireArray(content, "rows", strict);
             case SWOT -> {
@@ -89,5 +94,20 @@ public class SectionContentValidator {
             throw new InvalidSectionContentException(
                     "La section doit contenir au moins une ligne dans '" + field + "' avant soumission");
         }
+    }
+
+    private void requireStakeholderFieldsFilled(JsonNode rows) {
+        for (int i = 0; i < rows.size(); i++) {
+            JsonNode row = rows.get(i);
+            if (isBlank(row.path("category").asText(null)) || isBlank(row.path("scope").asText(null))) {
+                throw new InvalidSectionContentException(
+                        "Chaque partie prenante doit avoir une categorie et une portee renseignees avant soumission (ligne "
+                                + (i + 1) + ")");
+            }
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

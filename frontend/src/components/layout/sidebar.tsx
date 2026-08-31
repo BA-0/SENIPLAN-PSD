@@ -12,6 +12,7 @@ import {
   Columns3,
   FileDown,
   Files,
+  FileText,
   MonitorPlay,
   ChevronDown,
   ChevronsLeft,
@@ -144,6 +145,13 @@ export function Sidebar() {
               icon={Files}
               label="Document de consolidation"
               active={pathname.startsWith("/admin/consolidation")}
+              collapsed={showCollapsed}
+            />
+            <NavItem
+              href="/admin/psd-final"
+              icon={FileText}
+              label="Document final PSD"
+              active={pathname.startsWith("/admin/psd-final")}
               collapsed={showCollapsed}
             />
             <Link

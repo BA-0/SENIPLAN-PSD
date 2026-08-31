@@ -70,6 +70,18 @@ public class AdminExportController {
         return fileResponse(xlsx, XLSX_MEDIA_TYPE, "diagnostic-strategique-consolide-complet.xlsx");
     }
 
+    @GetMapping("/psd-final/pdf")
+    public ResponseEntity<byte[]> exportPsdFinalPdf() {
+        byte[] pdf = pdfExportService.exportPsdFinalDocument();
+        return fileResponse(pdf, MediaType.APPLICATION_PDF, "psd-2027-2031-document-final.pdf");
+    }
+
+    @GetMapping("/psd-final/word")
+    public ResponseEntity<byte[]> exportPsdFinalWord() {
+        byte[] docx = wordExportService.exportPsdFinalDocument();
+        return fileResponse(docx, DOCX_MEDIA_TYPE, "psd-2027-2031-document-final.docx");
+    }
+
     private WorkGroup resolveGroup(Long groupId) {
         return workGroupRepository.findById(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException("Groupe introuvable : " + groupId));

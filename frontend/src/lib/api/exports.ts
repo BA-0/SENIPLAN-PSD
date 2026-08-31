@@ -38,6 +38,14 @@ export function downloadConsolidatedPdf() {
   return downloadBlob("/admin/exports/consolidated/pdf", "diagnostic-strategique-consolide.pdf");
 }
 
+export function downloadPsdFinalPdf() {
+  return downloadBlob("/admin/exports/psd-final/pdf", "psd-2027-2031-document-final.pdf");
+}
+
+export function downloadPsdFinalWord() {
+  return downloadBlob("/admin/exports/psd-final/word", "psd-2027-2031-document-final.docx");
+}
+
 export function downloadConsolidatedExcelFull() {
   return downloadBlob("/admin/exports/consolidated/excel-complet", "diagnostic-strategique-consolide-complet.xlsx");
 }

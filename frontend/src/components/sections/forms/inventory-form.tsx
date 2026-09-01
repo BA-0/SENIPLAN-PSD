@@ -23,7 +23,7 @@ export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<
           <Textarea
             value={content.synthesisNote}
             onChange={(e) => onChange((prev) => ({ ...prev, synthesisNote: e.target.value }))}
-            disabled={readOnly}
+            readOnly={readOnly}
             rows={4}
             placeholder="Synthèse consolidée du diagnostic (parties prenantes, PESTEL, SWOT, analyse causale)…"
           />

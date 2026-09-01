@@ -39,7 +39,7 @@ export function LogicalFrameworkForm({ content, onChange, readOnly }: SectionFor
         <TabsContent key={axis.axisCode} value={axis.axisCode} className="space-y-4">
           <div className="space-y-1.5 max-w-xl">
             <Label required>Objectif</Label>
-            <Input value={axis.objective} onChange={(e) => updateAxis(axisIndex, { objective: e.target.value })} disabled={readOnly} />
+            <Input value={axis.objective} onChange={(e) => updateAxis(axisIndex, { objective: e.target.value })} readOnly={readOnly} />
           </div>
 
           <Table>

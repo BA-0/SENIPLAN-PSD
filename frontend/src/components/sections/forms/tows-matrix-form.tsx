@@ -94,7 +94,7 @@ export function TowsMatrixForm({ content, onChange, readOnly }: SectionFormProps
                       <Textarea
                         value={content[f.key] as string}
                         onChange={(e) => updateField(f.key, e.target.value)}
-                        disabled={readOnly}
+                        readOnly={readOnly}
                         rows={3}
                       />
                     </div>

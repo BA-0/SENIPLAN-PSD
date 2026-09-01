@@ -85,7 +85,7 @@ export function ActionPlanForm({ content, onChange, readOnly }: SectionFormProps
                 <Input
                   value={effect.effectLabel}
                   onChange={(e) => updateEffect(axisIndex, effectIndex, { effectLabel: e.target.value })}
-                  disabled={readOnly}
+                  readOnly={readOnly}
                   placeholder="Intitulé de l'effet…"
                 />
               </CardHeader>

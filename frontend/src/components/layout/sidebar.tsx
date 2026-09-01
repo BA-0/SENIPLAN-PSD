@@ -14,6 +14,7 @@ import {
   Files,
   FileText,
   MonitorPlay,
+  Radio,
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
@@ -145,6 +146,13 @@ export function Sidebar() {
               icon={Files}
               label="Document de consolidation"
               active={pathname.startsWith("/admin/consolidation")}
+              collapsed={showCollapsed}
+            />
+            <NavItem
+              href="/admin/live-consolidation"
+              icon={Radio}
+              label="Consolidation en direct"
+              active={pathname.startsWith("/admin/live-consolidation")}
               collapsed={showCollapsed}
             />
             <NavItem

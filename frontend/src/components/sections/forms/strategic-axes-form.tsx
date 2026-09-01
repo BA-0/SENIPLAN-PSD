@@ -25,11 +25,11 @@ export function StrategicAxesForm({ content, onChange, readOnly }: SectionFormPr
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label required>Orientation stratégique</Label>
-                <Input value={axis.title} onChange={(e) => updateAxis(index, { title: e.target.value })} disabled={readOnly} />
+                <Input value={axis.title} onChange={(e) => updateAxis(index, { title: e.target.value })} readOnly={readOnly} />
               </div>
               <div className="space-y-1.5">
                 <Label>Objectif de l&apos;axe</Label>
-                <Input value={axis.objective ?? ""} onChange={(e) => updateAxis(index, { objective: e.target.value })} disabled={readOnly} />
+                <Input value={axis.objective ?? ""} onChange={(e) => updateAxis(index, { objective: e.target.value })} readOnly={readOnly} />
               </div>
             </div>
             <div className="space-y-1.5">

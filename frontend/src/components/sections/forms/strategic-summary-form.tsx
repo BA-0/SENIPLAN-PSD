@@ -64,7 +64,7 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
           <Textarea
             value={content.vision}
             onChange={(e) => onChange((prev) => ({ ...prev, vision: e.target.value }))}
-            disabled={readOnly}
+            readOnly={readOnly}
             rows={3}
             placeholder="Vision globale du PSD 2027-2031…"
           />
@@ -93,7 +93,7 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
                   <Input
                     value={orientation.label}
                     onChange={(e) => updateOrientation(axisIndex, orientationIndex, { label: e.target.value })}
-                    disabled={readOnly}
+                    readOnly={readOnly}
                     placeholder="Intitulé de l'orientation stratégique…"
                   />
                 </CardHeader>
@@ -106,7 +106,7 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
                       <Input
                         value={action.label}
                         onChange={(e) => updateAction(axisIndex, orientationIndex, actionIndex, { label: e.target.value })}
-                        disabled={readOnly}
+                        readOnly={readOnly}
                         placeholder="Intitulé de l'action…"
                         className="bg-card"
                       />
@@ -115,7 +115,7 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
                         onChange={(e) =>
                           updateAction(axisIndex, orientationIndex, actionIndex, { constraintsOrOpportunities: e.target.value })
                         }
-                        disabled={readOnly}
+                        readOnly={readOnly}
                         placeholder="Contraintes à lever / opportunités à saisir…"
                         className="bg-card"
                       />

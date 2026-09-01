@@ -18,7 +18,7 @@ export function StrategicFrameworkForm({ content, onChange, readOnly }: SectionF
           <Textarea
             value={content.vision}
             onChange={(e) => onChange((prev) => ({ ...prev, vision: e.target.value }))}
-            disabled={readOnly}
+            readOnly={readOnly}
             rows={3}
             placeholder="Vision globale du PSD 2027-2031…"
           />

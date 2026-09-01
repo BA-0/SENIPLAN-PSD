@@ -1,7 +1,8 @@
 Add-Type -AssemblyName System.Drawing
-$pub = "c:\wamp64\www\SENI_PLAN\SENIPLAN-PSD\frontend\public"
+$pub = "c:\wamp64\www\SENIPLAN\frontend\public"
+$root = "c:\wamp64\www\SENIPLAN"
 
-$imgO = [System.Drawing.Image]::FromFile("$pub\login-bg.jpg")
+$imgO = [System.Drawing.Image]::FromFile("$root\BG SENIPLAN.jpg")
 $imgC = [System.Drawing.Image]::FromFile("$pub\login-bg-clean.jpg")
 $W = 1376; $H = 768
 $fmt = [System.Drawing.Imaging.PixelFormat]::Format32bppArgb

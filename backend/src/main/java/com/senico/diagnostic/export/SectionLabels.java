@@ -108,6 +108,22 @@ final class SectionLabels {
             "TRESORERIE_FIN_PERIODE", "Trésorerie de fin de période"
     );
 
+    /** S14B : blocs et lignes du plan d'evolution des effectifs. */
+    static final Map<String, String> STAFF_CATEGORY_LABELS = Map.of(
+            "HIERARCHIE", "Hiérarchie",
+            "STATUT", "Statut"
+    );
+
+    static final Map<String, String> STAFF_LABELS = Map.of(
+            "CADRE", "Cadre",
+            "AGENTS_MAITRISE", "Agents de maîtrise",
+            "EMPLOYE", "Employé",
+            "JOURNALIER", "Journalier",
+            "CDI", "CDI",
+            "CDD", "CDD",
+            "EXPATRIE", "Expatrié"
+    );
+
     static final Set<String> COMPUTED_ROW_LABELS = Set.of(
             "RESULTAT_EXPLOITATION", "RESULTAT_NET", "VARIATION_NETTE_TRESORERIE", "TRESORERIE_FIN_PERIODE"
     );
@@ -148,6 +164,18 @@ final class SectionLabels {
 
     static String cashFlow(String key) {
         return CASH_FLOW_LABELS.getOrDefault(key, key);
+    }
+
+    static String staffCategory(String key) {
+        return STAFF_CATEGORY_LABELS.getOrDefault(key, key);
+    }
+
+    /** Une ligne ajoutee a la main par une direction n'a pas de cle : son intitule libre fait foi. */
+    static String staffRow(String key, String freeLabel) {
+        if (freeLabel != null && !freeLabel.isBlank()) {
+            return freeLabel;
+        }
+        return STAFF_LABELS.getOrDefault(key, key);
     }
 
     static String criticality(String label) {

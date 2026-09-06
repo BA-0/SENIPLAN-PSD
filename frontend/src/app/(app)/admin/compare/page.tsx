@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -14,7 +15,7 @@ import { SECTION_CODES } from "@/types/common";
 import type { SectionType } from "@/types/common";
 
 export default function ComparePage() {
-  const [sectionCode, setSectionCode] = useState<string>(SECTION_CODES[3]); // S04 SWOT par defaut
+  const [sectionCode, setSectionCode] = useState<string>("S04"); // SWOT par defaut
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
 
   const { data: groups } = useQuery({ queryKey: ["admin", "groups"], queryFn: listGroups });
@@ -24,6 +25,8 @@ export default function ComparePage() {
     queryFn: () => compareSection(sectionCode, selectedGroupIds),
     enabled: selectedGroupIds.length > 0,
   });
+
+  const groupColorById = new Map((groups ?? []).map((g) => [g.id, g.color]));
 
   function toggleGroup(id: number) {
     setSelectedGroupIds((prev) => (prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]));
@@ -80,9 +83,25 @@ export default function ComparePage() {
       {comparisons && comparisons.length > 0 && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {comparisons.map((response) => (
-            <Card key={response.groupId}>
+            <Card
+              key={response.groupId}
+              className="border-l-[3px]"
+              style={
+                {
+                  borderLeftColor: groupColorById.get(response.groupId) ?? undefined,
+                  // Repris par les onglets d'axes du formulaire (cf. .axis-tabs).
+                  "--group-accent": groupColorById.get(response.groupId) ?? undefined,
+                } as CSSProperties
+              }
+            >
               <CardHeader className="flex flex-row items-center justify-between gap-2">
-                <CardTitle className="text-[15px]">{response.groupName}</CardTitle>
+                <CardTitle className="text-[15px] flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: groupColorById.get(response.groupId) ?? "transparent" }}
+                  />
+                  {response.groupName}
+                </CardTitle>
                 <div className="flex items-center gap-2 shrink-0">
                   <StatusBadge status={response.status} />
                   {response.submittedAt && (

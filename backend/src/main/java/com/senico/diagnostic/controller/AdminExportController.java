@@ -39,14 +39,14 @@ public class AdminExportController {
     public ResponseEntity<byte[]> exportGroupPdf(@PathVariable Long groupId) {
         WorkGroup group = resolveGroup(groupId);
         byte[] pdf = pdfExportService.exportGroupRecap(group);
-        return fileResponse(pdf, MediaType.APPLICATION_PDF, "diagnostic-strategique-" + slug(group.getName()) + ".pdf");
+        return fileResponse(pdf, MediaType.APPLICATION_PDF, "plan-strategique-sectoriel-" + slug(group.getName()) + ".pdf");
     }
 
     @GetMapping("/groups/{groupId}/word")
     public ResponseEntity<byte[]> exportGroupWord(@PathVariable Long groupId) {
         WorkGroup group = resolveGroup(groupId);
         byte[] docx = wordExportService.exportGroupRecap(group);
-        return fileResponse(docx, DOCX_MEDIA_TYPE, "diagnostic-strategique-" + slug(group.getName()) + ".docx");
+        return fileResponse(docx, DOCX_MEDIA_TYPE, "plan-strategique-sectoriel-" + slug(group.getName()) + ".docx");
     }
 
     @GetMapping("/consolidated/excel")
@@ -73,13 +73,13 @@ public class AdminExportController {
     @GetMapping("/psd-final/pdf")
     public ResponseEntity<byte[]> exportPsdFinalPdf() {
         byte[] pdf = pdfExportService.exportPsdFinalDocument();
-        return fileResponse(pdf, MediaType.APPLICATION_PDF, "psd-2027-2031-document-final.pdf");
+        return fileResponse(pdf, MediaType.APPLICATION_PDF, "plan-strategique-senico-2027-2031.pdf");
     }
 
     @GetMapping("/psd-final/word")
     public ResponseEntity<byte[]> exportPsdFinalWord() {
         byte[] docx = wordExportService.exportPsdFinalDocument();
-        return fileResponse(docx, DOCX_MEDIA_TYPE, "psd-2027-2031-document-final.docx");
+        return fileResponse(docx, DOCX_MEDIA_TYPE, "plan-strategique-senico-2027-2031.docx");
     }
 
     private WorkGroup resolveGroup(Long groupId) {

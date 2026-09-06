@@ -75,6 +75,9 @@ public class WordExportService {
             Map<NarrativeBlockKey, PsdNarrativeBlock> narrativeByKey = psdNarrativeBlockRepository.findAll().stream()
                     .collect(Collectors.toMap(PsdNarrativeBlock::getKey, b -> b));
 
+            // La consolidation ne reprend que ce que la direction a valide (cf. PsdValidatedContent).
+            responsesByKey = PsdValidatedContent.validatedOnly(responsesByKey, statusesByKey);
+
             addPsdFinalCoverPage(doc);
             doc.createParagraph().setPageBreak(true);
             addPsdFinalSommaire(doc, entries, groups);
@@ -118,7 +121,7 @@ public class WordExportService {
         docTitle.setAlignment(ParagraphAlignment.CENTER);
         docTitle.setSpacingBefore(600);
         XWPFRun docTitleRun = docTitle.createRun();
-        docTitleRun.setText("Document final");
+        docTitleRun.setText("PLAN STRATÉGIQUE DE SENICO");
         docTitleRun.setBold(true);
         docTitleRun.setFontSize(16);
 

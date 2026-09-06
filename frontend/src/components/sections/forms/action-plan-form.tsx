@@ -3,7 +3,7 @@
 import { Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { EditableCell } from "@/components/data-table/editable-cell";
+import { EditableCell, EditableNumberCell } from "@/components/data-table/editable-cell";
 import { AddRowButton, RemoveRowButton } from "@/components/data-table/row-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,8 @@ import type { SectionFormProps } from "./types";
 const EMPTY_ROW: ActionPlanRow = {
   extrant: "",
   activities: "",
+  objective: "",
+  budget: 0,
   years: Object.fromEntries(PLAN_YEARS.map((y) => [String(y), false])),
   responsible: "",
 };
@@ -60,7 +62,7 @@ export function ActionPlanForm({ content, onChange, readOnly }: SectionFormProps
 
   return (
     <Tabs defaultValue={content.axes[0]?.axisCode}>
-      <TabsList>
+      <TabsList className="axis-tabs">
         {content.axes.map((axis) => (
           <TabsTrigger key={axis.axisCode} value={axis.axisCode}>
             {axis.axisCode.replace("AXE", "Axe ")}
@@ -95,6 +97,8 @@ export function ActionPlanForm({ content, onChange, readOnly }: SectionFormProps
                     <TableRow>
                       <TableHead className="min-w-[180px]">Extrants</TableHead>
                       <TableHead className="min-w-[200px]">Activités</TableHead>
+                      <TableHead className="min-w-[180px]">Objectif</TableHead>
+                      <TableHead className="min-w-[120px] text-right">Budget (FCFA)</TableHead>
                       {PLAN_YEARS.map((y) => (
                         <TableHead key={y} className="text-center">{y}</TableHead>
                       ))}
@@ -110,6 +114,12 @@ export function ActionPlanForm({ content, onChange, readOnly }: SectionFormProps
                         </TableCell>
                         <TableCell>
                           <EditableCell value={row.activities} onChange={(v) => updateRow(axisIndex, effectIndex, rowIndex, { activities: v })} readOnly={readOnly} multiline />
+                        </TableCell>
+                        <TableCell>
+                          <EditableCell value={row.objective ?? ""} onChange={(v) => updateRow(axisIndex, effectIndex, rowIndex, { objective: v })} readOnly={readOnly} multiline />
+                        </TableCell>
+                        <TableCell>
+                          <EditableNumberCell value={row.budget ?? 0} onChange={(v) => updateRow(axisIndex, effectIndex, rowIndex, { budget: v })} readOnly={readOnly} />
                         </TableCell>
                         {PLAN_YEARS.map((y) => (
                           <TableCell key={y} className="text-center">

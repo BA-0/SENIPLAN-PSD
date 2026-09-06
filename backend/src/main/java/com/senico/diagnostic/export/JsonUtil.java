@@ -15,10 +15,14 @@ import java.util.function.Function;
 final class JsonUtil {
 
     private static final DecimalFormat CURRENCY_FORMAT;
+    /** Taux de realisation (S01B) : une decimale, la ou les montants restent entiers. */
+    private static final DecimalFormat RATE_FORMAT;
     static {
         DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.FRANCE);
         symbols.setGroupingSeparator(' ');
+        symbols.setDecimalSeparator(',');
         CURRENCY_FORMAT = new DecimalFormat("#,##0", symbols);
+        RATE_FORMAT = new DecimalFormat("#,##0.#", symbols);
     }
 
     private JsonUtil() {
@@ -70,6 +74,15 @@ final class JsonUtil {
 
     static String formatCurrency(double amount) {
         return CURRENCY_FORMAT.format(Math.round(amount)) + " FCFA";
+    }
+
+    /** Effectifs, cibles, realises : entiers groupes, sans unite (contrairement a formatCurrency). */
+    static String formatNumber(double value) {
+        return CURRENCY_FORMAT.format(Math.round(value));
+    }
+
+    static String formatRate(double percent) {
+        return RATE_FORMAT.format(percent) + " %";
     }
 
     static String formatPercent(double percent) {

@@ -75,7 +75,9 @@ export default function LoginPage() {
       */}
       <div className="relative z-10 mx-auto flex h-screen w-full max-w-[1500px] flex-col items-center overflow-y-auto px-5 pb-[3vh] pt-[4vh]">
         <BrandLockup className="w-[clamp(230px,42vw,430px)] lg:hidden" />
-        <div aria-hidden className="hidden shrink-0 lg:block lg:h-[28vh]" />
+        <div className="hidden shrink-0 lg:flex lg:h-[28vh] lg:w-full lg:items-end lg:justify-center lg:pb-[2vh]">
+          <PlanMention />
+        </div>
 
         <div className="mt-[clamp(16px,4vh,44px)] w-full max-w-[368px] lg:mt-0">
           {/* Panneau opaque : plus de fond translucide flouté, qui brouillait à la
@@ -210,7 +212,27 @@ function BrandLockup({ className }: { className?: string }) {
         priority
         className="relative h-auto w-full drop-shadow-[0_14px_34px_rgba(0,0,0,0.6)] animate-fade-in-up"
       />
+      <PlanMention className="mt-2" />
     </div>
+  );
+}
+
+/**
+ * Mention « PS 2031 » sous le lettrage SENIPLAN, demandée en revue client. Sur lg+ le
+ * lettrage est incrusté dans la photo : la mention est alors posée en bas de la réserve
+ * de 28 vh laissée sous lui, donc juste sous le lettrage, comme sous lg où elle suit
+ * directement l'image.
+ */
+function PlanMention({ className }: { className?: string }) {
+  return (
+    <p
+      className={cn(
+        "text-center text-[13px] font-semibold uppercase tracking-[0.42em] text-white/85 drop-shadow-[0_4px_14px_rgba(0,0,0,0.75)]",
+        className
+      )}
+    >
+      PS 2031
+    </p>
   );
 }
 

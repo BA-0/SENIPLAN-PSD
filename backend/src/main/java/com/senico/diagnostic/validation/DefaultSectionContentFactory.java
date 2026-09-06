@@ -46,12 +46,38 @@ public class DefaultSectionContentFactory {
             "FLUX_EXPLOITATION", "FLUX_INVESTISSEMENT", "FLUX_FINANCEMENT", "VARIATION_NETTE_TRESORERIE", "TRESORERIE_FIN_PERIODE"
     };
 
+    /**
+     * Lignes du plan d'evolution des effectifs (S14B), issues du modele client
+     * "PLAN D'EVOLUTION DES EFFECTIFS (STATUT, HIERARCHIE, GENRE)" et corrigees en revue :
+     * la ligne "Fonctionnaire" est supprimee, "Journalier" est ajoutee en fin de bloc
+     * hierarchie (donc avant le bloc statut), "Expatrie" est conservee au statut.
+     */
+    public static final String[][] STAFF_ROWS = {
+            {"HIERARCHIE", "CADRE"},
+            {"HIERARCHIE", "AGENTS_MAITRISE"},
+            {"HIERARCHIE", "EMPLOYE"},
+            {"HIERARCHIE", "JOURNALIER"},
+            {"STATUT", "CDI"},
+            {"STATUT", "CDD"},
+            {"STATUT", "EXPATRIE"},
+    };
+
+    /**
+     * Domaines d'activites pre-remplis de la synthese des enjeux et contraintes (S06B),
+     * repris du "TABLEAU 3" transmis par le client. Champ libre : chaque direction
+     * renomme, ajoute ou supprime les lignes selon son perimetre.
+     */
+    public static final String[] CONSTRAINT_DOMAINS = {
+            "Transport de passagers", "Transport de fret", "Activites offshore",
+            "Manutention", "Agence maritime"
+    };
+
     public static final int[] YEARS = {2027, 2028, 2029, 2030, 2031};
     public static final String[] AXIS_CODES = {"AXE1", "AXE2", "AXE3", "AXE4"};
 
     public ObjectNode buildDefault(SectionType type) {
         return switch (type) {
-            case STAKEHOLDERS, INDICATOR_SHEET, RISK_MATRIX -> objectWithEmptyArray("rows");
+            case STAKEHOLDERS, INDICATOR_SHEET, RISK_MATRIX, PERFORMANCE_REVIEW_2026 -> objectWithEmptyArray("rows");
             case RESOURCES_MATRIX -> resourcesMatrix();
             case PESTEL -> pestel();
             case SWOT -> swot();
@@ -62,6 +88,10 @@ public class DefaultSectionContentFactory {
                 n.put("synthesisNote", "");
                 yield n;
             }
+            case RESOURCES_SYNTHESIS -> resourcesSynthesis();
+            case CONSTRAINTS_SYNTHESIS -> constraintsSynthesis();
+            case LOGFRAME_SYNTHESIS -> logframeSynthesis();
+            case STAFF_EVOLUTION -> staffEvolution();
             case STRATEGIC_FRAMEWORK -> strategicFramework();
             case STRATEGIC_AXES -> strategicAxes();
             case LOGICAL_FRAMEWORK -> logicalFramework();
@@ -155,6 +185,59 @@ public class DefaultSectionContentFactory {
             axes.add(axis);
         }
         n.set("axes", axes);
+        return n;
+    }
+
+    /** S03B : la reprise des lignes de la matrice S02 est injectee a la lecture par DerivedFieldsService. */
+    private ObjectNode resourcesSynthesis() {
+        ObjectNode n = F.objectNode();
+        n.put("synthesisNote", "");
+        n.set("majorStrengths", F.arrayNode());
+        n.set("majorWeaknesses", F.arrayNode());
+        n.set("priorityChallenges", F.arrayNode());
+        return n;
+    }
+
+    private ObjectNode constraintsSynthesis() {
+        ObjectNode n = F.objectNode();
+        ArrayNode rows = F.arrayNode();
+        for (String domain : CONSTRAINT_DOMAINS) {
+            ObjectNode row = F.objectNode();
+            row.put("domain", domain);
+            row.set("constraints", F.arrayNode());
+            row.set("challenges", F.arrayNode());
+            rows.add(row);
+        }
+        n.set("rows", rows);
+        return n;
+    }
+
+    /** S09B : les axes sont reconstruits a la lecture depuis S09 par DerivedFieldsService. */
+    private ObjectNode logframeSynthesis() {
+        ObjectNode n = F.objectNode();
+        n.put("synthesisNote", "");
+        return n;
+    }
+
+    private ObjectNode staffEvolution() {
+        ObjectNode n = F.objectNode();
+        ArrayNode rows = F.arrayNode();
+        for (String[] staffRow : STAFF_ROWS) {
+            ObjectNode row = F.objectNode();
+            row.put("category", staffRow[0]);
+            row.put("staffKey", staffRow[1]);
+            row.put("label", "");
+            ObjectNode years = F.objectNode();
+            for (int y : YEARS) {
+                ObjectNode cell = F.objectNode();
+                cell.put("male", 0);
+                cell.put("female", 0);
+                years.set(String.valueOf(y), cell);
+            }
+            row.set("years", years);
+            rows.add(row);
+        }
+        n.set("rows", rows);
         return n;
     }
 

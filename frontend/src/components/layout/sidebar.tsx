@@ -158,7 +158,7 @@ export function Sidebar() {
             <NavItem
               href="/admin/psd-final"
               icon={FileText}
-              label="Document final PSD"
+              label="Plan Stratégique de SENICO"
               active={pathname.startsWith("/admin/psd-final")}
               collapsed={showCollapsed}
             />
@@ -239,14 +239,14 @@ export function Sidebar() {
             onClick={() =>
               downloadMyGroupPdf().catch((error) => toast.error(extractErrorMessage(error, "Échec de l'export PDF")))
             }
-            title="Exporter en PDF"
+            title="Télécharger le Plan Stratégique Sectoriel (PDF)"
             className={cn(
               "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-white/75 hover:bg-white/5 transition-colors duration-150",
               showCollapsed && "justify-center px-2"
             )}
           >
             <FileDown className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
-            {!showCollapsed && "Exporter en PDF"}
+            {!showCollapsed && "Plan sectoriel (PDF)"}
           </button>
         )}
       </div>

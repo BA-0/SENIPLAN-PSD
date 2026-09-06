@@ -77,6 +77,21 @@
   }
 }
 
+@layer components {
+  /*
+   * Code couleur par direction sur les onglets d'axes (S09 a S12, S17).
+   * La couleur vient de --group-accent, pose par les vues qui affichent plusieurs
+   * directions cote a cote (consolidation en direct, vue comparative) ; hors de ces
+   * vues la variable n'existe pas et l'onglet garde le vert de marque.
+   * Le selecteur cible le bouton par son element pour passer devant les classes
+   * Tailwind `data-[state=active]:text-primary-700` du composant TabsTrigger.
+   */
+  .axis-tabs button[data-state="active"] {
+    color: var(--group-accent, inherit);
+    box-shadow: inset 0 -2px 0 0 var(--group-accent, transparent);
+  }
+}
+
 @layer utilities {
   .tabular-nums {
     font-feature-settings: "tnum";

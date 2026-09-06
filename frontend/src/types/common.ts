@@ -2,20 +2,25 @@ export type SectionStatus = "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED" | "VALID
 
 export type SectionType =
   | "STAKEHOLDERS"
+  | "PERFORMANCE_REVIEW_2026"
   | "RESOURCES_MATRIX"
   | "PESTEL"
+  | "RESOURCES_SYNTHESIS"
   | "SWOT"
   | "TOWS_MATRIX"
   | "CAUSAL_ANALYSIS"
+  | "CONSTRAINTS_SYNTHESIS"
   | "INVENTORY"
   | "STRATEGIC_FRAMEWORK"
   | "STRATEGIC_AXES"
   | "LOGICAL_FRAMEWORK"
+  | "LOGFRAME_SYNTHESIS"
   | "ACTION_PLAN"
   | "BUDGET"
   | "PERFORMANCE_FRAMEWORK"
   | "INDICATOR_SHEET"
   | "RISK_MATRIX"
+  | "STAFF_EVOLUTION"
   | "FINANCING_PLAN"
   | "BUSINESS_PLAN"
   | "STRATEGIC_SUMMARY";
@@ -70,7 +75,9 @@ export interface SectionRevisionContentResponse<T = unknown> {
   content: T;
 }
 
+// Dans l'ordre d'affichage du canevas (sections.display_order, cf. migration V10).
 export const SECTION_CODES = [
-  "S01", "S02", "S03", "S04", "S05", "S06", "S07", "S07B", "S08", "S09",
-  "S10", "S11", "S12", "S13", "S14", "S15", "S16", "S17",
+  "S01", "S01B", "S02", "S03", "S03B", "S04", "S05", "S06", "S06B", "S07",
+  "S07B", "S08", "S09", "S09B", "S11", "S10", "S13", "S12", "S14", "S14B",
+  "S15", "S16", "S17",
 ] as const;

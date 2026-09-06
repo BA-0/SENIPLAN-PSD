@@ -3,6 +3,7 @@ package com.senico.diagnostic.export;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.senico.diagnostic.domain.GroupSectionStatus;
 import com.senico.diagnostic.domain.SectionStatus;
+import com.senico.diagnostic.validation.DefaultSectionContentFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -58,6 +59,11 @@ public class SectionExportRenderer {
             case FINANCING_PLAN -> renderFinancingPlan(content);
             case BUSINESS_PLAN -> renderBusinessPlan(content);
             case STRATEGIC_SUMMARY -> renderStrategicSummary(content);
+            case PERFORMANCE_REVIEW_2026 -> List.of(RowsTableRenderer.render(JsonUtil.arr(content, "rows"), performanceReview2026Columns()));
+            case RESOURCES_SYNTHESIS -> renderResourcesSynthesis(content);
+            case CONSTRAINTS_SYNTHESIS -> List.of(RowsTableRenderer.render(JsonUtil.arr(content, "rows"), constraintsSynthesisColumns()));
+            case LOGFRAME_SYNTHESIS -> renderLogframeSynthesis(content);
+            case STAFF_EVOLUTION -> renderStaffEvolution(content);
         });
 
         return blocks;
@@ -273,7 +279,9 @@ public class SectionExportRenderer {
         List<ExportBlock> blocks = new ArrayList<>();
         List<JsonUtil.Column> leading = List.of(
                 new JsonUtil.Column("Extrant", n -> JsonUtil.text(n, "extrant")),
-                new JsonUtil.Column("Activités", n -> JsonUtil.text(n, "activities"))
+                new JsonUtil.Column("Activités", n -> JsonUtil.text(n, "activities")),
+                new JsonUtil.Column("Objectif", n -> JsonUtil.text(n, "objective")),
+                new JsonUtil.Column("Budget", n -> JsonUtil.formatCurrency(JsonUtil.num(n, "budget")))
         );
         List<JsonUtil.Column> trailing = List.of(
                 new JsonUtil.Column("Responsable", n -> JsonUtil.text(n, "responsible"))
@@ -289,6 +297,132 @@ public class SectionExportRenderer {
             }
         }
         return blocks;
+    }
+
+    // ---- S01B ----
+    private List<JsonUtil.Column> performanceReview2026Columns() {
+        return List.of(
+                new JsonUtil.Column("Domaine / Activité", n -> JsonUtil.text(n, "domain")),
+                new JsonUtil.Column("Indicateur", n -> JsonUtil.text(n, "indicator")),
+                new JsonUtil.Column("Cible 2026", n -> JsonUtil.formatNumber(JsonUtil.num(n, "target2026"))),
+                new JsonUtil.Column("Réalisé 2026", n -> JsonUtil.formatNumber(JsonUtil.num(n, "achieved2026"))),
+                new JsonUtil.Column("Taux", n -> {
+                    JsonNode rate = n.get("rate");
+                    return rate == null || rate.isNull() ? "—" : JsonUtil.formatRate(rate.asDouble());
+                }),
+                new JsonUtil.Column("Écart / Commentaire", n -> JsonUtil.text(n, "comment"))
+        );
+    }
+
+    // ---- S03B ----
+    private List<ExportBlock> renderResourcesSynthesis(JsonNode content) {
+        List<ExportBlock> blocks = new ArrayList<>();
+        String note = JsonUtil.text(content, "synthesisNote");
+        if (!note.isBlank()) {
+            blocks.add(new ExportBlock.Paragraph(note));
+        }
+        blocks.add(new ExportBlock.BulletList("Forces majeures", JsonUtil.strList(content, "majorStrengths")));
+        blocks.add(new ExportBlock.BulletList("Faiblesses majeures", JsonUtil.strList(content, "majorWeaknesses")));
+        blocks.add(new ExportBlock.BulletList("Défis prioritaires", JsonUtil.strList(content, "priorityChallenges")));
+
+        List<JsonNode> resources = JsonUtil.arr(content, "resources");
+        if (!resources.isEmpty()) {
+            blocks.add(new ExportBlock.Heading("Rappel de la matrice des ressources", 3));
+            blocks.add(RowsTableRenderer.render(resources, List.of(
+                    new JsonUtil.Column("Domaine", n -> SectionLabels.resource(JsonUtil.text(n, "resourceKey"))),
+                    new JsonUtil.Column("Forces", n -> JsonUtil.text(n, "strengths")),
+                    new JsonUtil.Column("Faiblesses", n -> JsonUtil.text(n, "weaknesses")),
+                    new JsonUtil.Column("Défis", n -> JsonUtil.text(n, "challenges"))
+            )));
+        }
+        return blocks;
+    }
+
+    // ---- S06B ----
+    private List<JsonUtil.Column> constraintsSynthesisColumns() {
+        return List.of(
+                new JsonUtil.Column("Domaine d'activités", n -> JsonUtil.text(n, "domain")),
+                new JsonUtil.Column("Contraintes prioritaires", n -> String.join("\n", JsonUtil.strList(n, "constraints"))),
+                new JsonUtil.Column("Défis et enjeux prioritaires", n -> String.join("\n", JsonUtil.strList(n, "challenges")))
+        );
+    }
+
+    // ---- S09B ----
+    private List<ExportBlock> renderLogframeSynthesis(JsonNode content) {
+        List<ExportBlock> blocks = new ArrayList<>();
+        String note = JsonUtil.text(content, "synthesisNote");
+        if (!note.isBlank()) {
+            blocks.add(new ExportBlock.Paragraph(note));
+        }
+        List<JsonUtil.Column> columns = new ArrayList<>();
+        columns.add(new JsonUtil.Column("Axe", this::axisTitle));
+        columns.add(new JsonUtil.Column("Objectif", n -> JsonUtil.text(n, "objective")));
+        for (String level : DefaultSectionContentFactory.LOGFRAME_LEVELS) {
+            columns.add(new JsonUtil.Column(SectionLabels.logframe(level), n -> JsonUtil.text(n, level)));
+        }
+        blocks.add(RowsTableRenderer.render(JsonUtil.arr(content, "axes"), columns));
+        return blocks;
+    }
+
+    // ---- S14B ----
+    private List<ExportBlock> renderStaffEvolution(JsonNode content) {
+        List<String> headers = new ArrayList<>();
+        headers.add("Effectifs");
+        for (String year : SectionLabels.YEARS) {
+            headers.add(year + " H");
+            headers.add(year + " F");
+            headers.add(year + " Total");
+        }
+
+        List<ExportBlock.TableRow> rows = new ArrayList<>();
+        String currentCategory = null;
+        for (JsonNode row : JsonUtil.arr(content, "rows")) {
+            // Les deux blocs (hierarchie, statut) sont des intertitres dans le modele
+            // client : on les reintroduit ici a chaque changement de categorie.
+            String category = JsonUtil.text(row, "category");
+            if (!category.equals(currentCategory)) {
+                currentCategory = category;
+                rows.add(categoryHeadingRow(SectionLabels.staffCategory(category), headers.size()));
+            }
+            List<ExportBlock.Cell> cells = new ArrayList<>();
+            cells.add(new ExportBlock.Cell(SectionLabels.staffRow(JsonUtil.text(row, "staffKey"), JsonUtil.text(row, "label"))));
+            JsonNode years = row.get("years");
+            for (String year : SectionLabels.YEARS) {
+                JsonNode cell = years != null ? years.get(year) : null;
+                cells.add(staffCell(JsonUtil.num(cell, "male")));
+                cells.add(staffCell(JsonUtil.num(cell, "female")));
+                cells.add(staffCell(JsonUtil.num(cell, "total")));
+            }
+            rows.add(new ExportBlock.TableRow(cells));
+        }
+
+        JsonNode totals = content.get("totals");
+        if (totals != null && !totals.isNull()) {
+            List<ExportBlock.Cell> cells = new ArrayList<>();
+            cells.add(new ExportBlock.Cell("TOTAUX", true, ExportBlock.Align.LEFT, ExportBlock.Background.NONE));
+            for (String year : SectionLabels.YEARS) {
+                JsonNode cell = totals.get(year);
+                cells.add(staffCell(JsonUtil.num(cell, "male")));
+                cells.add(staffCell(JsonUtil.num(cell, "female")));
+                cells.add(staffCell(JsonUtil.num(cell, "total")));
+            }
+            rows.add(new ExportBlock.TableRow(cells, true, ExportBlock.Background.PRIMARY_LIGHT));
+        }
+        return List.of(new ExportBlock.Table(headers, rows));
+    }
+
+    private ExportBlock.Cell staffCell(double value) {
+        return new ExportBlock.Cell(JsonUtil.formatNumber(value), false, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE);
+    }
+
+    /** Ligne d'intertitre occupant toute la largeur (les colonnes suivantes restent vides). */
+    private ExportBlock.TableRow categoryHeadingRow(String label, int columnCount) {
+        List<ExportBlock.Cell> cells = new ArrayList<>();
+        cells.add(new ExportBlock.Cell(label, true, ExportBlock.Align.LEFT, ExportBlock.Background.NONE));
+        for (int i = 1; i < columnCount; i++) {
+            cells.add(new ExportBlock.Cell(""));
+        }
+        return new ExportBlock.TableRow(cells, true, ExportBlock.Background.GREY);
     }
 
     // ---- S11 ----

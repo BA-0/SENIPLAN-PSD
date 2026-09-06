@@ -8,7 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Referentiel statique des 17 sections du canevas de diagnostic strategique.
+ * Referentiel statique des sections du canevas de diagnostic strategique.
+ * L'ordre d'affichage vient de display_order (cf. migrations V3 et V10), pas des id.
  */
 @Entity
 @Table(name = "sections")

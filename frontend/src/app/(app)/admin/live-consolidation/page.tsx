@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -20,7 +21,7 @@ import { SECTION_CODES } from "@/types/common";
 import type { SectionType } from "@/types/common";
 
 /**
- * Regroupement purement presentatif des 17 sections du canevas (n'affecte pas
+ * Regroupement purement presentatif des sections du canevas (n'affecte pas
  * les donnees, qui restent lues telles quelles depuis l'API a chaque section).
  */
 // Sections dont le formulaire est un (ou plusieurs) tableau large a nombreuses colonnes :
@@ -28,24 +29,29 @@ import type { SectionType } from "@/types/common";
 // ce qui evite le defilement horizontal premature observe sur S01/S02/S03/S09-S16.
 const WIDE_TABLE_TYPES = new Set<SectionType>([
   "STAKEHOLDERS",
+  "PERFORMANCE_REVIEW_2026",
   "RESOURCES_MATRIX",
   "PESTEL",
+  "RESOURCES_SYNTHESIS",
   "TOWS_MATRIX",
+  "CONSTRAINTS_SYNTHESIS",
   "LOGICAL_FRAMEWORK",
+  "LOGFRAME_SYNTHESIS",
   "ACTION_PLAN",
   "BUDGET",
   "PERFORMANCE_FRAMEWORK",
   "INDICATOR_SHEET",
   "RISK_MATRIX",
+  "STAFF_EVOLUTION",
   "FINANCING_PLAN",
   "BUSINESS_PLAN",
 ]);
 
 const SECTION_GROUPS: Record<string, (typeof SECTION_CODES)[number][]> = {
-  Diagnostic: ["S01", "S02", "S03", "S04", "S05", "S06", "S07", "S07B"],
-  "Stratégie": ["S08", "S09"],
-  "Mise en œuvre": ["S10", "S11", "S12", "S13"],
-  "Risques & financement": ["S14", "S15", "S16"],
+  Diagnostic: ["S01", "S01B", "S02", "S03", "S03B", "S04", "S05", "S06", "S06B", "S07", "S07B"],
+  "Stratégie": ["S08", "S09", "S09B"],
+  "Mise en œuvre": ["S11", "S10", "S13", "S12"],
+  "Risques & financement": ["S14", "S14B", "S15", "S16"],
   "Synthèse": ["S17"],
 };
 
@@ -111,7 +117,7 @@ export default function LiveConsolidationPage() {
   });
 
   // Si le referentiel des sections arrive apres coup et ne contient pas le code actif
-  // (ne devrait pas arriver, les 18 codes sont fixes), on ne change rien : SECTION_CODES fait foi.
+  // (ne devrait pas arriver, les codes sont fixes), on ne change rien : SECTION_CODES fait foi.
   useEffect(() => {
     if (!SECTION_CODES.includes(activeCode as (typeof SECTION_CODES)[number])) {
       setActiveCode(SECTION_CODES[0]);
@@ -139,7 +145,7 @@ export default function LiveConsolidationPage() {
         <div>
           <h1>Consolidation — vue en direct</h1>
           <p className="text-[13px] text-muted-foreground mt-1">
-            Les 17 sections, dans les mêmes formulaires que ceux remplis par les directions — sans export, toujours
+            Toutes les sections du canevas, dans les mêmes formulaires que ceux remplis par les directions — sans export, toujours
             à jour.
           </p>
         </div>
@@ -213,7 +219,13 @@ export default function LiveConsolidationPage() {
                 <Card
                   key={response.groupId}
                   className="border-l-[3px] overflow-hidden"
-                  style={{ borderLeftColor: groupColorById.get(response.groupId) ?? undefined }}
+                  style={
+                    {
+                      borderLeftColor: groupColorById.get(response.groupId) ?? undefined,
+                      // Repris par les onglets d'axes du formulaire (cf. .axis-tabs).
+                      "--group-accent": groupColorById.get(response.groupId) ?? undefined,
+                    } as CSSProperties
+                  }
                 >
                   <CardHeader className="flex flex-row items-center justify-between gap-2">
                     <CardTitle className="text-[15px] flex items-center gap-2">

@@ -127,6 +127,9 @@ public class PdfExportService {
             Map<NarrativeBlockKey, PsdNarrativeBlock> narrativeByKey = psdNarrativeBlockRepository.findAll().stream()
                     .collect(Collectors.toMap(PsdNarrativeBlock::getKey, b -> b));
 
+            // La consolidation ne reprend que ce que la direction a valide (cf. PsdValidatedContent).
+            responsesByKey = PsdValidatedContent.validatedOnly(responsesByKey, statusesByKey);
+
             addPsdFinalCoverPage(document);
             document.newPage();
             addPsdFinalSommairePage(document, entries, groups);
@@ -167,7 +170,7 @@ public class PdfExportService {
         subtitle.setSpacingBefore(10);
         document.add(subtitle);
 
-        Paragraph docTitle = new Paragraph("Document final", new Font(Font.HELVETICA, 16, Font.BOLD, Color.DARK_GRAY));
+        Paragraph docTitle = new Paragraph("PLAN STRATÉGIQUE DE SENICO", new Font(Font.HELVETICA, 16, Font.BOLD, Color.DARK_GRAY));
         docTitle.setAlignment(Element.ALIGN_CENTER);
         docTitle.setSpacingBefore(40);
         document.add(docTitle);
@@ -737,9 +740,14 @@ public class PdfExportService {
         subtitle.setSpacingBefore(10);
         document.add(subtitle);
 
-        Paragraph groupName = new Paragraph(group.getName(), new Font(Font.HELVETICA, 16, Font.BOLD, Color.DARK_GRAY));
+        Paragraph docTitle = new Paragraph("PLAN STRATÉGIQUE SECTORIEL", new Font(Font.HELVETICA, 16, Font.BOLD, Color.DARK_GRAY));
+        docTitle.setAlignment(Element.ALIGN_CENTER);
+        docTitle.setSpacingBefore(40);
+        document.add(docTitle);
+
+        Paragraph groupName = new Paragraph(group.getName(), new Font(Font.HELVETICA, 14, Font.NORMAL, Color.DARK_GRAY));
         groupName.setAlignment(Element.ALIGN_CENTER);
-        groupName.setSpacingBefore(40);
+        groupName.setSpacingBefore(8);
         document.add(groupName);
 
         Paragraph meta = new Paragraph(

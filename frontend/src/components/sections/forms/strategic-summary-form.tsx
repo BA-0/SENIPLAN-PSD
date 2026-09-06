@@ -72,7 +72,7 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
       </Card>
 
       <Tabs defaultValue={content.axes[0]?.axisCode}>
-        <TabsList>
+        <TabsList className="axis-tabs">
           {content.axes.map((axis) => (
             <TabsTrigger key={axis.axisCode} value={axis.axisCode}>
               {axis.axisCode.replace("AXE", "Axe ")}

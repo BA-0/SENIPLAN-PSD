@@ -1,8 +1,8 @@
 package com.senico.diagnostic.domain;
 
 /**
- * Cles des blocs de texte narratif du "Document final PSD 2027-2031" : les parties
- * du sommaire client qui ne proviennent d'aucune des 17 sections du canevas de diagnostic.
+ * Cles des blocs de texte narratif du "Plan Strategique de SENICO" : les parties
+ * du sommaire client qui ne proviennent d'aucune section du canevas de diagnostic.
  * L'ordre de l'enum pilote l'ordre d'affichage dans l'UI admin d'edition.
  */
 public enum NarrativeBlockKey {
@@ -10,6 +10,7 @@ public enum NarrativeBlockKey {
     MOT_DU_DG("Mot du DG"),
     PREAMBULE("Préambule"),
     INTRODUCTION("Introduction"),
+    SYNTHESE_PSD("Synthèse du PSD"),
     MISSIONS("Rappel des missions"),
     ORGANISATION("Organisation"),
     RESSOURCES("Ressources"),

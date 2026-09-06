@@ -32,7 +32,7 @@ public class MyExportController {
                 .orElseThrow(() -> new ResourceNotFoundException("Groupe introuvable"));
 
         byte[] pdf = pdfExportService.exportGroupRecap(group);
-        String filename = "diagnostic-strategique-" + slug(group.getName()) + ".pdf";
+        String filename = "plan-strategique-sectoriel-" + slug(group.getName()) + ".pdf";
 
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)

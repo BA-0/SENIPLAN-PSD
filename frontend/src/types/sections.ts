@@ -37,6 +37,19 @@ export interface StakeholdersContent {
   rows: StakeholderRow[];
 }
 
+// ---- S01B : Analyse des performances de l'annee 2026 ----
+export interface PerformanceReview2026Row {
+  domain: string;
+  indicator: string;
+  target2026: number;
+  achieved2026: number;
+  rate?: number | null; // calcule = realise / cible x 100, null si la cible vaut 0
+  comment: string;
+}
+export interface PerformanceReview2026Content {
+  rows: PerformanceReview2026Row[];
+}
+
 // ---- S02 : Matrice d'analyse des ressources et competences ----
 export const RESOURCE_KEYS = [
   "CADRE_JURIDIQUE_INSTITUTIONNEL", "LEADERSHIP_PILOTAGE_GOUVERNANCE", "POSITION_CONCURRENTIELLE",
@@ -86,6 +99,15 @@ export interface PestelRow {
 }
 export interface PestelContent {
   rows: PestelRow[];
+}
+
+// ---- S03B : Synthese de l'analyse des ressources ----
+export interface ResourcesSynthesisContent {
+  synthesisNote: string;
+  majorStrengths: string[];
+  majorWeaknesses: string[];
+  priorityChallenges: string[];
+  resources: ResourceRow[]; // lecture seule, synchronise depuis S02
 }
 
 // ---- S04 : Analyse SWOT (FFOM) ----
@@ -146,6 +168,16 @@ export interface CausalAnalysisContent {
   syncedTowsActions?: TowsActions; // lecture seule, synchronise depuis S05 (actions issues du SWOT)
 }
 
+// ---- S06B : Synthese des enjeux, contraintes et defis prioritaires ----
+export interface ConstraintsSynthesisRow {
+  domain: string;
+  constraints: string[];
+  challenges: string[];
+}
+export interface ConstraintsSynthesisContent {
+  rows: ConstraintsSynthesisRow[];
+}
+
 // ---- S07 : Inventaire (agregation en lecture depuis S01/S03/S04/S06) ----
 export interface InventoryContent {
   synthesisNote: string;
@@ -200,6 +232,22 @@ export interface LogicalFrameworkContent {
   axes: LogicalFrameworkAxis[];
 }
 
+// ---- S09B : Synthese du cadre logique (lecture seule, reconstruite depuis S09) ----
+export interface LogframeSynthesisAxis {
+  axisCode: string;
+  axisTitle?: string;
+  objective: string;
+  IMPACT: string;
+  EFFET: string;
+  EFFETS_IMMEDIATS: string;
+  EXTRANTS: string;
+  RESSOURCES_INTRANTS: string;
+}
+export interface LogframeSynthesisContent {
+  synthesisNote: string;
+  axes: LogframeSynthesisAxis[];
+}
+
 // ---- Annees communes (S10, S11, S12, S16) ----
 export const PLAN_YEARS = [2027, 2028, 2029, 2030, 2031] as const;
 
@@ -207,6 +255,8 @@ export const PLAN_YEARS = [2027, 2028, 2029, 2030, 2031] as const;
 export interface ActionPlanRow {
   extrant: string;
   activities: string;
+  objective: string;
+  budget: number;
   years: Record<string, boolean>;
   responsible: string;
 }
@@ -307,6 +357,38 @@ export interface RiskRow {
 }
 export interface RiskMatrixContent {
   rows: RiskRow[];
+}
+
+// ---- S14B : Plan d'evolution des effectifs (statut, hierarchie, genre) ----
+export const STAFF_CATEGORIES = ["HIERARCHIE", "STATUT"] as const;
+export type StaffCategory = (typeof STAFF_CATEGORIES)[number];
+export const STAFF_CATEGORY_LABELS: Record<StaffCategory, string> = {
+  HIERARCHIE: "Hiérarchie",
+  STATUT: "Statut",
+};
+export const STAFF_LABELS: Record<string, string> = {
+  CADRE: "Cadre",
+  AGENTS_MAITRISE: "Agents de maîtrise",
+  EMPLOYE: "Employé",
+  JOURNALIER: "Journalier",
+  CDI: "CDI",
+  CDD: "CDD",
+  EXPATRIE: "Expatrié",
+};
+export interface StaffCell {
+  male: number;
+  female: number;
+  total?: number; // calcule
+}
+export interface StaffEvolutionRow {
+  category: StaffCategory | string;
+  staffKey: string;
+  label: string; // intitule libre des lignes ajoutees a la main
+  years: Record<string, StaffCell>;
+}
+export interface StaffEvolutionContent {
+  rows: StaffEvolutionRow[];
+  totals?: Record<string, StaffCell>; // calcule
 }
 
 // ---- S15 : Plan de financement ----

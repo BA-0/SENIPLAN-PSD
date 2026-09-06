@@ -291,7 +291,7 @@ export default function AdminGroupsPage() {
                         <AlertDialogTitle>Démarrer un nouveau cycle ?</AlertDialogTitle>
                         <AlertDialogDescription>
                           Le cycle {g.currentCycle} de « {g.name} » sera archivé — la saisie soumise reste consultable
-                          ensuite dans les archives — puis les 17 sections seront remises à zéro pour une nouvelle
+                          ensuite dans les archives — puis toutes les sections seront remises à zéro pour une nouvelle
                           saisie (cycle {g.currentCycle + 1}).
                         </AlertDialogDescription>
                       </AlertDialogHeader>
@@ -328,7 +328,7 @@ export default function AdminGroupsPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    title="Exporter en PDF"
+                    title="Plan Stratégique Sectoriel — PDF"
                     onClick={() => downloadGroupPdf(g.id).catch((error) => toast.error(extractErrorMessage(error, "Échec de l'export PDF")))}
                   >
                     <FileDown className="h-4 w-4" />
@@ -336,7 +336,7 @@ export default function AdminGroupsPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    title="Exporter en Word"
+                    title="Plan Stratégique Sectoriel — Word"
                     onClick={() => downloadGroupWord(g.id).catch((error) => toast.error(extractErrorMessage(error, "Échec de l'export Word")))}
                   >
                     <FileText className="h-4 w-4" />

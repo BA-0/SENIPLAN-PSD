@@ -61,7 +61,7 @@ export function BudgetForm({ content, onChange, readOnly }: SectionFormProps<Bud
 
   return (
     <Tabs defaultValue={content.axes[0]?.axisCode}>
-      <TabsList>
+      <TabsList className="axis-tabs">
         {content.axes.map((axis) => (
           <TabsTrigger key={axis.axisCode} value={axis.axisCode}>
             {axis.axisCode.replace("AXE", "Axe ")}

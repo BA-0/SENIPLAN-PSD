@@ -52,7 +52,17 @@ public class SectionContentValidator {
                 requireField(content, "minimizeThreats");
             }
             case CAUSAL_ANALYSIS -> requireArray(content, "rows", strict);
+            case PERFORMANCE_REVIEW_2026 -> requireArray(content, "rows", strict);
+            case CONSTRAINTS_SYNTHESIS -> requireArray(content, "rows", strict);
+            case STAFF_EVOLUTION -> requireArray(content, "rows", strict);
             case INVENTORY -> requireField(content, "synthesisNote");
+            case RESOURCES_SYNTHESIS -> {
+                requireField(content, "synthesisNote");
+                requireArray(content, "majorStrengths", false);
+                requireArray(content, "majorWeaknesses", false);
+                requireArray(content, "priorityChallenges", false);
+            }
+            case LOGFRAME_SYNTHESIS -> requireField(content, "synthesisNote");
             case STRATEGIC_FRAMEWORK -> {
                 requireArray(content, "mission", false);
                 requireArray(content, "values", false);

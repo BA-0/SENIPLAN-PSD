@@ -311,7 +311,7 @@ public class PdfExportService {
         for (WorkGroup group : groups) {
             document.add(groupBanner(group));
 
-            ExportSectionData data = loadExportData(group, section, responsesByKey, statusesByKey);
+            ExportSectionData data = loadPsdExportData(group, section, responsesByKey, statusesByKey);
             List<ExportBlock> blocks = sectionExportRenderer.render(data);
             pdfBlockEmitter.emit(document, blocks);
 
@@ -658,7 +658,7 @@ public class PdfExportService {
         for (WorkGroup group : groups) {
             document.add(groupBanner(group));
 
-            ExportSectionData data = loadExportData(group, section, responsesByKey, statusesByKey);
+            ExportSectionData data = loadPsdExportData(group, section, responsesByKey, statusesByKey);
             List<ExportBlock> blocks = sectionExportRenderer.render(data);
             pdfBlockEmitter.emit(document, blocks);
 
@@ -720,6 +720,19 @@ public class PdfExportService {
         JsonNode content = response != null ? parseJson(response.getContentJson()) : objectMapper.createObjectNode();
         Integer version = response != null ? response.getVersion() : 0;
         return new ExportSectionData(section, content, version, status);
+    }
+
+    /**
+     * Variante pour le Plan Strategique de SENICO, dont les reponses ont deja ete filtrees sur
+     * les seules sections validees : une reponse absente alors que le statut n'est pas
+     * NOT_STARTED signale un contenu retenu faute de validation, pas une section vide.
+     */
+    private ExportSectionData loadPsdExportData(WorkGroup group, SectionDef section,
+                                                 Map<String, SectionResponse> responsesByKey,
+                                                 Map<String, GroupSectionStatus> statusesByKey) {
+        ExportSectionData data = loadExportData(group, section, responsesByKey, statusesByKey);
+        boolean withheld = !PsdValidatedContent.isValidated(data.status());
+        return new ExportSectionData(data.section(), data.content(), data.version(), data.status(), withheld);
     }
 
     private void addCoverPage(Document document, WorkGroup group) throws DocumentException {

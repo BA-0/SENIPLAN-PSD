@@ -21,6 +21,11 @@ final class PsdValidatedContent {
     private PsdValidatedContent() {
     }
 
+    /** Vrai si la direction a valide cette section, donc si son contenu peut etre consolide. */
+    static boolean isValidated(GroupSectionStatus status) {
+        return status != null && status.getStatus() == SectionStatus.VALIDATED;
+    }
+
     /**
      * @param responsesByKey reponses indexees "groupId:sectionId"
      * @param statusesByKey  statuts indexes de la meme facon
@@ -30,8 +35,7 @@ final class PsdValidatedContent {
                                                       Map<String, GroupSectionStatus> statusesByKey) {
         Map<String, SectionResponse> filtered = new LinkedHashMap<>();
         responsesByKey.forEach((key, response) -> {
-            GroupSectionStatus status = statusesByKey.get(key);
-            if (status != null && status.getStatus() == SectionStatus.VALIDATED) {
+            if (isValidated(statusesByKey.get(key))) {
                 filtered.put(key, response);
             }
         });

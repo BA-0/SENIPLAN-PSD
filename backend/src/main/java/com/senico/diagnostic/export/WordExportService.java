@@ -258,7 +258,11 @@ public class WordExportService {
             JsonNode content = response != null ? parseJson(response.getContentJson()) : objectMapper.createObjectNode();
             Integer version = response != null ? response.getVersion() : 0;
 
-            List<ExportBlock> blocks = sectionExportRenderer.render(new ExportSectionData(section, content, version, status));
+            // Reponses deja filtrees sur les sections validees : une reponse absente alors que le
+            // statut n'est pas NOT_STARTED signale un contenu retenu, pas une section vide.
+            boolean withheld = !PsdValidatedContent.isValidated(status);
+            List<ExportBlock> blocks = sectionExportRenderer.render(
+                    new ExportSectionData(section, content, version, status, withheld));
             wordBlockEmitter.emit(doc, blocks);
         }
     }

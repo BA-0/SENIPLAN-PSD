@@ -36,7 +36,7 @@ public class SectionExportRenderer {
 
         JsonNode content = data.content();
         if (content == null || content.isNull() || content.isEmpty()) {
-            blocks.add(new ExportBlock.Paragraph("Aucune donnée saisie pour cette section.", true, false));
+            blocks.add(new ExportBlock.Paragraph(emptyContentMessage(data), true, false));
             return blocks;
         }
 
@@ -67,6 +67,23 @@ public class SectionExportRenderer {
         });
 
         return blocks;
+    }
+
+    /**
+     * Contenu vide : deux causes possibles, qu'il ne faut pas confondre. Soit la direction n'a
+     * rien saisi, soit elle a saisi mais la section n'est pas validee et le document consolide
+     * ne la reprend donc pas — dire « aucune donnee saisie » dans ce second cas serait faux.
+     */
+    private String emptyContentMessage(ExportSectionData data) {
+        if (!data.withheldPendingValidation()) {
+            return "Aucune donnée saisie pour cette section.";
+        }
+        SectionStatus status = data.status() != null ? data.status().getStatus() : SectionStatus.NOT_STARTED;
+        if (status == SectionStatus.NOT_STARTED) {
+            return "Aucune donnée saisie pour cette section.";
+        }
+        return "Section non validée : son contenu n'est pas repris dans le document consolidé. Statut actuel : "
+                + statusLabel(status.name()) + ".";
     }
 
     public static String statusLabel(String status) {

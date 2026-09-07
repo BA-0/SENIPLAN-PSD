@@ -54,6 +54,7 @@ public class PdfExportService {
     private final WorkGroupRepository workGroupRepository;
     private final PsdNarrativeBlockRepository psdNarrativeBlockRepository;
     private final SectionExportRenderer sectionExportRenderer;
+    private final ExportContentReader exportContentReader;
     private final PdfBlockEmitter pdfBlockEmitter;
     private final ObjectMapper objectMapper;
 
@@ -506,7 +507,7 @@ public class PdfExportService {
 
     private JsonNode contentFor(WorkGroup group, SectionDef section, Map<String, SectionResponse> responsesByKey) {
         SectionResponse response = responsesByKey.get(key(group.getId(), section.getId()));
-        return response != null ? parseJson(response.getContentJson()) : objectMapper.createObjectNode();
+        return exportContentReader.read(group.getId(), section, response);
     }
 
     private String key(Long groupId, Integer sectionId) {
@@ -717,7 +718,7 @@ public class PdfExportService {
         String k = key(group.getId(), section.getId());
         SectionResponse response = responsesByKey.get(k);
         GroupSectionStatus status = statusesByKey.get(k);
-        JsonNode content = response != null ? parseJson(response.getContentJson()) : objectMapper.createObjectNode();
+        JsonNode content = exportContentReader.read(group.getId(), section, response);
         Integer version = response != null ? response.getVersion() : 0;
         return new ExportSectionData(section, content, version, status);
     }
@@ -790,7 +791,7 @@ public class PdfExportService {
     private ExportSectionData loadExportData(Long groupId, SectionDef section) {
         SectionResponse response = sectionResponseRepository.findByGroupIdAndSectionId(groupId, section.getId()).orElse(null);
         GroupSectionStatus status = groupSectionStatusRepository.findByGroupIdAndSectionId(groupId, section.getId()).orElse(null);
-        JsonNode content = response != null ? parseJson(response.getContentJson()) : objectMapper.createObjectNode();
+        JsonNode content = exportContentReader.read(groupId, section, response);
         Integer version = response != null ? response.getVersion() : 0;
         return new ExportSectionData(section, content, version, status);
     }

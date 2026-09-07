@@ -73,6 +73,18 @@ export async function reviewSection<T>(
   return data;
 }
 
+/**
+ * Valide d'un coup les sections soumises d'une direction. Le serveur ignore celles qui
+ * ne sont pas au statut « Soumis », l'appel est donc sans effet s'il est rejoue.
+ */
+export async function validateAllSubmitted(groupId: number, comment?: string): Promise<{ validatedCount: number }> {
+  const { data } = await apiClient.post<{ validatedCount: number }>(
+    `/admin/groups/${groupId}/sections/validate-all`,
+    { decision: "VALIDATE", comment }
+  );
+  return data;
+}
+
 export async function adminUpdateSectionContent<T>(
   groupId: number,
   code: string,

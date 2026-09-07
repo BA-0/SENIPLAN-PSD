@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Archive, FileDown, FileText, KeyRound, Pencil, Plus, Power, RotateCcw } from "lucide-react";
+import { Archive, CheckCheck, FileDown, FileText, KeyRound, Pencil, Plus, Power, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,7 @@ import {
   getGroupCycleSections,
   listGroupCycles,
   startNewCycle,
+  validateAllSubmitted,
 } from "@/lib/api/admin";
 import { downloadConsolidatedExcel, downloadGroupPdf, downloadGroupWord } from "@/lib/api/exports";
 import { extractErrorMessage } from "@/lib/api-client";
@@ -140,6 +141,19 @@ export default function AdminGroupsPage() {
     mutationFn: resetLeaderPassword,
     onSuccess: (data) => setNewCredentials({ username: data.username, password: data.temporaryPassword }),
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la réinitialisation")),
+  });
+
+  const validateAllMutation = useMutation({
+    mutationFn: (groupId: number) => validateAllSubmitted(groupId),
+    onSuccess: (result) => {
+      if (result.validatedCount === 0) {
+        toast.info("Aucune section en attente de validation pour cette direction");
+      } else {
+        toast.success(`${result.validatedCount} section(s) validée(s)`);
+      }
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec de la validation en masse")),
   });
 
   const newCycleMutation = useMutation({
@@ -322,6 +336,29 @@ export default function AdminGroupsPage() {
                       <AlertDialogFooter>
                         <AlertDialogCancel>Annuler</AlertDialogCancel>
                         <AlertDialogAction onClick={() => resetPasswordMutation.mutate(g.id)}>Réinitialiser</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" title="Valider toutes les sections soumises">
+                        <CheckCheck className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Valider toutes les sections soumises ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Toutes les sections de {g.name} au statut « Soumis » passeront à « Validé », et seront
+                          donc reprises dans le Plan Stratégique de SENICO. Les brouillons en cours et les sections
+                          renvoyées pour révision ne sont pas touchés.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => validateAllMutation.mutate(g.id)}>
+                          Tout valider
+                        </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>

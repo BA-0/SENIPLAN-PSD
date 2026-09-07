@@ -38,6 +38,7 @@ public class ExcelExportService {
     private final SectionResponseRepository sectionResponseRepository;
     private final GroupSectionStatusRepository groupSectionStatusRepository;
     private final ObjectMapper objectMapper;
+    private final ExportContentReader exportContentReader;
 
     private static final DateTimeFormatter PERIOD_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -80,7 +81,7 @@ public class ExcelExportService {
                 int rowIndex = 2;
                 for (WorkGroup group : groups) {
                     Row row = sheet.createRow(rowIndex++);
-                    String content = renderContentForPeriod(group.getId(), section.getId(), periodStart, periodEnd);
+                    String content = renderContentForPeriod(section, group.getId(), periodStart, periodEnd);
                     row.setHeightInPoints(Math.max(60, 14 * Math.max(1, content.split("\n").length)));
 
                     Cell groupCell = row.createCell(0);
@@ -153,7 +154,7 @@ public class ExcelExportService {
                 for (WorkGroup group : groups) {
                     String k = key(group.getId(), section.getId());
                     Row row = sheet.createRow(rowIndex++);
-                    String content = renderFullContent(responsesByKey.get(k));
+                    String content = renderFullContent(section, responsesByKey.get(k));
                     row.setHeightInPoints(Math.max(60, 14 * Math.max(1, content.split("\n").length)));
 
                     Cell groupCell = row.createCell(0);
@@ -251,16 +252,11 @@ public class ExcelExportService {
         return groupId + ":" + sectionId;
     }
 
-    private String renderFullContent(SectionResponse response) {
+    private String renderFullContent(SectionDef section, SectionResponse response) {
         if (response == null) {
             return "(aucune donnée)";
         }
-        JsonNode content;
-        try {
-            content = objectMapper.readTree(response.getContentJson());
-        } catch (Exception e) {
-            content = objectMapper.createObjectNode();
-        }
+        JsonNode content = exportContentReader.read(response.getGroup().getId(), section, response);
         String text = JsonContentRenderer.renderAsText(content).trim();
         return text.isBlank() ? "(aucune donnée)" : text;
     }
@@ -317,18 +313,13 @@ public class ExcelExportService {
         return status.map(s -> s.getStatus().name()).orElse("NOT_STARTED");
     }
 
-    private String renderContentForPeriod(Long groupId, Integer sectionId, LocalDateTime periodStart, LocalDateTime periodEnd) {
-        return sectionResponseRepository.findByGroupIdAndSectionId(groupId, sectionId)
+    private String renderContentForPeriod(SectionDef section, Long groupId, LocalDateTime periodStart, LocalDateTime periodEnd) {
+        return sectionResponseRepository.findByGroupIdAndSectionId(groupId, section.getId())
                 .map(r -> {
                     if (r.getUpdatedAt() == null || r.getUpdatedAt().isBefore(periodStart) || r.getUpdatedAt().isAfter(periodEnd)) {
                         return "(aucune mise à jour sur la période)";
                     }
-                    JsonNode content;
-                    try {
-                        content = objectMapper.readTree(r.getContentJson());
-                    } catch (Exception e) {
-                        content = objectMapper.createObjectNode();
-                    }
+                    JsonNode content = exportContentReader.read(groupId, section, r);
                     String text = JsonContentRenderer.renderAsText(content).trim();
                     return text.isBlank() ? "(aucune donnée)" : text;
                 })

@@ -400,6 +400,39 @@ public class SectionEngineService {
         return buildResponse(group, section, response, status);
     }
 
+    /**
+     * Valide d'un coup toutes les sections soumises d'une direction. Sans cela, alimenter le
+     * Plan Strategique de SENICO — qui ne reprend que le valide — demande d'ouvrir chaque
+     * section une par une, soit une vingtaine de passages par direction.
+     *
+     * <p>Ne touche qu'aux sections au statut SUBMITTED : un brouillon en cours, une section
+     * renvoyee pour revision ou deja validee est laissee telle quelle, et la methode est donc
+     * sans effet si on la rejoue.</p>
+     *
+     * @return le nombre de sections effectivement validees
+     */
+    @Transactional
+    public int adminValidateAllSubmitted(Long groupId, String comment, User adminUser) {
+        WorkGroup group = resolveGroup(groupId);
+        LocalDateTime now = LocalDateTime.now();
+        int validated = 0;
+
+        for (GroupSectionStatus status : groupSectionStatusRepository.findByGroupIdWithSection(groupId)) {
+            if (status.getStatus() != SectionStatus.SUBMITTED) {
+                continue;
+            }
+            status.setStatus(SectionStatus.VALIDATED);
+            status.setValidatedAt(now);
+            status.setAdminComment(comment);
+            status.setLastActivityAt(now);
+            groupSectionStatusRepository.save(status);
+            activityLogService.log(group, adminUser, ActivityLogService.ACTION_VALIDATE, status.getSection());
+            publishProgress(group, status.getSection(), status);
+            validated++;
+        }
+        return validated;
+    }
+
     @Transactional
     public SectionContentResponse adminReview(Long groupId, String sectionCode, AdminReviewRequest request, User adminUser) {
         WorkGroup group = resolveGroup(groupId);

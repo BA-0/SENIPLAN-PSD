@@ -43,6 +43,7 @@ public class WordExportService {
     private final WorkGroupRepository workGroupRepository;
     private final PsdNarrativeBlockRepository psdNarrativeBlockRepository;
     private final SectionExportRenderer sectionExportRenderer;
+    private final ExportContentReader exportContentReader;
     private final WordBlockEmitter wordBlockEmitter;
     private final ObjectMapper objectMapper;
 
@@ -255,7 +256,7 @@ public class WordExportService {
             String key = group.getId() + ":" + section.getId();
             SectionResponse response = responsesByKey.get(key);
             GroupSectionStatus status = statusesByKey.get(key);
-            JsonNode content = response != null ? parseJson(response.getContentJson()) : objectMapper.createObjectNode();
+            JsonNode content = exportContentReader.read(group.getId(), section, response);
             Integer version = response != null ? response.getVersion() : 0;
 
             // Reponses deja filtrees sur les sections validees : une reponse absente alors que le
@@ -480,7 +481,7 @@ public class WordExportService {
 
     private JsonNode contentFor(WorkGroup group, SectionDef section, Map<String, SectionResponse> responsesByKey) {
         SectionResponse response = responsesByKey.get(group.getId() + ":" + section.getId());
-        return response != null ? parseJson(response.getContentJson()) : objectMapper.createObjectNode();
+        return exportContentReader.read(group.getId(), section, response);
     }
 
     private void addWordSectionHeader(XWPFDocument doc, String label) {
@@ -562,7 +563,7 @@ public class WordExportService {
     private ExportSectionData loadExportData(Long groupId, SectionDef section) {
         SectionResponse response = sectionResponseRepository.findByGroupIdAndSectionId(groupId, section.getId()).orElse(null);
         GroupSectionStatus status = groupSectionStatusRepository.findByGroupIdAndSectionId(groupId, section.getId()).orElse(null);
-        JsonNode content = response != null ? parseJson(response.getContentJson()) : objectMapper.createObjectNode();
+        JsonNode content = exportContentReader.read(groupId, section, response);
         Integer version = response != null ? response.getVersion() : 0;
         return new ExportSectionData(section, content, version, status);
     }

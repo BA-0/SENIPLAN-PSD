@@ -3,6 +3,7 @@ package com.senico.diagnostic.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.senico.diagnostic.domain.User;
 import com.senico.diagnostic.dto.section.AdminReviewRequest;
+import com.senico.diagnostic.dto.section.BulkValidationResponse;
 import com.senico.diagnostic.dto.section.SectionContentResponse;
 import com.senico.diagnostic.dto.section.SectionRevisionContentResponse;
 import com.senico.diagnostic.dto.section.SectionRevisionSummaryDto;
@@ -50,6 +51,19 @@ public class AdminSectionController {
         User admin = userRepository.findById(principal.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable"));
         return ResponseEntity.ok(sectionEngineService.adminReview(groupId, code, request, admin));
+    }
+
+    /** Valide en une fois toutes les sections soumises de la direction (cf. SectionEngineService). */
+    @PostMapping("/validate-all")
+    public ResponseEntity<BulkValidationResponse> validateAll(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long groupId,
+            @RequestBody(required = false) AdminReviewRequest request) {
+        User admin = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable"));
+        String comment = request != null ? request.comment() : null;
+        int validated = sectionEngineService.adminValidateAllSubmitted(groupId, comment, admin);
+        return ResponseEntity.ok(new BulkValidationResponse(validated));
     }
 
     @PutMapping("/{code}/content")

@@ -13,11 +13,13 @@ import com.senico.diagnostic.domain.NarrativeBlockKey;
 import com.senico.diagnostic.domain.PsdNarrativeBlock;
 import com.senico.diagnostic.domain.SectionDef;
 import com.senico.diagnostic.domain.SectionResponse;
+import com.senico.diagnostic.domain.SectionStatus;
 import com.senico.diagnostic.domain.WorkGroup;
 import com.senico.diagnostic.export.PsdDocumentStructure.Entry;
 import com.senico.diagnostic.export.PsdDocumentStructure.MajorHeading;
 import com.senico.diagnostic.export.PsdDocumentStructure.NarrativeEntry;
 import com.senico.diagnostic.export.PsdDocumentStructure.SectionEntry;
+import com.senico.diagnostic.export.PsdDocumentStructure.SynthesisEntry;
 import com.senico.diagnostic.repository.GroupSectionStatusRepository;
 import com.senico.diagnostic.repository.PsdNarrativeBlockRepository;
 import com.senico.diagnostic.repository.SectionDefRepository;
@@ -55,6 +57,7 @@ public class PdfExportService {
     private final PsdNarrativeBlockRepository psdNarrativeBlockRepository;
     private final SectionExportRenderer sectionExportRenderer;
     private final ExportContentReader exportContentReader;
+    private final PsdSynthesisBuilder psdSynthesisBuilder;
     private final PdfBlockEmitter pdfBlockEmitter;
     private final ObjectMapper objectMapper;
 
@@ -141,6 +144,8 @@ public class PdfExportService {
                     addPsdMajorHeadingPage(document, heading);
                 } else if (entry instanceof NarrativeEntry narrative) {
                     addPsdNarrativePage(document, narrative, narrativeByKey.get(narrative.key()));
+                } else if (entry instanceof SynthesisEntry synthesis) {
+                    addPsdSynthesisPage(document, synthesis, groups, responsesByKey, statusesByKey);
                 } else if (entry instanceof SectionEntry sectionEntry) {
                     addPsdSectionEntryPage(document, sectionEntry, groups, responsesByKey, statusesByKey);
                 }
@@ -233,6 +238,31 @@ public class PdfExportService {
         document.add(legend);
     }
 
+    private void addPsdSynthesisPage(Document document, SynthesisEntry synthesis, List<WorkGroup> groups,
+                                      Map<String, SectionResponse> responsesByKey,
+                                      Map<String, GroupSectionStatus> statusesByKey) throws DocumentException {
+        Paragraph header = new Paragraph(synthesis.label(), new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY));
+        header.setSpacingAfter(4);
+        document.add(header);
+
+        LineSeparator separator = new LineSeparator();
+        separator.setLineColor(PRIMARY);
+        document.add(new Chunk(separator));
+        document.add(new Paragraph(" "));
+
+        pdfBlockEmitter.emit(document, buildSynthesisBlocks(groups, responsesByKey, statusesByKey));
+    }
+
+    private List<ExportBlock> buildSynthesisBlocks(List<WorkGroup> groups,
+                                                    Map<String, SectionResponse> responsesByKey,
+                                                    Map<String, GroupSectionStatus> statusesByKey) {
+        Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
+                .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
+        long validated = statusesByKey.values().stream().filter(PsdValidatedContent::isValidated).count();
+        return psdSynthesisBuilder.build(groups, sectionsByCode, responsesByKey,
+                (int) validated, statusesByKey.size());
+    }
+
     private void addPsdMajorHeadingPage(Document document, MajorHeading heading) throws DocumentException {
         Paragraph spacer = new Paragraph(" ");
         spacer.setSpacingAfter(150);
@@ -305,21 +335,38 @@ public class PdfExportService {
         }
     }
 
-    /** Rendu historique : un bloc complet par direction (utilise pour les sections qui restent propres a chaque direction : axes, budget, plan d'actions...). */
+    /**
+     * Rendu fusionne : un seul tableau par rubrique, toutes directions confondues, avec une
+     * colonne "Direction" (cf. {@link PsdSectionMerger}). Remplace la repetition d'un bloc
+     * complet par direction, qui obligeait a parcourir cinq fois la meme rubrique.
+     */
     private void addPsdPerGroupSection(Document document, SectionDef section, List<WorkGroup> groups,
                                         Map<String, SectionResponse> responsesByKey,
                                         Map<String, GroupSectionStatus> statusesByKey) throws DocumentException {
+        pdfBlockEmitter.emit(document, mergedSectionBlocks(section, groups, responsesByKey, statusesByKey));
+    }
+
+    private List<ExportBlock> mergedSectionBlocks(SectionDef section, List<WorkGroup> groups,
+                                                   Map<String, SectionResponse> responsesByKey,
+                                                   Map<String, GroupSectionStatus> statusesByKey) {
+        List<PsdSectionMerger.GroupBlocks> perGroup = new ArrayList<>();
         for (WorkGroup group : groups) {
-            document.add(groupBanner(group));
-
             ExportSectionData data = loadPsdExportData(group, section, responsesByKey, statusesByKey);
-            List<ExportBlock> blocks = sectionExportRenderer.render(data);
-            pdfBlockEmitter.emit(document, blocks);
-
-            Paragraph spacing = new Paragraph(" ");
-            spacing.setSpacingAfter(10);
-            document.add(spacing);
+            boolean included = !data.withheldPendingValidation();
+            perGroup.add(new PsdSectionMerger.GroupBlocks(
+                    group,
+                    included ? sectionExportRenderer.render(data) : List.of(),
+                    included,
+                    included ? null : exclusionReason(data)));
         }
+        return PsdSectionMerger.merge(perGroup);
+    }
+
+    private String exclusionReason(ExportSectionData data) {
+        SectionStatus status = data.status() != null ? data.status().getStatus() : SectionStatus.NOT_STARTED;
+        return status == SectionStatus.NOT_STARTED
+                ? "non renseignée"
+                : "non validée — " + SectionExportRenderer.statusLabel(status.name()).toLowerCase();
     }
 
     /**

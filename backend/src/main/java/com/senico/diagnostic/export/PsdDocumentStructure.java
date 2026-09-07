@@ -25,7 +25,14 @@ public final class PsdDocumentStructure {
     private PsdDocumentStructure() {
     }
 
-    public sealed interface Entry permits MajorHeading, NarrativeEntry, SectionEntry {
+    public sealed interface Entry permits MajorHeading, NarrativeEntry, SectionEntry, SynthesisEntry {
+    }
+
+    /**
+     * Recap chiffre calcule a partir des sections reprises dans le document
+     * (cf. {@link PsdSynthesisBuilder}), par opposition aux blocs narratifs qui, eux, sont saisis.
+     */
+    public record SynthesisEntry(String label) implements Entry {
     }
 
     public record MajorHeading(String title) implements Entry {
@@ -46,7 +53,7 @@ public final class PsdDocumentStructure {
                 new NarrativeEntry("Mot du DG", NarrativeBlockKey.MOT_DU_DG),
                 new NarrativeEntry("Préambule", NarrativeBlockKey.PREAMBULE),
                 new NarrativeEntry("Introduction", NarrativeBlockKey.INTRODUCTION),
-                new NarrativeEntry("Synthèse du PSD", NarrativeBlockKey.SYNTHESE_PSD),
+                new SynthesisEntry("Synthèse du PSD"),
 
                 new MajorHeading("Présentation de la structure"),
                 new NarrativeEntry("Rappel des missions", NarrativeBlockKey.MISSIONS),

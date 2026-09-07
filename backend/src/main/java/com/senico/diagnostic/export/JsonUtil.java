@@ -28,6 +28,11 @@ final class JsonUtil {
     private JsonUtil() {
     }
 
+    /** Objet vide, pour les sections absentes : evite un null a propager dans les extracteurs. */
+    static JsonNode emptyObject() {
+        return com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
+    }
+
     static String text(JsonNode node, String field) {
         if (node == null) {
             return "";

@@ -10,7 +10,6 @@ public enum NarrativeBlockKey {
     MOT_DU_DG("Mot du DG"),
     PREAMBULE("Préambule"),
     INTRODUCTION("Introduction"),
-    SYNTHESE_PSD("Synthèse du PSD"),
     MISSIONS("Rappel des missions"),
     ORGANISATION("Organisation"),
     RESSOURCES("Ressources"),

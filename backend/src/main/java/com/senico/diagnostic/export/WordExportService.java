@@ -7,11 +7,13 @@ import com.senico.diagnostic.domain.NarrativeBlockKey;
 import com.senico.diagnostic.domain.PsdNarrativeBlock;
 import com.senico.diagnostic.domain.SectionDef;
 import com.senico.diagnostic.domain.SectionResponse;
+import com.senico.diagnostic.domain.SectionStatus;
 import com.senico.diagnostic.domain.WorkGroup;
 import com.senico.diagnostic.export.PsdDocumentStructure.Entry;
 import com.senico.diagnostic.export.PsdDocumentStructure.MajorHeading;
 import com.senico.diagnostic.export.PsdDocumentStructure.NarrativeEntry;
 import com.senico.diagnostic.export.PsdDocumentStructure.SectionEntry;
+import com.senico.diagnostic.export.PsdDocumentStructure.SynthesisEntry;
 import com.senico.diagnostic.repository.GroupSectionStatusRepository;
 import com.senico.diagnostic.repository.PsdNarrativeBlockRepository;
 import com.senico.diagnostic.repository.SectionDefRepository;
@@ -44,6 +46,7 @@ public class WordExportService {
     private final PsdNarrativeBlockRepository psdNarrativeBlockRepository;
     private final SectionExportRenderer sectionExportRenderer;
     private final ExportContentReader exportContentReader;
+    private final PsdSynthesisBuilder psdSynthesisBuilder;
     private final WordBlockEmitter wordBlockEmitter;
     private final ObjectMapper objectMapper;
 
@@ -89,6 +92,8 @@ public class WordExportService {
                     addPsdMajorHeading(doc, heading);
                 } else if (entry instanceof NarrativeEntry narrative) {
                     addPsdNarrative(doc, narrative, narrativeByKey.get(narrative.key()));
+                } else if (entry instanceof SynthesisEntry synthesis) {
+                    addPsdSynthesis(doc, synthesis, groups, responsesByKey, statusesByKey);
                 } else if (entry instanceof SectionEntry sectionEntry) {
                     addPsdSectionEntry(doc, sectionEntry, groups, responsesByKey, statusesByKey);
                 }
@@ -153,7 +158,14 @@ public class WordExportService {
                 run.setFontSize(12);
                 run.setColor(DARK_HEX);
             } else {
-                String label = entry instanceof NarrativeEntry n ? n.label() : ((SectionEntry) entry).label();
+                String label;
+                if (entry instanceof NarrativeEntry n) {
+                    label = n.label();
+                } else if (entry instanceof SynthesisEntry sy) {
+                    label = sy.label();
+                } else {
+                    label = ((SectionEntry) entry).label();
+                }
                 p.setIndentationLeft(300);
                 run.setText("• " + label);
                 run.setFontSize(10);
@@ -190,6 +202,25 @@ public class WordExportService {
         run.setBold(true);
         run.setFontSize(24);
         run.setColor(PRIMARY_HEX);
+    }
+
+    private String exclusionReason(GroupSectionStatus status) {
+        SectionStatus value = status != null ? status.getStatus() : SectionStatus.NOT_STARTED;
+        return value == SectionStatus.NOT_STARTED
+                ? "non renseignée"
+                : "non validée — " + SectionExportRenderer.statusLabel(value.name()).toLowerCase();
+    }
+
+    private void addPsdSynthesis(XWPFDocument doc, SynthesisEntry synthesis, List<WorkGroup> groups,
+                                  Map<String, SectionResponse> responsesByKey,
+                                  Map<String, GroupSectionStatus> statusesByKey) {
+        addWordSectionHeader(doc, synthesis.label());
+
+        Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
+                .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
+        long validated = statusesByKey.values().stream().filter(PsdValidatedContent::isValidated).count();
+        wordBlockEmitter.emit(doc, psdSynthesisBuilder.build(groups, sectionsByCode, responsesByKey,
+                (int) validated, statusesByKey.size()));
     }
 
     private void addPsdNarrative(XWPFDocument doc, NarrativeEntry narrative, PsdNarrativeBlock block) {
@@ -250,9 +281,10 @@ public class WordExportService {
     private void addPsdPerGroupSection(XWPFDocument doc, SectionDef section, List<WorkGroup> groups,
                                         Map<String, SectionResponse> responsesByKey,
                                         Map<String, GroupSectionStatus> statusesByKey) {
+        // Rendu fusionne : un seul tableau par rubrique, toutes directions confondues
+        // (cf. PsdSectionMerger), au lieu d'un bloc complet repete par direction.
+        List<PsdSectionMerger.GroupBlocks> perGroup = new ArrayList<>();
         for (WorkGroup group : groups) {
-            addWordGroupBanner(doc, group);
-
             String key = group.getId() + ":" + section.getId();
             SectionResponse response = responsesByKey.get(key);
             GroupSectionStatus status = statusesByKey.get(key);
@@ -261,11 +293,15 @@ public class WordExportService {
 
             // Reponses deja filtrees sur les sections validees : une reponse absente alors que le
             // statut n'est pas NOT_STARTED signale un contenu retenu, pas une section vide.
-            boolean withheld = !PsdValidatedContent.isValidated(status);
-            List<ExportBlock> blocks = sectionExportRenderer.render(
-                    new ExportSectionData(section, content, version, status, withheld));
-            wordBlockEmitter.emit(doc, blocks);
+            boolean included = PsdValidatedContent.isValidated(status);
+            ExportSectionData data = new ExportSectionData(section, content, version, status, !included);
+            perGroup.add(new PsdSectionMerger.GroupBlocks(
+                    group,
+                    included ? sectionExportRenderer.render(data) : List.of(),
+                    included,
+                    included ? null : exclusionReason(status)));
         }
+        wordBlockEmitter.emit(doc, PsdSectionMerger.merge(perGroup));
     }
 
     /**

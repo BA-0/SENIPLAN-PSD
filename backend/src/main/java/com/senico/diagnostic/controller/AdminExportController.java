@@ -70,6 +70,19 @@ public class AdminExportController {
         return fileResponse(xlsx, XLSX_MEDIA_TYPE, "diagnostic-strategique-consolide-complet.xlsx");
     }
 
+    /** Note de synthese : le resume de toutes les directions, sans le detail des tableaux. */
+    @GetMapping("/synthesis/pdf")
+    public ResponseEntity<byte[]> exportSynthesisNotePdf() {
+        byte[] pdf = pdfExportService.exportSynthesisNote();
+        return fileResponse(pdf, MediaType.APPLICATION_PDF, "note-de-synthese-psd-2027-2031.pdf");
+    }
+
+    @GetMapping("/synthesis/word")
+    public ResponseEntity<byte[]> exportSynthesisNoteWord() {
+        byte[] docx = wordExportService.exportSynthesisNote();
+        return fileResponse(docx, DOCX_MEDIA_TYPE, "note-de-synthese-psd-2027-2031.docx");
+    }
+
     @GetMapping("/psd-final/pdf")
     public ResponseEntity<byte[]> exportPsdFinalPdf() {
         byte[] pdf = pdfExportService.exportPsdFinalDocument();

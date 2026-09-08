@@ -46,6 +46,7 @@ public class WordExportService {
     private final SectionExportRenderer sectionExportRenderer;
     private final ExportContentReader exportContentReader;
     private final PsdSynthesisBuilder psdSynthesisBuilder;
+    private final PsdBriefBuilder psdBriefBuilder;
     private final WordBlockEmitter wordBlockEmitter;
 
     public byte[] exportGroupRecap(WorkGroup group) {
@@ -102,6 +103,47 @@ public class WordExportService {
         } catch (Exception e) {
             throw new IllegalStateException("Erreur de generation du document final PSD", e);
         }
+    }
+
+    /** Note de synthese : pendant Word de {@link PdfExportService#exportSynthesisNote()}. */
+    public byte[] exportSynthesisNote() {
+        try (XWPFDocument doc = new XWPFDocument(); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            List<WorkGroup> groups = workGroupRepository.findAll();
+            Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
+                    .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
+            Map<String, SectionResponse> responsesByKey = sectionResponseRepository.findAll().stream()
+                    .collect(Collectors.toMap(r -> r.getGroup().getId() + ":" + r.getSection().getId(), r -> r));
+            Map<String, GroupSectionStatus> statusesByKey = groupSectionStatusRepository.findAllWithGroupAndSection().stream()
+                    .collect(Collectors.toMap(s -> s.getGroup().getId() + ":" + s.getSection().getId(), s -> s));
+
+            addSynthesisNoteCoverPage(doc);
+            doc.createParagraph().setPageBreak(true);
+            wordBlockEmitter.emit(doc,
+                    psdBriefBuilder.build(groups, sectionsByCode, responsesByKey, statusesByKey));
+
+            doc.write(baos);
+            return baos.toByteArray();
+        } catch (Exception e) {
+            throw new IllegalStateException("Erreur de generation de la note de synthese", e);
+        }
+    }
+
+    private void addSynthesisNoteCoverPage(XWPFDocument doc) {
+        addCenteredTitle(doc, "SENICO SA — Plan Stratégique", 22, PRIMARY_HEX);
+        addCenteredTitle(doc, "Plan Stratégique de Développement (PSD) 2027-2031", 14, "64748B");
+        addCenteredTitle(doc, "NOTE DE SYNTHÈSE", 16, DARK_HEX);
+        addCenteredTitle(doc, "Export généré le " + java.time.LocalDateTime.now().format(DATE_FORMAT), 11, "64748B");
+    }
+
+    private void addCenteredTitle(XWPFDocument doc, String text, int size, String colorHex) {
+        XWPFParagraph p = doc.createParagraph();
+        p.setAlignment(ParagraphAlignment.CENTER);
+        p.setSpacingAfter(160);
+        XWPFRun run = p.createRun();
+        run.setText(text);
+        run.setBold(size >= 16);
+        run.setFontSize(size);
+        run.setColor(colorHex);
     }
 
     private void addPsdFinalCoverPage(XWPFDocument doc) {

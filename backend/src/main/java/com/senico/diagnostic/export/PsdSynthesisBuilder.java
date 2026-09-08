@@ -64,59 +64,19 @@ class PsdSynthesisBuilder {
     private ExportBlock.Table keyFiguresTable(List<WorkGroup> groups, Map<String, SectionDef> sectionsByCode,
                                               Map<String, SectionResponse> responsesByKey,
                                               int validatedCount, int totalCount) {
-        int axes = 0;
-        int specificObjectives = 0;
-        int actions = 0;
-        double budget = 0;
-        double financing = 0;
-        int staffFirstYear = 0;
-        int staffLastYear = 0;
-
-        String firstYear = SectionLabels.YEARS[0];
-        String lastYear = SectionLabels.YEARS[SectionLabels.YEARS.length - 1];
-
-        for (WorkGroup group : groups) {
-            JsonNode strategicAxes = content(group, "S08", sectionsByCode, responsesByKey);
-            for (JsonNode axis : JsonUtil.arr(strategicAxes, "axes")) {
-                if (!JsonUtil.text(axis, "title").isBlank()) {
-                    axes++;
-                }
-                specificObjectives += JsonUtil.arr(axis, "specificObjectives").size();
-            }
-
-            JsonNode actionPlan = content(group, "S10", sectionsByCode, responsesByKey);
-            for (JsonNode axis : JsonUtil.arr(actionPlan, "axes")) {
-                for (JsonNode effect : JsonUtil.arr(axis, "effects")) {
-                    actions += JsonUtil.arr(effect, "rows").size();
-                }
-            }
-
-            budget += JsonUtil.num(content(group, "S11", sectionsByCode, responsesByKey), "grandTotal");
-            financing += JsonUtil.num(content(group, "S15", sectionsByCode, responsesByKey), "total");
-
-            JsonNode staff = content(group, "S14B", sectionsByCode, responsesByKey);
-            JsonNode totals = staff.get("totals");
-            if (totals != null) {
-                staffFirstYear += (int) JsonUtil.num(totals.get(firstYear), "total");
-                staffLastYear += (int) JsonUtil.num(totals.get(lastYear), "total");
-            }
-        }
+        PsdKeyFigures f = PsdKeyFigures.compute(groups,
+                (group, code) -> content(group, code, sectionsByCode, responsesByKey), validatedCount);
 
         List<ExportBlock.TableRow> rows = new ArrayList<>();
-        rows.add(figure("Directions couvertes", String.valueOf(groups.size())));
+        rows.add(figure("Directions couvertes", String.valueOf(f.directions())));
         rows.add(figure("Sections validées", validatedCount + " / " + totalCount));
-        rows.add(figure("Axes stratégiques", String.valueOf(axes)));
-        rows.add(figure("Objectifs spécifiques", String.valueOf(specificObjectives)));
-        rows.add(figure("Actions programmées " + firstYear + "-" + lastYear, String.valueOf(actions)));
-        rows.add(figure("Budget global " + firstYear + "-" + lastYear, JsonUtil.formatCurrency(budget)));
-        rows.add(figure("Financement mobilisé", JsonUtil.formatCurrency(financing)));
-        // Effectifs a zero des deux cotes : la section n'est pas encore renseignee, une
-        // evolution "0 -> 0" ne dirait rien, on l'annonce comme non renseignee.
-        rows.add(figure("Effectifs " + firstYear + " → " + lastYear,
-                staffFirstYear == 0 && staffLastYear == 0
-                        ? "—"
-                        : staffFirstYear + " → " + staffLastYear + " agents"));
-
+        rows.add(figure("Axes stratégiques", String.valueOf(f.axes())));
+        rows.add(figure("Objectifs spécifiques", String.valueOf(f.specificObjectives())));
+        rows.add(figure("Actions programmées " + SectionLabels.YEARS[0]
+                + "-" + SectionLabels.YEARS[SectionLabels.YEARS.length - 1], String.valueOf(f.actions())));
+        rows.add(figure("Budget global", JsonUtil.formatCurrency(f.budget())));
+        rows.add(figure("Financement mobilisé", JsonUtil.formatCurrency(f.financing())));
+        rows.add(figure("Évolution des effectifs", f.staffEvolutionLabel()));
         return new ExportBlock.Table(List.of("Indicateur", "Valeur"), rows);
     }
 

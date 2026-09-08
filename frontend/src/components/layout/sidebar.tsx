@@ -15,6 +15,7 @@ import {
   FileText,
   MonitorPlay,
   Radio,
+  ClipboardList,
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
@@ -153,6 +154,13 @@ export function Sidebar() {
               icon={Radio}
               label="Consolidation en direct"
               active={pathname.startsWith("/admin/live-consolidation")}
+              collapsed={showCollapsed}
+            />
+            <NavItem
+              href="/admin/synthesis"
+              icon={ClipboardList}
+              label="Note de synthèse"
+              active={pathname.startsWith("/admin/synthesis")}
               collapsed={showCollapsed}
             />
             <NavItem

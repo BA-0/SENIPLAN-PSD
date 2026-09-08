@@ -57,6 +57,7 @@ public class PdfExportService {
     private final SectionExportRenderer sectionExportRenderer;
     private final ExportContentReader exportContentReader;
     private final PsdSynthesisBuilder psdSynthesisBuilder;
+    private final PsdBriefBuilder psdBriefBuilder;
     private final PdfBlockEmitter pdfBlockEmitter;
 
     public byte[] exportGroupRecap(WorkGroup group) {
@@ -156,6 +157,67 @@ public class PdfExportService {
         }
     }
 
+    /**
+     * Note de synthese : le resume de trois a quatre pages de toutes les directions, sans le
+     * detail des tableaux (cf. {@link PsdBriefBuilder}).
+     */
+    public byte[] exportSynthesisNote() {
+        try {
+            Document document = new Document(PageSize.A4, 40, 40, 60, 50);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            PdfWriter.getInstance(document, baos);
+            document.open();
+
+            List<WorkGroup> groups = workGroupRepository.findAll();
+            Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
+                    .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
+            Map<String, SectionResponse> responsesByKey = sectionResponseRepository.findAll().stream()
+                    .collect(Collectors.toMap(r -> key(r.getGroup().getId(), r.getSection().getId()), r -> r));
+            Map<String, GroupSectionStatus> statusesByKey = groupSectionStatusRepository.findAllWithGroupAndSection().stream()
+                    .collect(Collectors.toMap(s -> key(s.getGroup().getId(), s.getSection().getId()), s -> s));
+
+            addSynthesisNoteCoverPage(document);
+            document.newPage();
+            pdfBlockEmitter.emit(document,
+                    psdBriefBuilder.build(groups, sectionsByCode, responsesByKey, statusesByKey));
+
+            document.close();
+            return baos.toByteArray();
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Erreur de generation de la note de synthese", e);
+        }
+    }
+
+    private void addSynthesisNoteCoverPage(Document document) throws DocumentException {
+        Paragraph spacer = new Paragraph(" ");
+        spacer.setSpacingAfter(120);
+        document.add(spacer);
+
+        Paragraph title = new Paragraph("SENICO SA — Plan Stratégique",
+                new Font(Font.HELVETICA, 22, Font.BOLD, PRIMARY));
+        title.setAlignment(Element.ALIGN_CENTER);
+        document.add(title);
+
+        Paragraph subtitle = new Paragraph("Plan Stratégique de Développement (PSD) 2027-2031",
+                new Font(Font.HELVETICA, 14, Font.NORMAL, SLATE));
+        subtitle.setAlignment(Element.ALIGN_CENTER);
+        subtitle.setSpacingBefore(10);
+        document.add(subtitle);
+
+        Paragraph docTitle = new Paragraph("NOTE DE SYNTHÈSE",
+                new Font(Font.HELVETICA, 16, Font.BOLD, Color.DARK_GRAY));
+        docTitle.setAlignment(Element.ALIGN_CENTER);
+        docTitle.setSpacingBefore(40);
+        document.add(docTitle);
+
+        Paragraph meta = new Paragraph(
+                "Export généré le " + java.time.LocalDateTime.now().format(DATE_FORMAT),
+                new Font(Font.HELVETICA, 11, Font.NORMAL, SLATE));
+        meta.setAlignment(Element.ALIGN_CENTER);
+        meta.setSpacingBefore(10);
+        document.add(meta);
+    }
+
     private void addPsdFinalCoverPage(Document document) throws DocumentException {
         Font titleFont = new Font(Font.HELVETICA, 22, Font.BOLD, PRIMARY);
         Font subtitleFont = new Font(Font.HELVETICA, 14, Font.NORMAL, SLATE);
@@ -201,18 +263,21 @@ public class PdfExportService {
         Font majorFont = new Font(Font.HELVETICA, 11, Font.BOLD, Color.DARK_GRAY);
         Font itemFont = new Font(Font.HELVETICA, 10, Font.NORMAL, Color.DARK_GRAY);
         for (Entry entry : entries) {
-            Paragraph p;
-            if (entry instanceof MajorHeading heading) {
-                p = new Paragraph(heading.title(), majorFont);
-                p.setSpacingBefore(8);
-            } else if (entry instanceof NarrativeEntry narrative) {
-                p = new Paragraph("• " + narrative.label(), itemFont);
-                p.setIndentationLeft(15);
-            } else {
-                SectionEntry sectionEntry = (SectionEntry) entry;
-                p = new Paragraph("• " + sectionEntry.label(), itemFont);
-                p.setIndentationLeft(15);
-            }
+            // Switch exhaustif sur l'interface scellee Entry plutot qu'une cascade de
+            // instanceof terminee par un cast : c'est justement ce cast qui faisait
+            // planter le sommaire depuis l'ajout de SynthesisEntry (« Synthese du PSD »),
+            // que le corps du document rendait deja. Ajouter un type d'entree ne
+            // compilera desormais plus tant que le sommaire ne le traite pas.
+            Paragraph p = switch (entry) {
+                case MajorHeading heading -> {
+                    Paragraph major = new Paragraph(heading.title(), majorFont);
+                    major.setSpacingBefore(8);
+                    yield major;
+                }
+                case NarrativeEntry narrative -> sommaireItem(narrative.label(), itemFont);
+                case SynthesisEntry synthesis -> sommaireItem(synthesis.label(), itemFont);
+                case SectionEntry sectionEntry -> sommaireItem(sectionEntry.label(), itemFont);
+            };
             document.add(p);
         }
 
@@ -234,6 +299,13 @@ public class PdfExportService {
             legend.addCell(bodyCell(group.getName(), Element.ALIGN_LEFT, Color.WHITE));
         }
         document.add(legend);
+    }
+
+    /** Ligne de sommaire : meme forme pour toutes les entrees hors intertitres. */
+    private Paragraph sommaireItem(String label, Font itemFont) {
+        Paragraph item = new Paragraph("• " + label, itemFont);
+        item.setIndentationLeft(15);
+        return item;
     }
 
     private void addPsdSynthesisPage(Document document, SynthesisEntry synthesis, List<WorkGroup> groups,

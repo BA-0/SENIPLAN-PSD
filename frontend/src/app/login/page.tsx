@@ -16,6 +16,7 @@ import { login } from "@/lib/api/auth";
 import { extractErrorMessage } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
+import { homePathFor } from "@/lib/roles";
 
 const schema = z.object({
   username: z.string().min(1, "L'identifiant est requis"),
@@ -52,7 +53,7 @@ export default function LoginPage() {
       const auth = await login(values.username, values.password);
       setAuth(auth.accessToken, auth.refreshToken, auth.user);
       toast.success(`Bienvenue, ${auth.user.fullName}`);
-      router.push(auth.user.role === "ADMIN" ? "/admin" : "/dashboard");
+      router.push(homePathFor(auth.user.role));
     } catch (error) {
       setServerError(extractErrorMessage(error, "Identifiant ou mot de passe incorrect"));
     } finally {

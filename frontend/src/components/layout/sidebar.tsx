@@ -30,6 +30,7 @@ import { downloadMyGroupPdf } from "@/lib/api/exports";
 import { extractErrorMessage } from "@/lib/api-client";
 import { useMobileNavStore } from "@/store/mobile-nav-store";
 import { StatusDot } from "./status-dot";
+import { canPilot } from "@/lib/roles";
 
 export function Sidebar() {
   const { user } = useCurrentUser();
@@ -39,7 +40,9 @@ export function Sidebar() {
   const mobileOpen = useMobileNavStore((s) => s.open);
   const setMobileOpen = useMobileNavStore((s) => s.setOpen);
 
-  const isAdmin = user?.role === "ADMIN";
+  // Le DG partage l'espace de pilotage de l'admin ; seules les actions
+  // d'administration technique, dans les pages elles-memes, lui sont fermees.
+  const isAdmin = canPilot(user?.role);
   // Le repli icone n'a de sens qu'en sidebar dockee (lg+) : dans le tiroir
   // mobile, toujours ouvert, on garde les libelles lisibles.
   const showCollapsed = collapsed && !mobileOpen;

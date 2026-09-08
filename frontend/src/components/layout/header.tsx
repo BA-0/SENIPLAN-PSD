@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOut, Menu, Volume2, VolumeX } from "lucide-react";
+import { canPilot, ROLE_LABELS } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -38,7 +39,7 @@ export function Header() {
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-foreground">{user?.groupName ?? "Administration"}</p>
           <p className="truncate text-[12px] text-muted-foreground">
-            {user?.role === "ADMIN" ? "Comité de pilotage" : "Espace chef de groupe"}
+            {user?.role ? ROLE_LABELS[user.role] : ""}
           </p>
         </div>
       </div>
@@ -54,7 +55,7 @@ export function Header() {
           </div>
         </div>
         <ThemeToggle />
-        {user?.role === "ADMIN" && (
+        {canPilot(user?.role) && (
           <Button
             variant="ghost"
             size="icon"

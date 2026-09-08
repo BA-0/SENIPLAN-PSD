@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -53,8 +54,15 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/ws/**").permitAll()
-                        .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
+                        // Administration technique : reste a l'admin, y compris vis-a-vis du DG.
+                        // Ces regles precedent celle de /admin/** : la premiere qui correspond gagne.
                         .requestMatchers("/api/v1/groups/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/v1/admin/users/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/groups/*/cycles/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/admin/groups/*/sections/*/content").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/groups/*/sections/**").hasAuthority("ROLE_ADMIN")
+                        // Consultation, revision et validation : admin et direction generale.
+                        .requestMatchers("/api/v1/admin/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_DIRECTEUR_GENERAL")
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())

@@ -85,6 +85,29 @@ export async function validateAllSubmitted(groupId: number, comment?: string): P
   return data;
 }
 
+export interface StaffAccount {
+  id: number;
+  username: string;
+  fullName: string;
+  role: string;
+  roleLabel: string;
+  enabled: boolean;
+  lastLoginAt: string | null;
+}
+
+/** Comptes transverses : admin et direction generale, qui ne dependent d'aucun groupe. */
+export async function listStaffAccounts(): Promise<StaffAccount[]> {
+  const { data } = await apiClient.get<StaffAccount[]>("/admin/users/staff");
+  return data;
+}
+
+export async function resetStaffPassword(userId: number): Promise<{ username: string; temporaryPassword: string }> {
+  const { data } = await apiClient.post<{ username: string; temporaryPassword: string }>(
+    `/admin/users/${userId}/reset-password`
+  );
+  return data;
+}
+
 export async function adminUpdateSectionContent<T>(
   groupId: number,
   code: string,

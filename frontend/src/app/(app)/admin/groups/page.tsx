@@ -36,6 +36,9 @@ import {
   validateAllSubmitted,
 } from "@/lib/api/admin";
 import { downloadConsolidatedExcel, downloadGroupPdf, downloadGroupWord } from "@/lib/api/exports";
+import { canAdminister } from "@/lib/roles";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { listStaffAccounts, resetStaffPassword } from "@/lib/api/admin";
 import { extractErrorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
 import { CycleArchivePanel } from "@/components/cycles/cycle-archive-panel";
@@ -60,6 +63,10 @@ const editSchema = z.object({
 
 export default function AdminGroupsPage() {
   const queryClient = useQueryClient();
+  const { user } = useCurrentUser();
+  // Creation, edition, cycles, mots de passe, activation : administration technique,
+  // fermee au DG cote serveur (SecurityConfig) autant qu'ici.
+  const peutAdministrer = canAdminister(user?.role);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<WorkGroupDto | null>(null);
   const [newCredentials, setNewCredentials] = useState<{ username: string; password: string } | null>(null);
@@ -143,6 +150,18 @@ export default function AdminGroupsPage() {
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la réinitialisation")),
   });
 
+  const { data: staffAccounts } = useQuery({
+    queryKey: ["admin", "users", "staff"],
+    queryFn: listStaffAccounts,
+    enabled: peutAdministrer,
+  });
+
+  const resetStaffPasswordMutation = useMutation({
+    mutationFn: resetStaffPassword,
+    onSuccess: (data) => setNewCredentials({ username: data.username, password: data.temporaryPassword }),
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec de la réinitialisation")),
+  });
+
   const validateAllMutation = useMutation({
     mutationFn: (groupId: number) => validateAllSubmitted(groupId),
     onSuccess: (result) => {
@@ -185,11 +204,13 @@ export default function AdminGroupsPage() {
             <FileDown className="h-4 w-4" /> Export Excel consolidé
           </Button>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <Button variant="primary">
-              <Plus className="h-4 w-4" /> Nouveau groupe
-            </Button>
-          </DialogTrigger>
+          {peutAdministrer && (
+            <DialogTrigger asChild>
+              <Button variant="primary">
+                <Plus className="h-4 w-4" /> Nouveau groupe
+              </Button>
+            </DialogTrigger>
+          )}
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Créer un groupe de travail</DialogTitle>
@@ -282,9 +303,12 @@ export default function AdminGroupsPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-4 sm:shrink-0">
                   <span className="text-[13px] font-semibold text-primary-600 w-12 text-right">{g.completionPercent}%</span>
-                  <Button variant="ghost" size="icon" title="Modifier le groupe" onClick={() => openEditDialog(g)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                  {peutAdministrer && (
+                    <Button variant="ghost" size="icon" title="Modifier le groupe" onClick={() => openEditDialog(g)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {peutAdministrer && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -317,9 +341,11 @@ export default function AdminGroupsPage() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                  <Button variant="ghost" size="icon" title="Archives des cycles précédents" onClick={() => setArchiveGroup(g)}>
+                  )}
+<Button variant="ghost" size="icon" title="Archives des cycles précédents" onClick={() => setArchiveGroup(g)}>
                     <Archive className="h-4 w-4" />
                   </Button>
+                  {peutAdministrer && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon" title="Réinitialiser le mot de passe">
@@ -339,6 +365,7 @@ export default function AdminGroupsPage() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                  )}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon" title="Valider toutes les sections soumises">
@@ -378,14 +405,16 @@ export default function AdminGroupsPage() {
                   >
                     <FileText className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title={g.enabled ? "Désactiver le groupe" : "Activer le groupe"}
-                    onClick={() => toggleMutation.mutate({ id: g.id, enabled: !g.enabled })}
-                  >
-                    <Power className={g.enabled ? "h-4 w-4 text-primary-500" : "h-4 w-4 text-muted-foreground"} />
-                  </Button>
+                  {peutAdministrer && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title={g.enabled ? "Désactiver le groupe" : "Activer le groupe"}
+                      onClick={() => toggleMutation.mutate({ id: g.id, enabled: !g.enabled })}
+                    >
+                      <Power className={g.enabled ? "h-4 w-4 text-primary-500" : "h-4 w-4 text-muted-foreground"} />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
@@ -432,6 +461,62 @@ export default function AdminGroupsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {peutAdministrer && (staffAccounts?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Comptes transverses</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-[13px] text-muted-foreground">
+              Comptes qui ne dépendent d&apos;aucune direction. C&apos;est ici qu&apos;on donne son accès au DG : le
+              mot de passe généré ne s&apos;affiche qu&apos;une seule fois.
+            </p>
+            <div className="divide-y divide-border">
+              {(staffAccounts ?? []).map((account) => (
+                <div key={account.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-medium text-foreground">
+                      {account.fullName}
+                      <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground">
+                        {account.roleLabel}
+                      </span>
+                    </p>
+                    <p className="text-[12px] text-muted-foreground">
+                      {account.username}
+                      {account.lastLoginAt
+                        ? ` · Dernière connexion : ${formatDateTime(account.lastLoginAt)}`
+                        : " · Jamais connecté"}
+                    </p>
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="secondary" size="sm">
+                        <KeyRound className="h-4 w-4" /> Réinitialiser le mot de passe
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Réinitialiser le mot de passe ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Un nouveau mot de passe sera généré pour {account.fullName} ({account.username}) et affiché
+                          une seule fois. L&apos;ancien cessera immédiatement de fonctionner.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => resetStaffPasswordMutation.mutate(account.id)}>
+                          Réinitialiser
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={!!newCredentials} onOpenChange={(open) => !open && setNewCredentials(null)}>
         <DialogContent>

@@ -1,7 +1,6 @@
 package com.senico.diagnostic.export;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.senico.diagnostic.domain.GroupSectionStatus;
 import com.senico.diagnostic.domain.NarrativeBlockKey;
 import com.senico.diagnostic.domain.PsdNarrativeBlock;
@@ -48,7 +47,6 @@ public class WordExportService {
     private final ExportContentReader exportContentReader;
     private final PsdSynthesisBuilder psdSynthesisBuilder;
     private final WordBlockEmitter wordBlockEmitter;
-    private final ObjectMapper objectMapper;
 
     public byte[] exportGroupRecap(WorkGroup group) {
         try (XWPFDocument doc = new XWPFDocument(); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
@@ -530,19 +528,6 @@ public class WordExportService {
         header.setBorderBottom(Borders.SINGLE);
     }
 
-    private void addWordGroupBanner(XWPFDocument doc, WorkGroup group) {
-        XWPFTable table = doc.createTable(1, 1);
-        table.setWidth("100%");
-        XWPFTableCell cell = table.getRow(0).getCell(0);
-        cell.setColor(hexToWordColor(group.getColor()));
-        XWPFParagraph p = cell.getParagraphs().isEmpty() ? cell.addParagraph() : cell.getParagraphs().get(0);
-        XWPFRun run = p.createRun();
-        run.setText(group.getName());
-        run.setBold(true);
-        run.setColor("FFFFFF");
-        doc.createParagraph().setSpacingAfter(80);
-    }
-
     private String hexToWordColor(String hex) {
         if (hex == null || !hex.matches("#[0-9A-Fa-f]{6}")) {
             return "64748B";
@@ -602,13 +587,5 @@ public class WordExportService {
         JsonNode content = exportContentReader.read(groupId, section, response);
         Integer version = response != null ? response.getVersion() : 0;
         return new ExportSectionData(section, content, version, status);
-    }
-
-    private JsonNode parseJson(String json) {
-        try {
-            return objectMapper.readTree(json);
-        } catch (Exception e) {
-            return objectMapper.createObjectNode();
-        }
     }
 }

@@ -1,7 +1,6 @@
 package com.senico.diagnostic.export;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
@@ -59,7 +58,6 @@ public class PdfExportService {
     private final ExportContentReader exportContentReader;
     private final PsdSynthesisBuilder psdSynthesisBuilder;
     private final PdfBlockEmitter pdfBlockEmitter;
-    private final ObjectMapper objectMapper;
 
     public byte[] exportGroupRecap(WorkGroup group) {
         try {
@@ -841,13 +839,5 @@ public class PdfExportService {
         JsonNode content = exportContentReader.read(groupId, section, response);
         Integer version = response != null ? response.getVersion() : 0;
         return new ExportSectionData(section, content, version, status);
-    }
-
-    private JsonNode parseJson(String json) {
-        try {
-            return objectMapper.readTree(json);
-        } catch (Exception e) {
-            return objectMapper.createObjectNode();
-        }
     }
 }

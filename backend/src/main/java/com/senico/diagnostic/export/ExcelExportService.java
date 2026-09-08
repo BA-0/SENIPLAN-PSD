@@ -1,7 +1,6 @@
 package com.senico.diagnostic.export;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.senico.diagnostic.domain.GroupSectionStatus;
 import com.senico.diagnostic.domain.SectionDef;
 import com.senico.diagnostic.domain.SectionResponse;
@@ -37,7 +36,6 @@ public class ExcelExportService {
     private final WorkGroupRepository workGroupRepository;
     private final SectionResponseRepository sectionResponseRepository;
     private final GroupSectionStatusRepository groupSectionStatusRepository;
-    private final ObjectMapper objectMapper;
     private final ExportContentReader exportContentReader;
 
     private static final DateTimeFormatter PERIOD_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");

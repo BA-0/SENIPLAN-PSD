@@ -28,3 +28,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Artefact d'un build Next lance par erreur depuis la racine
+.next/

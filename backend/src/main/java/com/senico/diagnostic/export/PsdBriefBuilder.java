@@ -196,8 +196,18 @@ class PsdBriefBuilder {
         }
     }
 
+    /**
+     * Tronque la liste, en le disant. Sans cette derniere ligne, la note annoncerait
+     * "Axes strategiques : 20" au-dessus d'une liste de huit, sans que le lecteur puisse
+     * savoir s'il en manque.
+     */
     private List<String> capped(java.util.Collection<String> values) {
-        return values.stream().limit(MAX_ITEMS_PER_LIST).toList();
+        if (values.size() <= MAX_ITEMS_PER_LIST) {
+            return List.copyOf(values);
+        }
+        List<String> shown = new ArrayList<>(values.stream().limit(MAX_ITEMS_PER_LIST).toList());
+        shown.add("… et " + (values.size() - MAX_ITEMS_PER_LIST) + " autres");
+        return shown;
     }
 
     /** Acces au contenu d'une section pour une direction, restreint aux sections soumises ou validees. */

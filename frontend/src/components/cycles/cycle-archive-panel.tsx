@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
 import { SectionFormRouter } from "@/components/sections/section-form-router";
 import { formatDateTime } from "@/lib/utils";
+import { groupSectionsByPart } from "@/lib/section-groups";
 import type { GroupCycleSectionContentDto, GroupCycleSummaryDto } from "@/types/api";
 import type { SectionStatusSummary, SectionType } from "@/types/common";
 
@@ -115,18 +116,27 @@ export function CycleArchivePanel({
           </DialogHeader>
           {isFetchingSections && <div className="h-48 bg-muted rounded-xl animate-pulse" />}
           {sections && (
-            <div className="divide-y divide-border/60">
-              {sections.map((s) => (
-                <div key={s.code} className="flex items-center justify-between py-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-[13px] text-muted-foreground w-10 shrink-0">{s.code}</span>
-                    <span className="text-[13px] text-foreground truncate">{s.title}</span>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <StatusBadge status={s.status} />
-                    <Button variant="ghost" size="sm" onClick={() => setOpenSection(s.code)}>
-                      Consulter
-                    </Button>
+            <div className="max-h-[70vh] overflow-y-auto">
+              {groupSectionsByPart(sections).map(({ part, sections: partSections }) => (
+                <div key={part.id}>
+                  <p className="sticky top-0 bg-background py-2 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {part.numeral ? `Partie ${part.numeral} — ${part.title}` : part.title}
+                  </p>
+                  <div className="divide-y divide-border/60 border-t border-border/60">
+                    {partSections.map((s) => (
+                      <div key={s.code} className="flex items-center justify-between py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-[13px] text-muted-foreground w-10 shrink-0">{s.code}</span>
+                          <span className="text-[13px] text-foreground truncate">{s.title}</span>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <StatusBadge status={s.status} />
+                          <Button variant="ghost" size="sm" onClick={() => setOpenSection(s.code)}>
+                            Consulter
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}

@@ -11,7 +11,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Traduit le JSON libre d'une SectionResponse en une List&lt;ExportBlock&gt; type-aware
@@ -57,7 +56,6 @@ public class SectionExportRenderer {
             case INDICATOR_SHEET -> renderIndicatorSheet(content);
             case RISK_MATRIX -> renderRiskMatrix(content);
             case FINANCING_PLAN -> renderFinancingPlan(content);
-            case BUSINESS_PLAN -> renderBusinessPlan(content);
             case STRATEGIC_SUMMARY -> renderStrategicSummary(content);
             case PERFORMANCE_REVIEW_2026 -> List.of(RowsTableRenderer.render(JsonUtil.arr(content, "rows"), performanceReview2026Columns()));
             case RESOURCES_SYNTHESIS -> renderResourcesSynthesis(content);
@@ -71,19 +69,20 @@ public class SectionExportRenderer {
 
     /**
      * Contenu vide : deux causes possibles, qu'il ne faut pas confondre. Soit la direction n'a
-     * rien saisi, soit elle a saisi mais la section n'est pas validee et le document consolide
-     * ne la reprend donc pas — dire « aucune donnee saisie » dans ce second cas serait faux.
+     * rien saisi, soit elle a saisi mais le DG n'a pas approuve la section et le document
+     * consolide ne la reprend donc pas — dire « aucune donnee saisie » serait faux dans ce
+     * second cas, et laisserait croire a une direction inactive.
      */
     private String emptyContentMessage(ExportSectionData data) {
-        if (!data.withheldPendingValidation()) {
+        if (!data.withheldPendingApproval()) {
             return "Aucune donnée saisie pour cette section.";
         }
         SectionStatus status = data.status() != null ? data.status().getStatus() : SectionStatus.NOT_STARTED;
         if (status == SectionStatus.NOT_STARTED) {
             return "Aucune donnée saisie pour cette section.";
         }
-        return "Section non validée : son contenu n'est pas repris dans le document consolidé. Statut actuel : "
-                + statusLabel(status.name()) + ".";
+        return "Section non approuvée par la Direction Générale : son contenu n'est pas repris dans ce "
+                + "document. Statut actuel : " + statusLabel(status.name()) + ".";
     }
 
     public static String statusLabel(String status) {
@@ -98,8 +97,13 @@ public class SectionExportRenderer {
         pairs.add(new ExportBlock.KeyValue("Version", data.version() != null && data.version() > 0 ? String.valueOf(data.version()) : "—"));
         pairs.add(new ExportBlock.KeyValue("Soumis le", formatDate(status != null ? status.getSubmittedAt() : null)));
         pairs.add(new ExportBlock.KeyValue("Validé le", formatDate(status != null ? status.getValidatedAt() : null)));
+        pairs.add(new ExportBlock.KeyValue("Approuvé par la DG le",
+                formatDate(status != null && status.isDgApproved() ? status.getDgApprovedAt() : null)));
         if (status != null && status.getAdminComment() != null && !status.getAdminComment().isBlank()) {
             pairs.add(new ExportBlock.KeyValue("Commentaire admin", status.getAdminComment()));
+        }
+        if (status != null && status.getDgComment() != null && !status.getDgComment().isBlank()) {
+            pairs.add(new ExportBlock.KeyValue("Commentaire DG", status.getDgComment()));
         }
         return new ExportBlock.KeyValueList(null, pairs, true);
     }
@@ -554,30 +558,6 @@ public class SectionExportRenderer {
         ExportBlock.TableRow totals = RowsTableRenderer.totalsRow(List.of(
                 "Total", JsonUtil.formatCurrency(JsonUtil.num(content, "total")), "100 %", "", "", ""));
         return List.of(RowsTableRenderer.render(JsonUtil.arr(content, "rows"), columns, List.of(totals)));
-    }
-
-    // ---- S16 ----
-    private List<ExportBlock> renderBusinessPlan(JsonNode content) {
-        List<ExportBlock> blocks = new ArrayList<>();
-        blocks.add(new ExportBlock.Heading("Compte d'exploitation", 3));
-        blocks.add(businessYearlyTable(content.get("operatingAccount"), SectionLabels.OPERATING_ACCOUNT_LABELS));
-        blocks.add(new ExportBlock.Heading("Flux de trésorerie", 3));
-        blocks.add(businessYearlyTable(content.get("cashFlow"), SectionLabels.CASH_FLOW_LABELS));
-        return blocks;
-    }
-
-    private ExportBlock.Table businessYearlyTable(JsonNode block, Map<String, String> labels) {
-        List<JsonUtil.Column> leading = List.of(
-                new JsonUtil.Column("Poste", n -> labels.getOrDefault(JsonUtil.text(n, "label"), JsonUtil.text(n, "label")))
-        );
-        List<JsonUtil.Column> trailing = List.of(
-                new JsonUtil.Column("Total", n -> JsonUtil.formatCurrency(JsonUtil.num(n, "total")))
-        );
-        Set<String> computedKeys = SectionLabels.COMPUTED_ROW_LABELS;
-        return YearlyTableRenderer.render(
-                JsonUtil.arr(block, "rows"), leading, SectionLabels.YEARS,
-                (yearsNode, year) -> JsonUtil.formatCurrency(yearNumber(yearsNode, year)),
-                trailing, row -> computedKeys.contains(JsonUtil.text(row, "label")));
     }
 
     // ---- S17 ----

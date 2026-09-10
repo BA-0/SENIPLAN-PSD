@@ -1,4 +1,4 @@
-import { Activity, CheckCircle2, RotateCcw, Send, LogIn, Undo2, Trash2, Pencil } from "lucide-react";
+import { Activity, CheckCircle2, RotateCcw, Send, LogIn, ShieldCheck, ShieldX, Undo2, Trash2, Pencil } from "lucide-react";
 import { timeAgo } from "@/lib/utils";
 import type { ActivityEntryDto } from "@/types/api";
 
@@ -22,6 +22,21 @@ const ACTION_CONFIG: Record<string, { label: (a: ActivityEntryDto) => string; ic
     label: (a) => `L'administrateur a validé ${a.sectionCode} pour ${a.groupName}`,
     icon: CheckCircle2,
     color: "text-emerald-600 dark:text-emerald-400",
+  },
+  DG_APPROVE: {
+    label: (a) => `La Direction Générale a approuvé ${a.sectionCode} pour ${a.groupName}`,
+    icon: ShieldCheck,
+    color: "text-emerald-600 dark:text-emerald-400",
+  },
+  DG_REJECT: {
+    label: (a) => `La Direction Générale a refusé ${a.sectionCode} (${a.groupName}) — section renvoyée en révision`,
+    icon: ShieldX,
+    color: "text-red-500 dark:text-red-400",
+  },
+  DG_APPROVAL_REVOKED: {
+    label: (a) => `${a.sectionCode} modifiée après approbation : l'accord de la Direction Générale est à redemander (${a.groupName})`,
+    icon: ShieldX,
+    color: "text-amber-500 dark:text-amber-400",
   },
   REQUEST_REVISION: {
     label: (a) => `L'administrateur a renvoyé ${a.sectionCode} pour révision (${a.groupName})`,

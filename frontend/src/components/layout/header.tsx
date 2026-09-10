@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut, Menu, Volume2, VolumeX } from "lucide-react";
+import Link from "next/link";
+import { KeyRound, LogOut, Menu, Volume2, VolumeX } from "lucide-react";
 import { canPilot, ROLE_LABELS } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -69,6 +70,11 @@ export function Header() {
             {voiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </Button>
         )}
+        <Button variant="ghost" size="icon" asChild title="Changer mon mot de passe">
+          <Link href="/change-password">
+            <KeyRound className="h-4 w-4" />
+          </Link>
+        </Button>
         <Button variant="ghost" size="icon" onClick={logout} title="Déconnexion">
           <LogOut className="h-4 w-4" />
         </Button>

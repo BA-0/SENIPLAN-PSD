@@ -18,8 +18,9 @@ import java.util.Map;
  * parcourir le document direction par direction pour se faire une idee.
  *
  * <p>Ne lit que les reponses qu'on lui passe. Le document consolide ne lui transmettant que les
- * sections validees, la synthese porte donc sur le meme perimetre que le reste du document :
- * elle n'annonce jamais des chiffres qui ne seraient pas retrouvables dans les pages suivantes.</p>
+ * sections approuvees par le DG, la synthese porte donc sur le meme perimetre que le reste du
+ * document : elle n'annonce jamais des chiffres qui ne seraient pas retrouvables dans les pages
+ * suivantes.</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -31,12 +32,12 @@ class PsdSynthesisBuilder {
      * @param groups          les directions, dans l'ordre d'affichage
      * @param sectionsByCode  referentiel des sections, indexe par code
      * @param responsesByKey  reponses retenues, indexees "groupId:sectionId"
-     * @param validatedCount  nombre de sections validees, tous groupes confondus
+     * @param approvedCount   nombre de sections approuvees par le DG, tous groupes confondus
      * @param totalCount      nombre total de sections attendues
      */
     List<ExportBlock> build(List<WorkGroup> groups, Map<String, SectionDef> sectionsByCode,
                             Map<String, SectionResponse> responsesByKey,
-                            int validatedCount, int totalCount) {
+                            int approvedCount, int totalCount) {
         List<ExportBlock> blocks = new ArrayList<>();
 
         blocks.add(new ExportBlock.Paragraph(
@@ -45,7 +46,7 @@ class PsdSynthesisBuilder {
                 true, false));
 
         blocks.add(new ExportBlock.Heading("Chiffres clés", 3));
-        blocks.add(keyFiguresTable(groups, sectionsByCode, responsesByKey, validatedCount, totalCount));
+        blocks.add(keyFiguresTable(groups, sectionsByCode, responsesByKey, approvedCount, totalCount));
 
         List<String> challenges = collectChallenges(groups, sectionsByCode, responsesByKey);
         if (!challenges.isEmpty()) {
@@ -63,13 +64,13 @@ class PsdSynthesisBuilder {
 
     private ExportBlock.Table keyFiguresTable(List<WorkGroup> groups, Map<String, SectionDef> sectionsByCode,
                                               Map<String, SectionResponse> responsesByKey,
-                                              int validatedCount, int totalCount) {
+                                              int approvedCount, int totalCount) {
         PsdKeyFigures f = PsdKeyFigures.compute(groups,
-                (group, code) -> content(group, code, sectionsByCode, responsesByKey), validatedCount);
+                (group, code) -> content(group, code, sectionsByCode, responsesByKey), approvedCount);
 
         List<ExportBlock.TableRow> rows = new ArrayList<>();
         rows.add(figure("Directions couvertes", String.valueOf(f.directions())));
-        rows.add(figure("Sections validées", validatedCount + " / " + totalCount));
+        rows.add(figure("Sections approuvées par la DG", approvedCount + " / " + totalCount));
         rows.add(figure("Axes stratégiques", String.valueOf(f.axes())));
         rows.add(figure("Objectifs spécifiques", String.valueOf(f.specificObjectives())));
         rows.add(figure("Actions programmées " + SectionLabels.YEARS[0]

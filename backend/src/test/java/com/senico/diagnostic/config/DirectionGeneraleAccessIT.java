@@ -21,8 +21,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Frontiere de droits de la Direction Generale : le DG voit et valide tout, l'administration
- * technique reste a l'admin.
+ * Frontiere de droits de la Direction Generale : le DG voit et arbitre tout, l'administration
+ * technique reste a l'admin, et l'approbation finale reste au DG seul.
  *
  * <p>Ces regles ne se verifient pas a l'oeil. Rien ne signale, en lisant {@link SecurityConfig},
  * qu'un matcher place apres un autre plus large ne s'applique jamais : un reordonnancement
@@ -81,12 +81,63 @@ class DirectionGeneraleAccessIT {
     }
 
     @Test
+    @DisplayName("Le DG lit la liste des directions, sans pouvoir la modifier")
+    void leDgLitLesDirections() throws Exception {
+        RequestPostProcessor dg = compte("m.dia");
+
+        // Sans cette lecture, les selecteurs de direction et les ecrans de documents
+        // restent vides pour le DG, qui ne peut alors rien arbitrer.
+        mockMvc.perform(get("/api/v1/groups").with(dg)).andExpect(status().isOk());
+        mockMvc.perform(put("/api/v1/groups/1").contentType("application/json").content("{}").with(dg))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Le DG seul approuve ce qui entre dans les documents consolides")
+    void leDgApprouve() throws Exception {
+        RequestPostProcessor dg = compte("m.dia");
+
+        mockMvc.perform(post("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/S01/dg-approval")
+                        .contentType("application/json").content("{\"decision\":\"APPROVE\"}").with(dg))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/dg-approve-all").with(dg))
+                .andExpect(status().isNotFound());
+        // Approbation par lot, toutes directions confondues. On vise la aussi une direction
+        // inexistante : le 404 prouve l'acces sans rien approuver en base — et surtout sans
+        // toucher a la route « tout approuver », qui elle agirait pour de bon.
+        mockMvc.perform(post("/api/v1/admin/dg-approvals/selection")
+                        .contentType("application/json")
+                        .content("{\"targets\":[{\"groupId\":" + GROUPE_INEXISTANT + ",\"sectionCode\":\"S01\"}]}")
+                        .with(dg))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("L'admin valide, mais ne s'approuve pas a lui-meme le passage dans les documents")
+    void ladminNapprouvePas() throws Exception {
+        RequestPostProcessor admin = compte("admin");
+
+        mockMvc.perform(post("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/S01/dg-approval")
+                        .contentType("application/json").content("{\"decision\":\"APPROVE\"}").with(admin))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/dg-approve-all").with(admin))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/admin/dg-approvals/selection")
+                        .contentType("application/json")
+                        .content("{\"targets\":[{\"groupId\":" + GROUPE_INEXISTANT + ",\"sectionCode\":\"S01\"}]}")
+                        .with(admin))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/admin/dg-approvals/all").with(admin))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("L'administration technique reste fermee au DG")
     void ladministrationTechniqueEstFermeeAuDg() throws Exception {
         RequestPostProcessor dg = compte("m.dia");
 
         mockMvc.perform(post("/api/v1/groups").with(dg)).andExpect(status().isForbidden());
-        mockMvc.perform(get("/api/v1/admin/users/staff").with(dg)).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/admin/users").with(dg)).andExpect(status().isForbidden());
         mockMvc.perform(post("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/cycles/new").with(dg))
                 .andExpect(status().isForbidden());
         mockMvc.perform(put("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/S01/content")
@@ -97,7 +148,7 @@ class DirectionGeneraleAccessIT {
     @Test
     @DisplayName("L'admin garde l'administration technique")
     void ladminGardeLadministration() throws Exception {
-        mockMvc.perform(get("/api/v1/admin/users/staff").with(compte("admin")))
+        mockMvc.perform(get("/api/v1/admin/users").with(compte("admin")))
                 .andExpect(status().isOk());
     }
 

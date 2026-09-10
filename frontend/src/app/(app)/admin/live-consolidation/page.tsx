@@ -15,18 +15,15 @@ import { listGroupSections, compareSection } from "@/lib/api/admin";
 import { downloadConsolidatedExcelFull, downloadConsolidatedPdf } from "@/lib/api/exports";
 import { extractErrorMessage } from "@/lib/api-client";
 import { cn, formatDateTime } from "@/lib/utils";
+import { SECTION_PARTS, partCodes } from "@/lib/section-groups";
 import { useLiveConsolidationSync } from "@/hooks/use-live-consolidation-sync";
 import { useConnectionStore } from "@/store/connection-store";
 import { SECTION_CODES } from "@/types/common";
 import type { SectionType } from "@/types/common";
 
-/**
- * Regroupement purement presentatif des sections du canevas (n'affecte pas
- * les donnees, qui restent lues telles quelles depuis l'API a chaque section).
- */
 // Sections dont le formulaire est un (ou plusieurs) tableau large a nombreuses colonnes :
 // on leur laisse toute la largeur disponible plutot que de les serrer dans une grille 2 colonnes,
-// ce qui evite le defilement horizontal premature observe sur S01/S02/S03/S09-S16.
+// ce qui evite le defilement horizontal premature observe sur S01/S02/S03/S09-S15.
 const WIDE_TABLE_TYPES = new Set<SectionType>([
   "STAKEHOLDERS",
   "PERFORMANCE_REVIEW_2026",
@@ -44,16 +41,7 @@ const WIDE_TABLE_TYPES = new Set<SectionType>([
   "RISK_MATRIX",
   "STAFF_EVOLUTION",
   "FINANCING_PLAN",
-  "BUSINESS_PLAN",
 ]);
-
-const SECTION_GROUPS: Record<string, (typeof SECTION_CODES)[number][]> = {
-  Diagnostic: ["S01", "S01B", "S02", "S03", "S03B", "S04", "S05", "S06", "S06B", "S07", "S07B"],
-  "Stratégie": ["S08", "S09", "S09B"],
-  "Mise en œuvre": ["S11", "S10", "S13", "S12"],
-  "Risques & financement": ["S14", "S14B", "S15", "S16"],
-  "Synthèse": ["S17"],
-};
 
 export default function LiveConsolidationPage() {
   useLiveConsolidationSync();
@@ -162,13 +150,13 @@ export default function LiveConsolidationPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-4 items-start">
         <nav className="space-y-4 lg:sticky lg:top-4">
-          {Object.entries(SECTION_GROUPS).map(([groupLabel, codes]) => (
-            <div key={groupLabel}>
+          {SECTION_PARTS.map((part) => (
+            <div key={part.id}>
               <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {groupLabel}
+                {part.numeral} — {part.title}
               </p>
               <div className="space-y-0.5">
-                {codes.map((code) => (
+                {partCodes(part).map((code) => (
                   <button
                     key={code}
                     type="button"

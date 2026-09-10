@@ -21,7 +21,9 @@ public record SectionContentResponse(
         LocalDateTime updatedAt,
         LocalDateTime submittedAt,
         LocalDateTime validatedAt,
+        LocalDateTime dgApprovedAt,
         String adminComment,
+        String dgComment,
         LocalDateTime lastActivityAt
 ) {
 }

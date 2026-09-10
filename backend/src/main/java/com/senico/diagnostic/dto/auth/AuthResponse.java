@@ -16,7 +16,9 @@ public record AuthResponse(
             String fullName,
             String role,
             Long groupId,
-            String groupName
+            String groupName,
+            /** Vrai tant que le titulaire n'a pas remplace le mot de passe qu'on lui a remis. */
+            boolean mustChangePassword
     ) {
     }
 }

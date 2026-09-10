@@ -10,6 +10,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -67,6 +68,19 @@ public class GlobalExceptionHandler {
         payload.put("message", "Erreur de validation");
         payload.put("fieldErrors", fieldErrors);
         return ResponseEntity.badRequest().body(payload);
+    }
+
+    /**
+     * Refus metier explicite d'un service : identifiant deja pris, rattachement incoherent...
+     * Sans ce handler, le catch-all ci-dessous l'attraperait — un {@code @ExceptionHandler}
+     * sur {@code Exception} passe avant le ResponseStatusExceptionResolver de Spring — et
+     * l'appelant recevrait un 500 anonyme a la place du code et du motif choisis.
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException ex) {
+        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+        return body(status != null ? status : HttpStatus.INTERNAL_SERVER_ERROR,
+                ex.getReason() != null ? ex.getReason() : "Requete refusee");
     }
 
     @ExceptionHandler(Exception.class)

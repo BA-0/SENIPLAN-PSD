@@ -113,8 +113,12 @@ public class ExcelExportService {
 
     /**
      * Export Excel consolide complet : feuille "Sommaire" (legende des directions + avancement
-     * par section), puis une feuille par section avec le contenu integral de toutes les directions,
-     * sans filtre de periode.
+     * par section), puis une feuille par section avec le contenu des directions, sans filtre de
+     * periode.
+     *
+     * <p>Comme le PDF consolide, ne reprend que les sections approuvees par le DG
+     * (cf. {@link PsdApprovedContent}). La feuille "Sommaire" continue en revanche d'afficher
+     * l'avancement reel de toutes les sections : c'est son objet.</p>
      */
     public byte[] exportConsolidatedFull() {
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
@@ -152,15 +156,20 @@ public class ExcelExportService {
                 for (WorkGroup group : groups) {
                     String k = key(group.getId(), section.getId());
                     Row row = sheet.createRow(rowIndex++);
-                    String content = renderFullContent(section, responsesByKey.get(k));
+                    GroupSectionStatus status = statusesByKey.get(k);
+                    SectionStatus statusEnum = status != null ? status.getStatus() : SectionStatus.NOT_STARTED;
+
+                    // Le classeur fait foi au meme titre que le PDF consolide : seul ce que le DG
+                    // a approuve y figure, le reste laisse une ligne qui dit pourquoi.
+                    String content = PsdApprovedContent.isApproved(status)
+                            ? renderFullContent(section, responsesByKey.get(k))
+                            : contentWithheldMessage(statusEnum);
                     row.setHeightInPoints(Math.max(60, 14 * Math.max(1, content.split("\n").length)));
 
                     Cell groupCell = row.createCell(0);
                     groupCell.setCellValue(group.getName());
                     groupCell.setCellStyle(groupStyles.getOrDefault(group.getId(), wrapStyle));
 
-                    GroupSectionStatus status = statusesByKey.get(k);
-                    SectionStatus statusEnum = status != null ? status.getStatus() : SectionStatus.NOT_STARTED;
                     Cell statusCell = row.createCell(1);
                     statusCell.setCellValue(SectionExportRenderer.statusLabel(statusEnum.name()));
                     statusCell.setCellStyle(wrapStyle);
@@ -248,6 +257,17 @@ public class ExcelExportService {
 
     private String key(Long groupId, Integer sectionId) {
         return groupId + ":" + sectionId;
+    }
+
+    /**
+     * Contenu ecarte faute d'approbation du DG : le dire, plutot que d'afficher « (aucune donnee) »
+     * qui laisserait croire que la direction n'a rien saisi.
+     */
+    private String contentWithheldMessage(SectionStatus status) {
+        return status == SectionStatus.NOT_STARTED
+                ? "(aucune donnée)"
+                : "Section non approuvée par la Direction Générale — statut actuel : "
+                        + SectionExportRenderer.statusLabel(status.name()) + ".";
     }
 
     private String renderFullContent(SectionDef section, SectionResponse response) {

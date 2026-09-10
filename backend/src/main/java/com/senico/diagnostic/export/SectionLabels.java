@@ -4,7 +4,6 @@ import com.senico.diagnostic.validation.DefaultSectionContentFactory;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Libelles francais affiches dans les exports, portage cote serveur des constantes
@@ -92,22 +91,6 @@ final class SectionLabels {
             "AUTRES_SOURCES", "Autres sources"
     );
 
-    static final Map<String, String> OPERATING_ACCOUNT_LABELS = Map.of(
-            "PRODUITS_EXPLOITATION", "Produits d'exploitation / Chiffre d'affaires",
-            "CHARGES_EXPLOITATION", "Charges d'exploitation",
-            "RESULTAT_EXPLOITATION", "Résultat d'exploitation",
-            "CHARGES_FINANCIERES", "Charges financières",
-            "RESULTAT_NET", "Résultat net"
-    );
-
-    static final Map<String, String> CASH_FLOW_LABELS = Map.of(
-            "FLUX_EXPLOITATION", "Flux d'exploitation",
-            "FLUX_INVESTISSEMENT", "Flux d'investissement",
-            "FLUX_FINANCEMENT", "Flux de financement",
-            "VARIATION_NETTE_TRESORERIE", "Variation nette de trésorerie",
-            "TRESORERIE_FIN_PERIODE", "Trésorerie de fin de période"
-    );
-
     /** S14B : blocs et lignes du plan d'evolution des effectifs. */
     static final Map<String, String> STAFF_CATEGORY_LABELS = Map.of(
             "HIERARCHIE", "Hiérarchie",
@@ -122,10 +105,6 @@ final class SectionLabels {
             "CDI", "CDI",
             "CDD", "CDD",
             "EXPATRIE", "Expatrié"
-    );
-
-    static final Set<String> COMPUTED_ROW_LABELS = Set.of(
-            "RESULTAT_EXPLOITATION", "RESULTAT_NET", "VARIATION_NETTE_TRESORERIE", "TRESORERIE_FIN_PERIODE"
     );
 
     static final String[] YEARS = toStrings(DefaultSectionContentFactory.YEARS);
@@ -156,14 +135,6 @@ final class SectionLabels {
 
     static String financing(String key) {
         return FINANCING_LABELS.getOrDefault(key, key);
-    }
-
-    static String operatingAccount(String key) {
-        return OPERATING_ACCOUNT_LABELS.getOrDefault(key, key);
-    }
-
-    static String cashFlow(String key) {
-        return CASH_FLOW_LABELS.getOrDefault(key, key);
     }
 
     static String staffCategory(String key) {

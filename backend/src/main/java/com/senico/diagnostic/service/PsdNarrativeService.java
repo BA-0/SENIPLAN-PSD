@@ -4,6 +4,7 @@ import com.senico.diagnostic.domain.NarrativeBlockKey;
 import com.senico.diagnostic.domain.PsdNarrativeBlock;
 import com.senico.diagnostic.dto.psd.NarrativeBlockDto;
 import com.senico.diagnostic.dto.psd.UpdateNarrativeBlockRequest;
+import com.senico.diagnostic.export.PsdConsolidatedAxes;
 import com.senico.diagnostic.repository.PsdNarrativeBlockRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,14 @@ public class PsdNarrativeService {
     @Transactional
     public NarrativeBlockDto update(String key, UpdateNarrativeBlockRequest request, String updatedBy) {
         NarrativeBlockKey blockKey = parseKey(key);
+        // Les axes de l'entreprise sont un contenu structure : un JSON illisible ferait disparaitre
+        // le cadre strategique des documents sans que personne ne s'en apercoive avant l'export.
+        if (blockKey == NarrativeBlockKey.AXES_CONSOLIDES) {
+            String error = PsdConsolidatedAxes.validationError(request.content());
+            if (error != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, error);
+            }
+        }
         PsdNarrativeBlock block = repository.findById(blockKey)
                 .orElse(PsdNarrativeBlock.builder().key(blockKey).build());
         block.setContent(request.content());

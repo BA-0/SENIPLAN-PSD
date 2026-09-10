@@ -50,8 +50,12 @@ export default function AdminConsolidationPage() {
       <div>
         <h1>Document de consolidation</h1>
         <p className="text-[13px] text-muted-foreground mt-1">
-          Toutes les réponses de toutes les directions, réunies dans un seul document — code couleur par direction —
-          pour permettre de trancher directement.
+          Les réponses des directions réunies dans un seul document — code couleur par direction — pour permettre de
+          trancher directement.
+        </p>
+        <p className="text-[13px] text-amber-700 dark:text-amber-400 mt-2">
+          Seules les sections <strong>approuvées par la Direction Générale</strong> y figurent. Une section validée
+          par le comité de pilotage mais pas encore approuvée par le DG apparaît avec son statut, sans son contenu.
         </p>
       </div>
 
@@ -62,7 +66,8 @@ export default function AdminConsolidationPage() {
         <CardContent className="space-y-4">
           <p className="text-[13px] text-muted-foreground">
             Le document reprend les mêmes tableaux que le canevas de diagnostic, section par section, avec le
-            contenu actuel de chaque direction identifié par sa couleur.
+            contenu approuvé de chaque direction identifié par sa couleur. La carte d&apos;avancement ci-dessous,
+            elle, montre l&apos;état réel de toutes les sections.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button variant="primary" onClick={handleExportPdf} loading={exportingPdf}>

@@ -9,11 +9,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { ConsolidatedAxesEditor } from "@/components/psd/consolidated-axes-editor";
 import { listGroups } from "@/lib/api/groups";
 import { listNarrativeBlocks, updateNarrativeBlock } from "@/lib/api/psd-narrative";
 import { downloadPsdFinalPdf, downloadPsdFinalWord } from "@/lib/api/exports";
 import { extractErrorMessage } from "@/lib/api-client";
-import type { NarrativeBlock } from "@/types/psd-narrative";
+import { AXES_CONSOLIDES_KEY, type NarrativeBlock } from "@/types/psd-narrative";
+
+/** Aide à la saisie des blocs dont la forme compte pour la mise en page des documents. */
+const HINTS: Record<string, string> = {
+  VISION:
+    "Une phrase : l'ambition de SENICO à l'horizon 2031. Elle remplace, dans les documents, les visions proposées par les directions.",
+  MISSION:
+    "Un paragraphe, ou une mission par ligne précédée de « - ». Remplace les missions proposées par les directions.",
+  VALEURS:
+    "Une valeur par ligne, au format « Intitulé : description ». Remplace les valeurs proposées par les directions.",
+  DISPOSITIF_PILOTAGE:
+    "Instances, fréquences et reporting. Une ligne terminée par « : » introduit la liste qui suit ; une ligne commençant par « - » est une puce.",
+};
 
 export default function AdminPsdFinalPage() {
   const [exportingPdf, setExportingPdf] = useState(false);
@@ -23,6 +36,9 @@ export default function AdminPsdFinalPage() {
 
   const { data: groups } = useQuery({ queryKey: ["admin", "groups"], queryFn: listGroups });
   const { data: blocks, refetch } = useQuery({ queryKey: ["admin", "psd-narrative"], queryFn: listNarrativeBlocks });
+
+  const textBlocks = (blocks ?? []).filter((block) => block.key !== AXES_CONSOLIDES_KEY);
+  const axesBlock = (blocks ?? []).find((block) => block.key === AXES_CONSOLIDES_KEY);
 
   useEffect(() => {
     if (!blocks) return;
@@ -76,12 +92,14 @@ export default function AdminPsdFinalPage() {
         <h1>Plan Stratégique de SENICO — PSD 2027-2031</h1>
         <p className="text-[13px] text-muted-foreground mt-1">
           Le document consolidé de l&apos;entreprise. Il reprend le sommaire officiel du PSD (Mot du DG, Préambule,
-          Synthèse du PSD, Cadre stratégique, Cadre de mise en œuvre…) en combinant le texte ci-dessous avec les
-          tableaux saisis dans le canevas, identifiés par la couleur de chaque direction.
+          Synthèse du PSD, Cadre stratégique, Cadre de mise en œuvre…) en combinant les textes ci-dessous avec les
+          tableaux saisis dans le canevas, identifiés par la couleur de chaque direction. Les mêmes textes alimentent la
+          note de synthèse.
         </p>
         <p className="text-[13px] text-amber-700 dark:text-amber-400 mt-2">
-          Seules les sections <strong>validées</strong> par la direction concernée sont reprises ici : une section
-          encore en cours, soumise ou renvoyée pour révision n&apos;apparaît pas dans le document consolidé.
+          Seules les sections <strong>approuvées par la Direction Générale</strong> sont reprises ici : une section
+          encore en cours, soumise, renvoyée pour révision, ou validée mais pas encore approuvée par le DG
+          n&apos;apparaît pas dans le document consolidé.
         </p>
       </div>
 
@@ -103,15 +121,29 @@ export default function AdminPsdFinalPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Axes stratégiques de SENICO</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ConsolidatedAxesEditor content={axesBlock?.content ?? ""} onSaved={refetch} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Contenu narratif</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {(blocks ?? []).map((block) => (
+          <p className="text-[13px] text-muted-foreground">
+            Mise en forme dans les documents : une ligne vide sépare deux paragraphes, une ligne commençant par « - »
+            devient une puce, une ligne courte terminée par « : » devient un intertitre.
+          </p>
+          {textBlocks.map((block) => (
             <div key={block.key} className="space-y-2">
               <Label htmlFor={`narrative-${block.key}`}>{block.label}</Label>
+              {HINTS[block.key] && <p className="text-[12.5px] text-muted-foreground">{HINTS[block.key]}</p>}
               <Textarea
                 id={`narrative-${block.key}`}
-                rows={4}
+                rows={10}
                 value={drafts[block.key] ?? ""}
                 onChange={(e) => setDrafts((d) => ({ ...d, [block.key]: e.target.value }))}
                 placeholder={`Saisir le texte « ${block.label} »…`}

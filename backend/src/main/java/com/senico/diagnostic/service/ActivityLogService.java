@@ -24,6 +24,12 @@ public class ActivityLogService {
     /** Emis en plus de ACTION_SUBMIT lorsque la soumission complete la totalite des sections du groupe. */
     public static final String ACTION_SUBMIT_ALL = "SUBMIT_ALL";
     public static final String ACTION_VALIDATE = "VALIDATE";
+    /** Second niveau : le DG approuve une section validee, qui peut alors alimenter les documents consolides. */
+    public static final String ACTION_DG_APPROVE = "DG_APPROVE";
+    /** Le DG refuse une section validee, qui repart en revision cote direction. */
+    public static final String ACTION_DG_REJECT = "DG_REJECT";
+    /** L'approbation du DG est tombee d'elle-meme : le contenu a change apres qu'il a tranche. */
+    public static final String ACTION_DG_APPROVAL_REVOKED = "DG_APPROVAL_REVOKED";
     public static final String ACTION_REQUEST_REVISION = "REQUEST_REVISION";
     public static final String ACTION_RETURN_TO_GROUP = "RETURN_TO_GROUP";
     public static final String ACTION_RESET = "RESET";

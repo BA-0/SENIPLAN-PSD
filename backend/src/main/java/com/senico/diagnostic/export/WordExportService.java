@@ -19,10 +19,17 @@ import com.senico.diagnostic.repository.SectionDefRepository;
 import com.senico.diagnostic.repository.SectionResponseRepository;
 import com.senico.diagnostic.repository.WorkGroupRepository;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.util.Units;
+import org.apache.poi.xwpf.model.XWPFHeaderFooterPolicy;
 import org.apache.poi.xwpf.usermodel.*;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -35,8 +42,16 @@ import java.util.stream.Collectors;
 public class WordExportService {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    /** Date en toutes lettres de la page de garde, comme sur un PSD publie : « Dakar, le 4 septembre 2026 ». */
+    private static final DateTimeFormatter LONG_DATE = DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale.FRENCH);
     private static final String PRIMARY_HEX = "2D7A45";
     private static final String DARK_HEX = "1E293B";
+    private static final String SLATE_HEX = "64748B";
+    /** Meme logo que les couvertures PDF, pour que les deux formats sortent identiques. */
+    private static final String LOGO_RESOURCE = "/branding/logo-senico.png";
+    /** Le logo fait 514 x 98 px : ces deux valeurs en conservent le rapport. */
+    private static final int LOGO_WIDTH_PT = 190;
+    private static final int LOGO_HEIGHT_PT = 36;
 
     private final SectionDefRepository sectionDefRepository;
     private final SectionResponseRepository sectionResponseRepository;
@@ -78,17 +93,25 @@ public class WordExportService {
             Map<NarrativeBlockKey, PsdNarrativeBlock> narrativeByKey = psdNarrativeBlockRepository.findAll().stream()
                     .collect(Collectors.toMap(PsdNarrativeBlock::getKey, b -> b));
 
-            // La consolidation ne reprend que ce que la direction a valide (cf. PsdValidatedContent).
-            responsesByKey = PsdValidatedContent.validatedOnly(responsesByKey, statusesByKey);
+            // La consolidation ne reprend que ce que le DG a approuve (cf. PsdApprovedContent).
+            responsesByKey = PsdApprovedContent.approvedOnly(responsesByKey, statusesByKey);
 
+            addFooter(doc, "Plan Stratégique de SENICO — PSD 2027-2031");
             addPsdFinalCoverPage(doc);
             doc.createParagraph().setPageBreak(true);
             addPsdFinalSommaire(doc, entries, groups);
 
+            Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
+                    .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
             for (Entry entry : entries) {
                 doc.createParagraph().setPageBreak(true);
                 if (entry instanceof MajorHeading heading) {
                     addPsdMajorHeading(doc, heading);
+                } else if (entry instanceof NarrativeEntry narrative && narrative.key() == NarrativeBlockKey.AXES_CONSOLIDES) {
+                    // Contenu structure (JSON) : il se lit en axes, rattachements et budget, pas en texte.
+                    addWordSectionHeader(doc, narrative.label());
+                    wordBlockEmitter.emit(doc, psdBriefBuilder.strategicAxes(groups, sectionsByCode, responsesByKey,
+                            statusesByKey, narratives()));
                 } else if (entry instanceof NarrativeEntry narrative) {
                     addPsdNarrative(doc, narrative, narrativeByKey.get(narrative.key()));
                 } else if (entry instanceof SynthesisEntry synthesis) {
@@ -116,10 +139,18 @@ public class WordExportService {
             Map<String, GroupSectionStatus> statusesByKey = groupSectionStatusRepository.findAllWithGroupAndSection().stream()
                     .collect(Collectors.toMap(s -> s.getGroup().getId() + ":" + s.getSection().getId(), s -> s));
 
+            // Meme regle de perimetre que le PDF : seules les sections approuvees par le DG sont
+            // resumees. Le filtre etait absent ici, la ou les trois autres exports l'appliquent.
+            responsesByKey = PsdApprovedContent.approvedOnly(responsesByKey, statusesByKey);
+
+            List<ExportBlock> blocks = psdBriefBuilder.build(groups, sectionsByCode, responsesByKey, statusesByKey, narratives());
+
+            addFooter(doc, "Plan Stratégique de Développement 2027-2031 — Note de synthèse");
             addSynthesisNoteCoverPage(doc);
             doc.createParagraph().setPageBreak(true);
-            wordBlockEmitter.emit(doc,
-                    psdBriefBuilder.build(groups, sectionsByCode, responsesByKey, statusesByKey));
+            addSynthesisNoteSommaire(doc, blocks);
+            // Pas de saut de page ici : chaque partie de la note ouvre deja la sienne.
+            wordBlockEmitter.emit(doc, blocks);
 
             doc.write(baos);
             return baos.toByteArray();
@@ -128,11 +159,107 @@ public class WordExportService {
         }
     }
 
+    /** Blocs narratifs arretes par la Direction Generale, indexes par cle ; un bloc absent vaut vide. */
+    private Map<NarrativeBlockKey, String> narratives() {
+        Map<NarrativeBlockKey, String> narratives = new java.util.EnumMap<>(NarrativeBlockKey.class);
+        for (PsdNarrativeBlock block : psdNarrativeBlockRepository.findAll()) {
+            narratives.put(block.getKey(), block.getContent() == null ? "" : block.getContent());
+        }
+        return narratives;
+    }
+
+    /**
+     * Pied de page Word : intitule du document et pagination. Les champs PAGE et NUMPAGES sont
+     * inseres comme champs Word plutot que comme texte, pour que la pagination reste juste
+     * apres une relecture qui ajoute ou retire des pages.
+     *
+     * <p>A appeler avant d'ecrire le corps : la politique d'en-tetes s'attache a la section du
+     * document, qui doit exister avant que le contenu ne soit pagine.</p>
+     */
+    private void addFooter(XWPFDocument doc, String label) {
+        CTSectPr sectPr = doc.getDocument().getBody().isSetSectPr()
+                ? doc.getDocument().getBody().getSectPr()
+                : doc.getDocument().getBody().addNewSectPr();
+        XWPFHeaderFooterPolicy policy = new XWPFHeaderFooterPolicy(doc, sectPr);
+
+        XWPFParagraph paragraph = new XWPFParagraph(CTP.Factory.newInstance(), doc);
+        paragraph.setAlignment(ParagraphAlignment.CENTER);
+
+        XWPFRun prefix = paragraph.createRun();
+        prefix.setText(label + "   —   Page ");
+        prefix.setFontSize(8);
+        prefix.setColor(SLATE_HEX);
+        paragraph.getCTP().addNewFldSimple().setInstr("PAGE \\* MERGEFORMAT");
+
+        XWPFRun separator = paragraph.createRun();
+        separator.setText(" / ");
+        separator.setFontSize(8);
+        separator.setColor(SLATE_HEX);
+        paragraph.getCTP().addNewFldSimple().setInstr("NUMPAGES \\* MERGEFORMAT");
+
+        policy.createFooter(XWPFHeaderFooterPolicy.DEFAULT, new XWPFParagraph[]{paragraph});
+    }
+
+    /** Pendant Word de {@link PdfExportService#addSynthesisNoteCoverPage(com.lowagie.text.Document)}. */
     private void addSynthesisNoteCoverPage(XWPFDocument doc) {
-        addCenteredTitle(doc, "SENICO SA — Plan Stratégique", 22, PRIMARY_HEX);
-        addCenteredTitle(doc, "Plan Stratégique de Développement (PSD) 2027-2031", 14, "64748B");
+        addCoverLogo(doc);
+        addCenteredTitle(doc, "PLAN STRATÉGIQUE DE DÉVELOPPEMENT", 26, PRIMARY_HEX);
+        addCenteredTitle(doc, "2027 - 2031", 26, PRIMARY_HEX);
+        addCenteredTitle(doc, "SENICO SA", 14, "64748B");
         addCenteredTitle(doc, "NOTE DE SYNTHÈSE", 16, DARK_HEX);
-        addCenteredTitle(doc, "Export généré le " + java.time.LocalDateTime.now().format(DATE_FORMAT), 11, "64748B");
+        addCenteredTitle(doc,
+                "Le résumé consolidé de l'ensemble des directions — diagnostic, enjeux, cadre stratégique, "
+                        + "budget et pilotage — pour le Conseil d'Administration et le comité de pilotage.",
+                11, "64748B");
+        addCenteredTitle(doc, "Dakar, le " + java.time.LocalDate.now().format(LONG_DATE), 12, PRIMARY_HEX);
+        addCenteredTitle(doc, "Export généré le " + java.time.LocalDateTime.now().format(DATE_FORMAT)
+                + " — document interne, confidentiel", 9, "64748B");
+    }
+
+    /**
+     * Sommaire de la note : les parties en gras et leurs sous-parties en retrait, dans l'ordre ou
+     * {@link PsdBriefBuilder} les compose. Sans numeros de page : Word repagine le document a
+     * l'ouverture selon sa propre mise en page, un numero calcule ici serait faux.
+     */
+    private void addSynthesisNoteSommaire(XWPFDocument doc, List<ExportBlock> blocks) {
+        addWordSectionHeader(doc, "SOMMAIRE");
+        for (ExportBlock block : blocks) {
+            if (!(block instanceof ExportBlock.Heading heading) || heading.level() > 2) {
+                continue;
+            }
+            boolean part = heading.level() == 1;
+            XWPFParagraph item = doc.createParagraph();
+            item.setSpacingBefore(part ? 120 : 0);
+            item.setIndentationLeft(part ? 0 : 400);
+            XWPFRun run = item.createRun();
+            run.setText(heading.text());
+            run.setBold(part);
+            run.setFontSize(part ? 11 : 10);
+            run.setColor(DARK_HEX);
+        }
+    }
+
+    /**
+     * Logo SENICO en tete de page de garde, comme sur les couvertures PDF. Un document Word
+     * remis a la tutelle ou au Conseil d'Administration sort sinon sans identite visuelle, la
+     * ou son pendant PDF est bien en-tete.
+     *
+     * <p>Un logo introuvable ou illisible ne doit pas empecher la generation du document : on
+     * poursuit sans lui plutot que de rendre l'export indisponible pour une image.</p>
+     */
+    private void addCoverLogo(XWPFDocument doc) {
+        XWPFParagraph paragraph = doc.createParagraph();
+        paragraph.setAlignment(ParagraphAlignment.CENTER);
+        paragraph.setSpacingAfter(240);
+        try (InputStream in = getClass().getResourceAsStream(LOGO_RESOURCE)) {
+            if (in == null) {
+                return;
+            }
+            paragraph.createRun().addPicture(in, XWPFDocument.PICTURE_TYPE_PNG, "logo-senico.png",
+                    Units.toEMU(LOGO_WIDTH_PT), Units.toEMU(LOGO_HEIGHT_PT));
+        } catch (IOException | InvalidFormatException e) {
+            // Page de garde sans logo : degrade acceptable, contrairement a un export en erreur.
+        }
     }
 
     private void addCenteredTitle(XWPFDocument doc, String text, int size, String colorHex) {
@@ -147,9 +274,11 @@ public class WordExportService {
     }
 
     private void addPsdFinalCoverPage(XWPFDocument doc) {
+        addCoverLogo(doc);
+
         XWPFParagraph title = doc.createParagraph();
         title.setAlignment(ParagraphAlignment.CENTER);
-        title.setSpacingBefore(2000);
+        title.setSpacingBefore(1200);
         XWPFRun titleRun = title.createRun();
         titleRun.setText("SENICO SA — Plan Stratégique");
         titleRun.setBold(true);
@@ -246,9 +375,13 @@ public class WordExportService {
 
     private String exclusionReason(GroupSectionStatus status) {
         SectionStatus value = status != null ? status.getStatus() : SectionStatus.NOT_STARTED;
-        return value == SectionStatus.NOT_STARTED
-                ? "non renseignée"
-                : "non validée — " + SectionExportRenderer.statusLabel(value.name()).toLowerCase();
+        if (value == SectionStatus.NOT_STARTED) {
+            return "non renseignée";
+        }
+        if (value == SectionStatus.VALIDATED) {
+            return "en attente d'approbation de la Direction Générale";
+        }
+        return "non validée — " + SectionExportRenderer.statusLabel(value.name()).toLowerCase();
     }
 
     private void addPsdSynthesis(XWPFDocument doc, SynthesisEntry synthesis, List<WorkGroup> groups,
@@ -258,9 +391,9 @@ public class WordExportService {
 
         Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
                 .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
-        long validated = statusesByKey.values().stream().filter(PsdValidatedContent::isValidated).count();
+        long approved = statusesByKey.values().stream().filter(PsdApprovedContent::isApproved).count();
         wordBlockEmitter.emit(doc, psdSynthesisBuilder.build(groups, sectionsByCode, responsesByKey,
-                (int) validated, statusesByKey.size()));
+                (int) approved, statusesByKey.size()));
     }
 
     private void addPsdNarrative(XWPFDocument doc, NarrativeEntry narrative, PsdNarrativeBlock block) {
@@ -275,14 +408,8 @@ public class WordExportService {
             run.setColor("64748B");
             return;
         }
-        for (String line : content.split("\n")) {
-            XWPFParagraph p = doc.createParagraph();
-            p.setSpacingAfter(120);
-            XWPFRun run = p.createRun();
-            run.setText(line);
-            run.setFontSize(11);
-            run.setColor(DARK_HEX);
-        }
+        // Puces et intertitres rediges dans la zone de texte (cf. PsdNarrativeText).
+        wordBlockEmitter.emit(doc, PsdNarrativeText.blocks(content));
     }
 
     private static final String[] PESTEL_AXES = {
@@ -331,9 +458,10 @@ public class WordExportService {
             JsonNode content = exportContentReader.read(group.getId(), section, response);
             Integer version = response != null ? response.getVersion() : 0;
 
-            // Reponses deja filtrees sur les sections validees : une reponse absente alors que le
-            // statut n'est pas NOT_STARTED signale un contenu retenu, pas une section vide.
-            boolean included = PsdValidatedContent.isValidated(status);
+            // Reponses deja filtrees sur les sections approuvees par le DG : une reponse absente
+            // alors que le statut n'est pas NOT_STARTED signale un contenu retenu, pas une
+            // section vide.
+            boolean included = PsdApprovedContent.isApproved(status);
             ExportSectionData data = new ExportSectionData(section, content, version, status, !included);
             perGroup.add(new PsdSectionMerger.GroupBlocks(
                     group,
@@ -578,9 +706,11 @@ public class WordExportService {
     }
 
     private void addCoverPage(XWPFDocument doc, WorkGroup group) {
+        addCoverLogo(doc);
+
         XWPFParagraph title = doc.createParagraph();
         title.setAlignment(ParagraphAlignment.CENTER);
-        title.setSpacingBefore(2000);
+        title.setSpacingBefore(1200);
         XWPFRun titleRun = title.createRun();
         titleRun.setText("SENICO SA — Plan Stratégique");
         titleRun.setBold(true);

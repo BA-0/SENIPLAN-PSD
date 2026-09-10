@@ -26,8 +26,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final CustomUserDetailsService userDetailsService;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
+    /**
+     * Routes ou l'on n'a rien a authentifier. Volontairement enumerees une a une : le reste de
+     * {@code /auth} — {@code /me}, {@code /change-password} — a besoin du principal, et un
+     * {@code /auth/**} global le lui retirerait sans que rien ne le signale.
+     */
     private static final List<String> PUBLIC_PATHS = List.of(
-            "/api/v1/auth/**",
+            "/api/v1/auth/login",
+            "/api/v1/auth/refresh",
             "/ws/**",
             "/actuator/health"
     );

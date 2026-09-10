@@ -2,7 +2,11 @@ package com.senico.diagnostic.export;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.lowagie.text.*;
+import com.lowagie.text.pdf.ColumnText;
+import com.lowagie.text.pdf.PdfContentByte;
 import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfPageEventHelper;
+import com.lowagie.text.pdf.PdfTemplate;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.lowagie.text.pdf.draw.LineSeparator;
@@ -44,7 +48,11 @@ public class PdfExportService {
     private static final Color PRIMARY = new Color(0x2D, 0x7A, 0x45);
     private static final Color SLATE = new Color(0x64, 0x74, 0x8B);
     private static final Color BORDER = new Color(0xE2, 0xE8, 0xF0);
+    /** Points de conduite du sommaire : assez marques pour guider l'oeil, assez clairs pour s'effacer. */
+    private static final Color BORDER_DARK = new Color(0xA0, 0xAE, 0xC0);
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    /** Date en toutes lettres de la page de garde, comme sur un PSD publie : « Dakar, le 4 septembre 2026 ». */
+    private static final DateTimeFormatter LONG_DATE = DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale.FRENCH);
     private static final String LOGO_RESOURCE = "/branding/logo-senico.png";
 
     private byte[] logoBytes;
@@ -64,7 +72,8 @@ public class PdfExportService {
         try {
             Document document = new Document(PageSize.A4, 40, 40, 60, 50);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            PdfWriter.getInstance(document, baos);
+            PdfWriter writer = PdfWriter.getInstance(document, baos);
+            writer.setPageEvent(new DocumentFooter("Plan Stratégique Sectoriel — SENICO SA"));
             document.open();
 
             addCoverPage(document, group);
@@ -86,7 +95,8 @@ public class PdfExportService {
         try {
             Document document = new Document(PageSize.A4, 40, 40, 60, 50);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            PdfWriter.getInstance(document, baos);
+            PdfWriter writer = PdfWriter.getInstance(document, baos);
+            writer.setPageEvent(new DocumentFooter("Document de consolidation — PSD 2027-2031"));
             document.open();
 
             List<WorkGroup> groups = workGroupRepository.findAll();
@@ -96,6 +106,11 @@ public class PdfExportService {
                     .collect(Collectors.toMap(r -> key(r.getGroup().getId(), r.getSection().getId()), r -> r));
             Map<String, GroupSectionStatus> statusesByKey = groupSectionStatusRepository.findAllWithGroupAndSection().stream()
                     .collect(Collectors.toMap(s -> key(s.getGroup().getId(), s.getSection().getId()), s -> s));
+
+            // Le Document de consolidation fait foi : il ne reprend que les contributions
+            // approuvees par le DG (cf. PsdApprovedContent). Celles qui attendent encore son
+            // arbitrage apparaissent avec leur statut, mais sans leur contenu.
+            responsesByKey = PsdApprovedContent.approvedOnly(responsesByKey, statusesByKey);
 
             addConsolidatedCoverPage(document);
             document.newPage();
@@ -117,7 +132,8 @@ public class PdfExportService {
         try {
             Document document = new Document(PageSize.A4, 40, 40, 60, 50);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            PdfWriter.getInstance(document, baos);
+            PdfWriter writer = PdfWriter.getInstance(document, baos);
+            writer.setPageEvent(new DocumentFooter("Plan Stratégique de SENICO — PSD 2027-2031"));
             document.open();
 
             List<WorkGroup> groups = workGroupRepository.findAll();
@@ -130,17 +146,30 @@ public class PdfExportService {
             Map<NarrativeBlockKey, PsdNarrativeBlock> narrativeByKey = psdNarrativeBlockRepository.findAll().stream()
                     .collect(Collectors.toMap(PsdNarrativeBlock::getKey, b -> b));
 
-            // La consolidation ne reprend que ce que la direction a valide (cf. PsdValidatedContent).
-            responsesByKey = PsdValidatedContent.validatedOnly(responsesByKey, statusesByKey);
+            // La consolidation ne reprend que ce que le DG a approuve (cf. PsdApprovedContent).
+            responsesByKey = PsdApprovedContent.approvedOnly(responsesByKey, statusesByKey);
 
             addPsdFinalCoverPage(document);
             document.newPage();
             addPsdFinalSommairePage(document, entries, groups);
 
+            Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
+                    .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
             for (Entry entry : entries) {
                 document.newPage();
                 if (entry instanceof MajorHeading heading) {
                     addPsdMajorHeadingPage(document, heading);
+                } else if (entry instanceof NarrativeEntry narrative && narrative.key() == NarrativeBlockKey.AXES_CONSOLIDES) {
+                    // Contenu structure (JSON) : il se lit en axes, rattachements et budget, pas en texte.
+                    Paragraph header = new Paragraph(PdfFonts.phrase(narrative.label(), PdfFonts.font(16, Font.BOLD, PRIMARY)));
+                    header.setSpacingAfter(4);
+                    document.add(header);
+                    LineSeparator separator = new LineSeparator();
+                    separator.setLineColor(PRIMARY);
+                    document.add(new Chunk(separator));
+                    document.add(new Paragraph(" "));
+                    pdfBlockEmitter.emit(document, writer, psdBriefBuilder.strategicAxes(groups, sectionsByCode,
+                            responsesByKey, statusesByKey, narratives()));
                 } else if (entry instanceof NarrativeEntry narrative) {
                     addPsdNarrativePage(document, narrative, narrativeByKey.get(narrative.key()));
                 } else if (entry instanceof SynthesisEntry synthesis) {
@@ -158,73 +187,204 @@ public class PdfExportService {
     }
 
     /**
-     * Note de synthese : le resume de trois a quatre pages de toutes les directions, sans le
-     * detail des tableaux (cf. {@link PsdBriefBuilder}).
+     * Note de synthese : le Plan Strategique de Developpement sur le plan d'un PSD publie
+     * (cf. {@link PsdBriefBuilder}).
+     *
+     * <p>Generee en deux passes. La premiere ne sert qu'a relever la page ou tombe chaque titre ;
+     * la seconde produit le meme document, sommaire numerote. Les numeros ne changent pas d'une
+     * passe a l'autre : le sommaire garde le meme nombre de lignes, seul le numero s'y ajoute.</p>
      */
     public byte[] exportSynthesisNote() {
-        try {
-            Document document = new Document(PageSize.A4, 40, 40, 60, 50);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            PdfWriter.getInstance(document, baos);
-            document.open();
+        List<WorkGroup> groups = workGroupRepository.findAll();
+        Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
+                .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
+        Map<String, SectionResponse> responsesByKey = sectionResponseRepository.findAll().stream()
+                .collect(Collectors.toMap(r -> key(r.getGroup().getId(), r.getSection().getId()), r -> r));
+        Map<String, GroupSectionStatus> statusesByKey = groupSectionStatusRepository.findAllWithGroupAndSection().stream()
+                .collect(Collectors.toMap(s -> key(s.getGroup().getId(), s.getSection().getId()), s -> s));
 
-            List<WorkGroup> groups = workGroupRepository.findAll();
-            Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
-                    .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
-            Map<String, SectionResponse> responsesByKey = sectionResponseRepository.findAll().stream()
-                    .collect(Collectors.toMap(r -> key(r.getGroup().getId(), r.getSection().getId()), r -> r));
-            Map<String, GroupSectionStatus> statusesByKey = groupSectionStatusRepository.findAllWithGroupAndSection().stream()
-                    .collect(Collectors.toMap(s -> key(s.getGroup().getId(), s.getSection().getId()), s -> s));
+        // Meme regle que les autres documents qui font foi : seules les sections approuvees
+        // par le DG sont resumees.
+        responsesByKey = PsdApprovedContent.approvedOnly(responsesByKey, statusesByKey);
+
+        List<ExportBlock> blocks = psdBriefBuilder.build(groups, sectionsByCode, responsesByKey, statusesByKey, narratives());
+        List<ExportBlock.Heading> toc = blocks.stream()
+                .filter(block -> block instanceof ExportBlock.Heading heading && heading.level() <= 2)
+                .map(ExportBlock.Heading.class::cast)
+                .toList();
+
+        Map<String, Integer> pages = renderSynthesisNote(blocks, toc, Map.of()).pages();
+        return renderSynthesisNote(blocks, toc, pages).pdf();
+    }
+
+    private record RenderedNote(byte[] pdf, Map<String, Integer> pages) {
+    }
+
+    private RenderedNote renderSynthesisNote(List<ExportBlock> blocks, List<ExportBlock.Heading> toc,
+                                             Map<String, Integer> pages) {
+        try {
+            Document document = new Document(PageSize.A4, 48, 48, 56, 64);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            PdfWriter writer = PdfWriter.getInstance(document, baos);
+            // Un graphique qui ne tient plus en bas de page passe a la suivante sans que le texte
+            // qui le suit ne remonte avant lui.
+            writer.setStrictImageSequence(true);
+            DocumentFooter footer = new DocumentFooter("Plan Stratégique de Développement 2027-2031 — Note de synthèse");
+            writer.setPageEvent(footer);
+            document.open();
 
             addSynthesisNoteCoverPage(document);
             document.newPage();
-            pdfBlockEmitter.emit(document,
-                    psdBriefBuilder.build(groups, sectionsByCode, responsesByKey, statusesByKey));
+            addSynthesisNoteSommairePage(document, toc, pages);
+            pdfBlockEmitter.emit(document, writer, blocks);
 
             document.close();
-            return baos.toByteArray();
+            return new RenderedNote(baos.toByteArray(), footer.tagPages());
         } catch (DocumentException e) {
             throw new IllegalStateException("Erreur de generation de la note de synthese", e);
         }
     }
 
-    private void addSynthesisNoteCoverPage(Document document) throws DocumentException {
-        Paragraph spacer = new Paragraph(" ");
-        spacer.setSpacingAfter(120);
-        document.add(spacer);
+    /** Blocs narratifs arretes par la Direction Generale, indexes par cle ; un bloc absent vaut vide. */
+    private Map<NarrativeBlockKey, String> narratives() {
+        Map<NarrativeBlockKey, String> narratives = new java.util.EnumMap<>(NarrativeBlockKey.class);
+        for (PsdNarrativeBlock block : psdNarrativeBlockRepository.findAll()) {
+            narratives.put(block.getKey(), block.getContent() == null ? "" : block.getContent());
+        }
+        return narratives;
+    }
 
-        Paragraph title = new Paragraph("SENICO SA — Plan Stratégique",
-                new Font(Font.HELVETICA, 22, Font.BOLD, PRIMARY));
+    /**
+     * Page de garde sur le modele d'un PSD publie : logo, filet, titre du plan en grand, badge
+     * de la nature du document, puis le lieu et la date en toutes lettres.
+     */
+    private void addSynthesisNoteCoverPage(Document document) throws DocumentException {
+        Paragraph topSpacer = new Paragraph(" ");
+        topSpacer.setSpacingAfter(70);
+        document.add(topSpacer);
+
+        document.add(senicoLogo());
+
+        Paragraph logoSpacer = new Paragraph(" ");
+        logoSpacer.setSpacingAfter(28);
+        document.add(logoSpacer);
+
+        LineSeparator rule = new LineSeparator();
+        rule.setLineColor(PRIMARY);
+        rule.setLineWidth(1.5f);
+        document.add(new Chunk(rule));
+
+        Paragraph title = new Paragraph("PLAN STRATÉGIQUE\nDE DÉVELOPPEMENT",
+                PdfFonts.font(26, Font.BOLD, PRIMARY));
         title.setAlignment(Element.ALIGN_CENTER);
+        title.setSpacingBefore(34);
+        title.setLeading(32);
         document.add(title);
 
-        Paragraph subtitle = new Paragraph("Plan Stratégique de Développement (PSD) 2027-2031",
-                new Font(Font.HELVETICA, 14, Font.NORMAL, SLATE));
-        subtitle.setAlignment(Element.ALIGN_CENTER);
-        subtitle.setSpacingBefore(10);
-        document.add(subtitle);
+        Paragraph period = new Paragraph("2027 - 2031", PdfFonts.font(26, Font.BOLD, PRIMARY));
+        period.setAlignment(Element.ALIGN_CENTER);
+        period.setSpacingBefore(8);
+        document.add(period);
 
-        Paragraph docTitle = new Paragraph("NOTE DE SYNTHÈSE",
-                new Font(Font.HELVETICA, 16, Font.BOLD, Color.DARK_GRAY));
-        docTitle.setAlignment(Element.ALIGN_CENTER);
-        docTitle.setSpacingBefore(40);
-        document.add(docTitle);
+        Paragraph company = new Paragraph("SENICO SA", PdfFonts.font(14, Font.NORMAL, SLATE));
+        company.setAlignment(Element.ALIGN_CENTER);
+        company.setSpacingBefore(14);
+        document.add(company);
+
+        PdfPTable badge = new PdfPTable(1);
+        badge.setWidthPercentage(62);
+        badge.setSpacingBefore(46);
+        badge.setHorizontalAlignment(Element.ALIGN_CENTER);
+        PdfPCell badgeCell = new PdfPCell(new Paragraph("NOTE DE SYNTHÈSE",
+                PdfFonts.font(14, Font.BOLD, Color.WHITE)));
+        badgeCell.setBackgroundColor(PRIMARY);
+        badgeCell.setPadding(14);
+        badgeCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        badgeCell.setBorder(Rectangle.NO_BORDER);
+        badge.addCell(badgeCell);
+        document.add(badge);
+
+        Paragraph description = new Paragraph(
+                "Le résumé consolidé de l'ensemble des directions — diagnostic, enjeux, cadre "
+                        + "stratégique, budget et pilotage — pour le Conseil d'Administration et le comité "
+                        + "de pilotage.",
+                PdfFonts.font(11, Font.ITALIC, SLATE));
+        description.setAlignment(Element.ALIGN_CENTER);
+        description.setSpacingBefore(24);
+        description.setIndentationLeft(50);
+        description.setIndentationRight(50);
+        document.add(description);
+
+        Paragraph place = new Paragraph(
+                "Dakar, le " + java.time.LocalDate.now().format(LONG_DATE),
+                PdfFonts.font(12, Font.BOLD, PRIMARY));
+        place.setAlignment(Element.ALIGN_CENTER);
+        place.setSpacingBefore(60);
+        document.add(place);
 
         Paragraph meta = new Paragraph(
-                "Export généré le " + java.time.LocalDateTime.now().format(DATE_FORMAT),
-                new Font(Font.HELVETICA, 11, Font.NORMAL, SLATE));
+                "Export généré le " + java.time.LocalDateTime.now().format(DATE_FORMAT)
+                        + " — document interne, confidentiel",
+                PdfFonts.font(9, Font.ITALIC, SLATE));
         meta.setAlignment(Element.ALIGN_CENTER);
-        meta.setSpacingBefore(10);
+        meta.setSpacingBefore(8);
         document.add(meta);
     }
 
+    /**
+     * Sommaire de la note, comme dans un PSD publie : les parties en gras, leurs sous-parties en
+     * retrait, et pour chacune la page, reliee au titre par des points de conduite. Les numeros
+     * viennent de la premiere passe de generation ; absents, la ligne reste sans numero.
+     */
+    private void addSynthesisNoteSommairePage(Document document, List<ExportBlock.Heading> toc,
+                                              Map<String, Integer> pages) throws DocumentException {
+        Paragraph header = new Paragraph(PdfFonts.phrase("SOMMAIRE", PdfFonts.font(18, Font.BOLD, PRIMARY)));
+        header.setSpacingAfter(4);
+        document.add(header);
+
+        LineSeparator separator = new LineSeparator();
+        separator.setLineColor(PRIMARY);
+        separator.setLineWidth(1.2f);
+        document.add(new Chunk(separator));
+
+        Paragraph spacer = new Paragraph(" ", PdfFonts.font(8, Font.NORMAL, SLATE));
+        spacer.setSpacingAfter(4);
+        document.add(spacer);
+
+        Color ink = new Color(0x1F, 0x29, 0x37);
+        for (ExportBlock.Heading heading : toc) {
+            boolean part = heading.level() == 1;
+            Font font = part ? PdfFonts.font(10.5f, Font.BOLD, ink) : PdfFonts.font(9.5f, Font.NORMAL, ink);
+            Paragraph line = new Paragraph();
+            line.add(PdfFonts.phrase(heading.text(), font));
+            com.lowagie.text.pdf.draw.DottedLineSeparator leader = new com.lowagie.text.pdf.draw.DottedLineSeparator();
+            leader.setGap(2.5f);
+            leader.setLineWidth(0.8f);
+            leader.setLineColor(BORDER_DARK);
+            leader.setOffset(-2);
+            line.add(new Chunk(leader));
+            Integer page = pages.get(PdfBlockEmitter.TOC_TAG + heading.text());
+            line.add(new Chunk(page == null ? "" : " " + (page - 1), font));
+            line.setIndentationLeft(part ? 0 : 18);
+            line.setSpacingBefore(part ? 4.5f : 0.5f);
+            line.setLeading(part ? 13.5f : 11.5f);
+            document.add(line);
+        }
+    }
+
     private void addPsdFinalCoverPage(Document document) throws DocumentException {
-        Font titleFont = new Font(Font.HELVETICA, 22, Font.BOLD, PRIMARY);
-        Font subtitleFont = new Font(Font.HELVETICA, 14, Font.NORMAL, SLATE);
-        Font metaFont = new Font(Font.HELVETICA, 11, Font.NORMAL, SLATE);
+        Font titleFont = PdfFonts.font(22, Font.BOLD, PRIMARY);
+        Font subtitleFont = PdfFonts.font(14, Font.NORMAL, SLATE);
+        Font metaFont = PdfFonts.font(11, Font.NORMAL, SLATE);
+
+        Paragraph topSpacer = new Paragraph(" ");
+        topSpacer.setSpacingAfter(70);
+        document.add(topSpacer);
+
+        document.add(senicoLogo());
 
         Paragraph spacer = new Paragraph(" ");
-        spacer.setSpacingAfter(120);
+        spacer.setSpacingAfter(60);
         document.add(spacer);
 
         Paragraph title = new Paragraph("SENICO SA — Plan Stratégique", titleFont);
@@ -236,7 +396,7 @@ public class PdfExportService {
         subtitle.setSpacingBefore(10);
         document.add(subtitle);
 
-        Paragraph docTitle = new Paragraph("PLAN STRATÉGIQUE DE SENICO", new Font(Font.HELVETICA, 16, Font.BOLD, Color.DARK_GRAY));
+        Paragraph docTitle = new Paragraph("PLAN STRATÉGIQUE DE SENICO", PdfFonts.font(16, Font.BOLD, Color.DARK_GRAY));
         docTitle.setAlignment(Element.ALIGN_CENTER);
         docTitle.setSpacingBefore(40);
         document.add(docTitle);
@@ -250,7 +410,7 @@ public class PdfExportService {
     }
 
     private void addPsdFinalSommairePage(Document document, List<Entry> entries, List<WorkGroup> groups) throws DocumentException {
-        Font headerFont = new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY);
+        Font headerFont = PdfFonts.font(16, Font.BOLD, PRIMARY);
         Paragraph header = new Paragraph("Sommaire", headerFont);
         header.setSpacingAfter(4);
         document.add(header);
@@ -260,8 +420,8 @@ public class PdfExportService {
         document.add(new Chunk(separator));
         document.add(new Paragraph(" "));
 
-        Font majorFont = new Font(Font.HELVETICA, 11, Font.BOLD, Color.DARK_GRAY);
-        Font itemFont = new Font(Font.HELVETICA, 10, Font.NORMAL, Color.DARK_GRAY);
+        Font majorFont = PdfFonts.font(11, Font.BOLD, Color.DARK_GRAY);
+        Font itemFont = PdfFonts.font(10, Font.NORMAL, Color.DARK_GRAY);
         for (Entry entry : entries) {
             // Switch exhaustif sur l'interface scellee Entry plutot qu'une cascade de
             // instanceof terminee par un cast : c'est justement ce cast qui faisait
@@ -281,7 +441,7 @@ public class PdfExportService {
             document.add(p);
         }
 
-        Paragraph legendTitle = new Paragraph("Légende des directions", new Font(Font.HELVETICA, 13, Font.BOLD, PRIMARY));
+        Paragraph legendTitle = new Paragraph("Légende des directions", PdfFonts.font(13, Font.BOLD, PRIMARY));
         legendTitle.setSpacingBefore(20);
         legendTitle.setSpacingAfter(6);
         document.add(legendTitle);
@@ -311,7 +471,7 @@ public class PdfExportService {
     private void addPsdSynthesisPage(Document document, SynthesisEntry synthesis, List<WorkGroup> groups,
                                       Map<String, SectionResponse> responsesByKey,
                                       Map<String, GroupSectionStatus> statusesByKey) throws DocumentException {
-        Paragraph header = new Paragraph(synthesis.label(), new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY));
+        Paragraph header = new Paragraph(synthesis.label(), PdfFonts.font(16, Font.BOLD, PRIMARY));
         header.setSpacingAfter(4);
         document.add(header);
 
@@ -328,9 +488,9 @@ public class PdfExportService {
                                                     Map<String, GroupSectionStatus> statusesByKey) {
         Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
                 .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
-        long validated = statusesByKey.values().stream().filter(PsdValidatedContent::isValidated).count();
+        long approved = statusesByKey.values().stream().filter(PsdApprovedContent::isApproved).count();
         return psdSynthesisBuilder.build(groups, sectionsByCode, responsesByKey,
-                (int) validated, statusesByKey.size());
+                (int) approved, statusesByKey.size());
     }
 
     private void addPsdMajorHeadingPage(Document document, MajorHeading heading) throws DocumentException {
@@ -338,13 +498,13 @@ public class PdfExportService {
         spacer.setSpacingAfter(150);
         document.add(spacer);
 
-        Paragraph title = new Paragraph(heading.title(), new Font(Font.HELVETICA, 24, Font.BOLD, PRIMARY));
+        Paragraph title = new Paragraph(heading.title(), PdfFonts.font(24, Font.BOLD, PRIMARY));
         title.setAlignment(Element.ALIGN_CENTER);
         document.add(title);
     }
 
     private void addPsdNarrativePage(Document document, NarrativeEntry narrative, PsdNarrativeBlock block) throws DocumentException {
-        Font headerFont = new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY);
+        Font headerFont = PdfFonts.font(16, Font.BOLD, PRIMARY);
         Paragraph header = new Paragraph(narrative.label(), headerFont);
         header.setSpacingAfter(4);
         document.add(header);
@@ -355,16 +515,12 @@ public class PdfExportService {
         document.add(new Paragraph(" "));
 
         String content = block != null && block.getContent() != null ? block.getContent() : "";
-        Font bodyFont = new Font(Font.HELVETICA, 11, Font.NORMAL, Color.DARK_GRAY);
         if (content.isBlank()) {
-            document.add(new Paragraph("(contenu à renseigner)", new Font(Font.HELVETICA, 11, Font.ITALIC, SLATE)));
+            document.add(new Paragraph("(contenu à renseigner)", PdfFonts.font(11, Font.ITALIC, SLATE)));
             return;
         }
-        for (String line : content.split("\n")) {
-            Paragraph p = new Paragraph(line, bodyFont);
-            p.setSpacingAfter(6);
-            document.add(p);
-        }
+        // Puces et intertitres rediges dans la zone de texte (cf. PsdNarrativeText).
+        pdfBlockEmitter.emit(document, PsdNarrativeText.blocks(content));
     }
 
     private static final String[] PESTEL_AXES = {
@@ -374,7 +530,7 @@ public class PdfExportService {
     private void addPsdSectionEntryPage(Document document, SectionEntry sectionEntry, List<WorkGroup> groups,
                                          Map<String, SectionResponse> responsesByKey,
                                          Map<String, GroupSectionStatus> statusesByKey) throws DocumentException {
-        Font headerFont = new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY);
+        Font headerFont = PdfFonts.font(16, Font.BOLD, PRIMARY);
         Paragraph header = new Paragraph(sectionEntry.label(), headerFont);
         header.setSpacingAfter(4);
         document.add(header);
@@ -390,7 +546,7 @@ public class PdfExportService {
 
             if (sectionEntry.sectionCodes().size() > 1) {
                 Paragraph subHeader = new Paragraph(section.getCode() + " — " + section.getTitle(),
-                        new Font(Font.HELVETICA, 13, Font.BOLD, SLATE));
+                        PdfFonts.font(13, Font.BOLD, SLATE));
                 subHeader.setSpacingBefore(10);
                 subHeader.setSpacingAfter(6);
                 document.add(subHeader);
@@ -422,7 +578,7 @@ public class PdfExportService {
         List<PsdSectionMerger.GroupBlocks> perGroup = new ArrayList<>();
         for (WorkGroup group : groups) {
             ExportSectionData data = loadPsdExportData(group, section, responsesByKey, statusesByKey);
-            boolean included = !data.withheldPendingValidation();
+            boolean included = !data.withheldPendingApproval();
             perGroup.add(new PsdSectionMerger.GroupBlocks(
                     group,
                     included ? sectionExportRenderer.render(data) : List.of(),
@@ -434,9 +590,13 @@ public class PdfExportService {
 
     private String exclusionReason(ExportSectionData data) {
         SectionStatus status = data.status() != null ? data.status().getStatus() : SectionStatus.NOT_STARTED;
-        return status == SectionStatus.NOT_STARTED
-                ? "non renseignée"
-                : "non validée — " + SectionExportRenderer.statusLabel(status.name()).toLowerCase();
+        if (status == SectionStatus.NOT_STARTED) {
+            return "non renseignée";
+        }
+        if (status == SectionStatus.VALIDATED) {
+            return "en attente d'approbation de la Direction Générale";
+        }
+        return "non validée — " + SectionExportRenderer.statusLabel(status.name()).toLowerCase();
     }
 
     /**
@@ -479,7 +639,7 @@ public class PdfExportService {
         }
 
         if (rowValuesByKey.isEmpty()) {
-            document.add(new Paragraph("Aucune donnée saisie pour cette section.", new Font(Font.HELVETICA, 10, Font.ITALIC, SLATE)));
+            document.add(new Paragraph("Aucune donnée saisie pour cette section.", PdfFonts.font(10, Font.ITALIC, SLATE)));
             return;
         }
 
@@ -534,12 +694,12 @@ public class PdfExportService {
             List<PsdCrossGroupMerge.MergedItem> merged = PsdCrossGroupMerge.merge(entries, false);
 
             Paragraph cellContent = new Paragraph();
-            cellContent.add(new Chunk(labels[i] + "\n", new Font(Font.HELVETICA, 10, Font.BOLD, Color.DARK_GRAY)));
+            cellContent.add(new Chunk(labels[i] + "\n", PdfFonts.font(10, Font.BOLD, Color.DARK_GRAY)));
             if (merged.isEmpty()) {
-                cellContent.add(new Chunk("Aucun élément.", new Font(Font.HELVETICA, 9, Font.NORMAL, Color.DARK_GRAY)));
+                cellContent.add(new Chunk("Aucun élément.", PdfFonts.font(9, Font.NORMAL, Color.DARK_GRAY)));
             } else {
                 for (PsdCrossGroupMerge.MergedItem item : merged) {
-                    cellContent.add(new Chunk("•  " + item.text(), new Font(Font.HELVETICA, 9, Font.NORMAL, Color.DARK_GRAY)));
+                    cellContent.add(new Chunk("•  " + item.text(), PdfFonts.font(9, Font.NORMAL, Color.DARK_GRAY)));
                     appendContributorDots(cellContent, item.contributors());
                     cellContent.add(Chunk.NEWLINE);
                 }
@@ -590,10 +750,10 @@ public class PdfExportService {
 
                 Paragraph cellContent = new Paragraph();
                 if (merged.isEmpty()) {
-                    cellContent.add(new Chunk("—", new Font(Font.HELVETICA, 9, Font.NORMAL, SLATE)));
+                    cellContent.add(new Chunk("—", PdfFonts.font(9, Font.NORMAL, SLATE)));
                 } else {
                     for (PsdCrossGroupMerge.MergedItem item : merged) {
-                        cellContent.add(new Chunk("•  " + item.text(), new Font(Font.HELVETICA, 9, Font.NORMAL, Color.DARK_GRAY)));
+                        cellContent.add(new Chunk("•  " + item.text(), PdfFonts.font(9, Font.NORMAL, Color.DARK_GRAY)));
                         appendContributorDots(cellContent, item.contributors());
                         cellContent.add(Chunk.NEWLINE);
                     }
@@ -608,16 +768,19 @@ public class PdfExportService {
         addMergeCaption(document);
     }
 
+    /** Pastilles dessinees plutot que glyphe « ■ », absent de la police des documents (cf. PdfFonts). */
     private void appendContributorDots(Paragraph content, List<WorkGroup> contributors) {
         for (WorkGroup group : contributors) {
-            content.add(new Chunk(" ■", new Font(Font.HELVETICA, 8, Font.NORMAL, hexToColor(group.getColor()))));
+            content.add(new Chunk(" ", PdfFonts.font(8, Font.NORMAL, SLATE)));
+            content.add(PdfBlockEmitter.swatch(group.getColor(), 9));
         }
     }
 
     private void addMergeCaption(Document document) throws DocumentException {
-        Paragraph caption = new Paragraph(
-                "■ = direction(s) ayant mentionné cet élément (voir légende des directions au sommaire).",
-                new Font(Font.HELVETICA, 8, Font.ITALIC, SLATE));
+        Paragraph caption = new Paragraph();
+        caption.add(PdfBlockEmitter.swatch("#64748B", 8));
+        caption.add(new Chunk(" = direction(s) ayant mentionné cet élément (voir légende des directions au sommaire).",
+                PdfFonts.font(8, Font.ITALIC, SLATE)));
         caption.setSpacingAfter(10);
         document.add(caption);
     }
@@ -668,13 +831,13 @@ public class PdfExportService {
         rule.setLineWidth(1.5f);
         document.add(new Chunk(rule));
 
-        Font titleFont = new Font(Font.HELVETICA, 22, Font.BOLD, PRIMARY);
+        Font titleFont = PdfFonts.font(22, Font.BOLD, PRIMARY);
         Paragraph title = new Paragraph("SENICO SA — Plan Stratégique", titleFont);
         title.setAlignment(Element.ALIGN_CENTER);
         title.setSpacingBefore(28);
         document.add(title);
 
-        Font subtitleFont = new Font(Font.HELVETICA, 14, Font.NORMAL, SLATE);
+        Font subtitleFont = PdfFonts.font(14, Font.NORMAL, SLATE);
         Paragraph subtitle = new Paragraph("Plan Stratégique de Développement (PSD) 2027-2031", subtitleFont);
         subtitle.setAlignment(Element.ALIGN_CENTER);
         subtitle.setSpacingBefore(10);
@@ -685,7 +848,7 @@ public class PdfExportService {
         badge.setSpacingBefore(46);
         badge.setHorizontalAlignment(Element.ALIGN_CENTER);
         PdfPCell badgeCell = new PdfPCell(new Paragraph("DOCUMENT DE CONSOLIDATION",
-                new Font(Font.HELVETICA, 14, Font.BOLD, Color.WHITE)));
+                PdfFonts.font(14, Font.BOLD, Color.WHITE)));
         badgeCell.setBackgroundColor(PRIMARY);
         badgeCell.setPadding(14);
         badgeCell.setHorizontalAlignment(Element.ALIGN_CENTER);
@@ -696,7 +859,7 @@ public class PdfExportService {
         Paragraph description = new Paragraph(
                 "Toutes les réponses de toutes les directions, réunies dans un seul document — "
                         + "code couleur par direction — pour permettre de trancher directement.",
-                new Font(Font.HELVETICA, 11, Font.ITALIC, SLATE));
+                PdfFonts.font(11, Font.ITALIC, SLATE));
         description.setAlignment(Element.ALIGN_CENTER);
         description.setSpacingBefore(24);
         description.setIndentationLeft(50);
@@ -705,20 +868,20 @@ public class PdfExportService {
 
         Paragraph meta = new Paragraph(
                 "Export généré le " + java.time.LocalDateTime.now().format(DATE_FORMAT),
-                new Font(Font.HELVETICA, 11, Font.NORMAL, SLATE));
+                PdfFonts.font(11, Font.NORMAL, SLATE));
         meta.setAlignment(Element.ALIGN_CENTER);
         meta.setSpacingBefore(60);
         document.add(meta);
 
         Paragraph confidential = new Paragraph("Document interne — confidentiel",
-                new Font(Font.HELVETICA, 9, Font.ITALIC, SLATE));
+                PdfFonts.font(9, Font.ITALIC, SLATE));
         confidential.setAlignment(Element.ALIGN_CENTER);
         confidential.setSpacingBefore(6);
         document.add(confidential);
     }
 
     private void addSommairePage(Document document, List<SectionDef> sections, List<WorkGroup> groups) throws DocumentException {
-        Font headerFont = new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY);
+        Font headerFont = PdfFonts.font(16, Font.BOLD, PRIMARY);
         Paragraph header = new Paragraph("Sommaire", headerFont);
         header.setSpacingAfter(4);
         document.add(header);
@@ -739,7 +902,7 @@ public class PdfExportService {
         }
         document.add(toc);
 
-        Paragraph legendTitle = new Paragraph("Légende des directions", new Font(Font.HELVETICA, 13, Font.BOLD, PRIMARY));
+        Paragraph legendTitle = new Paragraph("Légende des directions", PdfFonts.font(13, Font.BOLD, PRIMARY));
         legendTitle.setSpacingBefore(10);
         legendTitle.setSpacingAfter(6);
         document.add(legendTitle);
@@ -762,7 +925,7 @@ public class PdfExportService {
     private void addConsolidatedSectionPage(Document document, SectionDef section, List<WorkGroup> groups,
                                              Map<String, SectionResponse> responsesByKey,
                                              Map<String, GroupSectionStatus> statusesByKey) throws DocumentException {
-        Font headerFont = new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY);
+        Font headerFont = PdfFonts.font(16, Font.BOLD, PRIMARY);
 
         Paragraph header = new Paragraph(section.getCode() + " — " + section.getTitle(), headerFont);
         header.setSpacingAfter(4);
@@ -791,7 +954,7 @@ public class PdfExportService {
         banner.setWidthPercentage(100);
         banner.setSpacingBefore(6);
         banner.setSpacingAfter(6);
-        PdfPCell cell = new PdfPCell(new Paragraph(group.getName(), new Font(Font.HELVETICA, 11, Font.BOLD, Color.WHITE)));
+        PdfPCell cell = new PdfPCell(new Paragraph(group.getName(), PdfFonts.font(11, Font.BOLD, Color.WHITE)));
         cell.setBackgroundColor(hexToColor(group.getColor()));
         cell.setPadding(6);
         cell.setBorder(Rectangle.NO_BORDER);
@@ -801,7 +964,7 @@ public class PdfExportService {
 
     private void addTableHeaderRow(PdfPTable table, String... headers) {
         for (String h : headers) {
-            PdfPCell cell = new PdfPCell(new Paragraph(h, new Font(Font.HELVETICA, 9, Font.BOLD, Color.WHITE)));
+            PdfPCell cell = new PdfPCell(new Paragraph(h, PdfFonts.font(9, Font.BOLD, Color.WHITE)));
             cell.setBackgroundColor(PRIMARY);
             cell.setPadding(5);
             cell.setBorderColor(BORDER);
@@ -810,7 +973,7 @@ public class PdfExportService {
     }
 
     private PdfPCell bodyCell(String text, int align, Color bg) {
-        PdfPCell cell = new PdfPCell(new Paragraph(text == null ? "" : text, new Font(Font.HELVETICA, 9, Font.NORMAL, Color.DARK_GRAY)));
+        PdfPCell cell = new PdfPCell(new Paragraph(text == null ? "" : text, PdfFonts.font(9, Font.NORMAL, Color.DARK_GRAY)));
         cell.setHorizontalAlignment(align);
         cell.setPadding(5);
         cell.setBorderColor(BORDER);
@@ -841,25 +1004,31 @@ public class PdfExportService {
     }
 
     /**
-     * Variante pour le Plan Strategique de SENICO, dont les reponses ont deja ete filtrees sur
-     * les seules sections validees : une reponse absente alors que le statut n'est pas
-     * NOT_STARTED signale un contenu retenu faute de validation, pas une section vide.
+     * Variante pour les documents qui font foi, dont les reponses ont deja ete filtrees sur les
+     * seules sections approuvees par le DG : une reponse absente alors que le statut n'est pas
+     * NOT_STARTED signale un contenu retenu faute d'approbation, pas une section vide.
      */
     private ExportSectionData loadPsdExportData(WorkGroup group, SectionDef section,
                                                  Map<String, SectionResponse> responsesByKey,
                                                  Map<String, GroupSectionStatus> statusesByKey) {
         ExportSectionData data = loadExportData(group, section, responsesByKey, statusesByKey);
-        boolean withheld = !PsdValidatedContent.isValidated(data.status());
+        boolean withheld = !PsdApprovedContent.isApproved(data.status());
         return new ExportSectionData(data.section(), data.content(), data.version(), data.status(), withheld);
     }
 
     private void addCoverPage(Document document, WorkGroup group) throws DocumentException {
-        Font titleFont = new Font(Font.HELVETICA, 22, Font.BOLD, PRIMARY);
-        Font subtitleFont = new Font(Font.HELVETICA, 14, Font.NORMAL, SLATE);
-        Font metaFont = new Font(Font.HELVETICA, 11, Font.NORMAL, SLATE);
+        Font titleFont = PdfFonts.font(22, Font.BOLD, PRIMARY);
+        Font subtitleFont = PdfFonts.font(14, Font.NORMAL, SLATE);
+        Font metaFont = PdfFonts.font(11, Font.NORMAL, SLATE);
+
+        Paragraph topSpacer = new Paragraph(" ");
+        topSpacer.setSpacingAfter(70);
+        document.add(topSpacer);
+
+        document.add(senicoLogo());
 
         Paragraph spacer = new Paragraph(" ");
-        spacer.setSpacingAfter(120);
+        spacer.setSpacingAfter(60);
         document.add(spacer);
 
         Paragraph title = new Paragraph("SENICO SA — Plan Stratégique", titleFont);
@@ -871,12 +1040,12 @@ public class PdfExportService {
         subtitle.setSpacingBefore(10);
         document.add(subtitle);
 
-        Paragraph docTitle = new Paragraph("PLAN STRATÉGIQUE SECTORIEL", new Font(Font.HELVETICA, 16, Font.BOLD, Color.DARK_GRAY));
+        Paragraph docTitle = new Paragraph("PLAN STRATÉGIQUE SECTORIEL", PdfFonts.font(16, Font.BOLD, Color.DARK_GRAY));
         docTitle.setAlignment(Element.ALIGN_CENTER);
         docTitle.setSpacingBefore(40);
         document.add(docTitle);
 
-        Paragraph groupName = new Paragraph(group.getName(), new Font(Font.HELVETICA, 14, Font.NORMAL, Color.DARK_GRAY));
+        Paragraph groupName = new Paragraph(group.getName(), PdfFonts.font(14, Font.NORMAL, Color.DARK_GRAY));
         groupName.setAlignment(Element.ALIGN_CENTER);
         groupName.setSpacingBefore(8);
         document.add(groupName);
@@ -890,7 +1059,7 @@ public class PdfExportService {
     }
 
     private void addSectionPage(Document document, SectionDef section, WorkGroup group) throws DocumentException {
-        Font headerFont = new Font(Font.HELVETICA, 16, Font.BOLD, PRIMARY);
+        Font headerFont = PdfFonts.font(16, Font.BOLD, PRIMARY);
 
         Paragraph header = new Paragraph(section.getCode() + " — " + section.getTitle(), headerFont);
         header.setSpacingAfter(4);
@@ -903,6 +1072,81 @@ public class PdfExportService {
 
         List<ExportBlock> blocks = sectionExportRenderer.render(loadExportData(group.getId(), section));
         pdfBlockEmitter.emit(document, blocks);
+    }
+
+    /**
+     * Pied de page commun aux documents exportes : intitule du document a gauche, pagination a
+     * droite. La page de garde n'en porte pas et n'est pas comptee, comme dans un PSD publie ou
+     * la numerotation commence au sommaire.
+     *
+     * <p>Le total est reserve dans un gabarit puis rempli a la fermeture, quand le nombre de
+     * pages est enfin connu : c'est le seul moyen d'imprimer « Page 3 / 12 » en une seule passe
+     * de generation.</p>
+     */
+    private static final class DocumentFooter extends PdfPageEventHelper {
+
+        /** Largeur reservee au nombre total de pages, rempli a la fermeture du document. */
+        private static final float TOTAL_WIDTH = 22;
+
+        private final String label;
+        private final Font font = PdfFonts.font(8, Font.NORMAL, SLATE);
+        private final Map<String, Integer> tagPages = new LinkedHashMap<>();
+        private PdfTemplate totalPages;
+        private int lastNumberedPage;
+
+        private DocumentFooter(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public void onOpenDocument(PdfWriter writer, Document document) {
+            totalPages = writer.getDirectContent().createTemplate(TOTAL_WIDTH, 12);
+        }
+
+        @Override
+        public void onEndPage(PdfWriter writer, Document document) {
+            int page = writer.getPageNumber();
+            if (page <= 1) {
+                return;
+            }
+            lastNumberedPage = page - 1;
+            PdfContentByte canvas = writer.getDirectContent();
+            float baseline = document.bottom() - 30;
+
+            // Filet fin au-dessus du pied de page : il le separe du corps sans l'alourdir.
+            canvas.saveState();
+            canvas.setColorStroke(BORDER);
+            canvas.setLineWidth(0.6f);
+            canvas.moveTo(document.left(), baseline + 12);
+            canvas.lineTo(document.right(), baseline + 12);
+            canvas.stroke();
+            canvas.restoreState();
+
+            ColumnText.showTextAligned(canvas, Element.ALIGN_LEFT,
+                    new Phrase(label, font), document.left(), baseline, 0);
+            // « Page 3 / » cale a droite, puis le total dans son gabarit, apres une espace fixe :
+            // une espace en fin de texte aligne a droite serait avalee a l'affichage.
+            float totalX = document.right() - TOTAL_WIDTH + 3;
+            ColumnText.showTextAligned(canvas, Element.ALIGN_RIGHT,
+                    new Phrase("Page " + lastNumberedPage + " /", font), totalX - 3, baseline, 0);
+            canvas.addTemplate(totalPages, totalX, baseline);
+        }
+
+        @Override
+        public void onCloseDocument(PdfWriter writer, Document document) {
+            ColumnText.showTextAligned(totalPages, Element.ALIGN_LEFT,
+                    new Phrase(String.valueOf(lastNumberedPage), font), 0, 0, 0);
+        }
+
+        /** Page ou tombe chaque intertitre marque (cf. PdfBlockEmitter#TOC_TAG), pour le sommaire. */
+        @Override
+        public void onGenericTag(PdfWriter writer, Document document, Rectangle rect, String text) {
+            tagPages.putIfAbsent(text, writer.getPageNumber());
+        }
+
+        private Map<String, Integer> tagPages() {
+            return Map.copyOf(tagPages);
+        }
     }
 
     private ExportSectionData loadExportData(Long groupId, SectionDef section) {

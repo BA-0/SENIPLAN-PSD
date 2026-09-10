@@ -8,6 +8,7 @@ import type {
   SubmissionSummaryDto,
 } from "@/types/api";
 import type {
+  Role,
   SectionContentResponse,
   SectionRevisionContentResponse,
   SectionRevisionSummaryDto,
@@ -85,23 +86,109 @@ export async function validateAllSubmitted(groupId: number, comment?: string): P
   return data;
 }
 
-export interface StaffAccount {
-  id: number;
-  username: string;
-  fullName: string;
-  role: string;
-  roleLabel: string;
-  enabled: boolean;
-  lastLoginAt: string | null;
-}
-
-/** Comptes transverses : admin et direction generale, qui ne dependent d'aucun groupe. */
-export async function listStaffAccounts(): Promise<StaffAccount[]> {
-  const { data } = await apiClient.get<StaffAccount[]>("/admin/users/staff");
+/**
+ * Second niveau de validation, reserve au DG : une section validee par le comite de pilotage
+ * n'entre dans les documents consolides qu'une fois approuvee ici. Un refus la renvoie en
+ * revision cote direction.
+ */
+export async function dgReviewSection<T>(
+  groupId: number,
+  code: string,
+  decision: "APPROVE" | "REJECT",
+  comment?: string
+): Promise<SectionContentResponse<T>> {
+  const { data } = await apiClient.post<SectionContentResponse<T>>(
+    `/admin/groups/${groupId}/sections/${code}/dg-approval`,
+    { decision, comment }
+  );
   return data;
 }
 
-export async function resetStaffPassword(userId: number): Promise<{ username: string; temporaryPassword: string }> {
+/**
+ * Approuve d'un coup les sections validees d'une direction qui attendent encore le DG. Le
+ * serveur ignore celles qui ne sont pas validees ou deja approuvees : l'appel est sans effet
+ * s'il est rejoue.
+ */
+export async function dgApproveAllValidated(groupId: number, comment?: string): Promise<{ approvedCount: number }> {
+  const { data } = await apiClient.post<{ approvedCount: number }>(
+    `/admin/groups/${groupId}/sections/dg-approve-all`,
+    { decision: "APPROVE", comment }
+  );
+  return data;
+}
+
+/** Une section designee pour l'arbitrage du DG, hors de tout contexte de direction. */
+export interface DgSectionTarget {
+  groupId: number;
+  sectionCode: string;
+}
+
+/**
+ * Approbation par lot : les sections cochees par le DG dans la liste des soumissions, toutes
+ * directions confondues. Le serveur ignore celles qui ne sont pas validees ou deja approuvees,
+ * et renvoie ce qui a reellement change.
+ */
+export async function dgApproveSelection(
+  targets: DgSectionTarget[],
+  comment?: string
+): Promise<{ approvedCount: number }> {
+  const { data } = await apiClient.post<{ approvedCount: number }>("/admin/dg-approvals/selection", {
+    targets,
+    comment,
+  });
+  return data;
+}
+
+/**
+ * Approuve d'un coup tout ce qui attend encore l'arbitrage du DG, toutes directions confondues :
+ * le geste de fin de campagne, quand le comite de pilotage a fini de valider.
+ */
+export async function dgApproveAllPending(comment?: string): Promise<{ approvedCount: number }> {
+  const { data } = await apiClient.post<{ approvedCount: number }>("/admin/dg-approvals/all", {
+    decision: "APPROVE",
+    comment,
+  });
+  return data;
+}
+
+export interface UserAccount {
+  id: number;
+  username: string;
+  fullName: string;
+  role: Role;
+  roleLabel: string;
+  groupId: number | null;
+  groupName: string | null;
+  enabled: boolean;
+  /** Le compte n'a pas encore remplacé le mot de passe qu'on lui a remis. */
+  mustChangePassword: boolean;
+  lastLoginAt: string | null;
+  /** Renseigné seulement en réponse à une création : le mot de passe ne s'affiche qu'une fois. */
+  temporaryPassword?: string;
+}
+
+export interface CreateUserAccountPayload {
+  username: string;
+  fullName: string;
+  role: Role;
+  /** Direction de rattachement : exigée pour un chef de groupe, refusée pour les autres rôles. */
+  groupId?: number;
+  /** Laissé vide, le serveur génère un mot de passe et le renvoie une seule fois. */
+  password?: string;
+}
+
+/** Tous les comptes, chefs de groupe compris : la seule vue d'ensemble des accès. */
+export async function listUserAccounts(): Promise<UserAccount[]> {
+  const { data } = await apiClient.get<UserAccount[]>("/admin/users");
+  return data;
+}
+
+export async function createUserAccount(payload: CreateUserAccountPayload): Promise<UserAccount> {
+  const { data } = await apiClient.post<UserAccount>("/admin/users", payload);
+  return data;
+}
+
+export async function resetUserPassword(userId: number): Promise<{ username: string; temporaryPassword: string }> {
   const { data } = await apiClient.post<{ username: string; temporaryPassword: string }>(
     `/admin/users/${userId}/reset-password`
   );

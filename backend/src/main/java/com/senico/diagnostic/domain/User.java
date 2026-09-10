@@ -28,6 +28,15 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    /**
+     * Mot de passe attribue par un tiers (creation du compte, reinitialisation) et pas encore
+     * remplace par son titulaire. Tant que c'est vrai, le serveur ne laisse passer que la
+     * connexion et le changement de mot de passe (cf. PasswordChangeGuardFilter).
+     */
+    @Column(name = "must_change_password", nullable = false)
+    @Builder.Default
+    private boolean mustChangePassword = false;
+
     @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
 

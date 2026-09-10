@@ -8,6 +8,8 @@ import com.senico.diagnostic.dto.cycle.GroupCycleSectionContentDto;
 import com.senico.diagnostic.dto.cycle.GroupCycleSummaryDto;
 import com.senico.diagnostic.dto.realtime.SectionProgressEvent;
 import com.senico.diagnostic.dto.section.AdminReviewRequest;
+import com.senico.diagnostic.dto.section.DgApprovalRequest;
+import com.senico.diagnostic.dto.section.DgSectionTarget;
 import com.senico.diagnostic.dto.section.SectionContentResponse;
 import com.senico.diagnostic.dto.section.SectionRevisionContentResponse;
 import com.senico.diagnostic.dto.section.SectionRevisionSummaryDto;
@@ -23,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -142,10 +146,20 @@ public class SectionEngineService {
         contentValidator.validate(section.getType(), rawContent, false);
         SectionResponse saved = persistContent(group, section, rawContent, adminUser);
 
+        // Le DG approuve un texte, pas une case a cocher : si l'admin le corrige apres coup,
+        // l'approbation ne couvre plus ce qui serait consolide. Elle tombe donc, et il faut la
+        // redemander — sans quoi l'admin contournerait a lui seul le second niveau.
+        boolean approvalRevoked = status.isDgApproved();
+        if (approvalRevoked) {
+            clearDgApproval(status);
+        }
         status.setLastActivityAt(LocalDateTime.now());
         groupSectionStatusRepository.save(status);
 
         activityLogService.log(group, adminUser, ActivityLogService.ACTION_ADMIN_EDIT, section);
+        if (approvalRevoked) {
+            activityLogService.log(group, adminUser, ActivityLogService.ACTION_DG_APPROVAL_REVOKED, section);
+        }
         publishProgress(group, section, status);
 
         return buildResponse(group, section, saved, status);
@@ -178,6 +192,7 @@ public class SectionEngineService {
         status.setSubmittedAt(null);
         status.setValidatedAt(null);
         status.setAdminComment(null);
+        clearDgApproval(status);
         status.setLastActivityAt(LocalDateTime.now());
         groupSectionStatusRepository.save(status);
 
@@ -223,6 +238,7 @@ public class SectionEngineService {
                     .status(status.getStatus())
                     .submittedAt(status.getSubmittedAt())
                     .validatedAt(status.getValidatedAt())
+                    .dgApprovedAt(status.getDgApprovedAt())
                     .adminComment(status.getAdminComment())
                     .archivedAt(now)
                     .archivedBy(adminUser.getId())
@@ -240,6 +256,7 @@ public class SectionEngineService {
             status.setSubmittedAt(null);
             status.setValidatedAt(null);
             status.setAdminComment(null);
+            clearDgApproval(status);
             status.setLastActivityAt(now);
             groupSectionStatusRepository.save(status);
 
@@ -309,6 +326,7 @@ public class SectionEngineService {
                         .status(a.getStatus().name())
                         .submittedAt(a.getSubmittedAt())
                         .validatedAt(a.getValidatedAt())
+                        .dgApprovedAt(a.getDgApprovedAt())
                         .lastActivityAt(a.getArchivedAt())
                         .adminComment(a.getAdminComment())
                         .build())
@@ -388,6 +406,7 @@ public class SectionEngineService {
         status.setSubmittedAt(LocalDateTime.now());
         status.setValidatedAt(null);
         status.setAdminComment(null);
+        clearDgApproval(status);
         status.setLastActivityAt(LocalDateTime.now());
         groupSectionStatusRepository.save(status);
 
@@ -424,6 +443,7 @@ public class SectionEngineService {
             status.setStatus(SectionStatus.VALIDATED);
             status.setValidatedAt(now);
             status.setAdminComment(comment);
+            clearDgApproval(status);
             status.setLastActivityAt(now);
             groupSectionStatusRepository.save(status);
             activityLogService.log(group, adminUser, ActivityLogService.ACTION_VALIDATE, status.getSection());
@@ -445,6 +465,7 @@ public class SectionEngineService {
                 status.setStatus(SectionStatus.VALIDATED);
                 status.setValidatedAt(LocalDateTime.now());
                 status.setAdminComment(request.comment());
+                clearDgApproval(status);
                 activityLogService.log(group, adminUser, ActivityLogService.ACTION_VALIDATE, section);
             }
             case REQUEST_REVISION -> {
@@ -452,6 +473,7 @@ public class SectionEngineService {
                 status.setStatus(SectionStatus.REVISION_REQUESTED);
                 status.setValidatedAt(null);
                 status.setAdminComment(request.comment());
+                clearDgApproval(status);
                 activityLogService.log(group, adminUser, ActivityLogService.ACTION_REQUEST_REVISION, section);
             }
             case RETURN_TO_GROUP -> {
@@ -461,6 +483,7 @@ public class SectionEngineService {
                 status.setSubmittedAt(null);
                 status.setValidatedAt(null);
                 status.setAdminComment(request.comment());
+                clearDgApproval(status);
                 activityLogService.log(group, adminUser, ActivityLogService.ACTION_RETURN_TO_GROUP, section);
             }
         }
@@ -472,6 +495,148 @@ public class SectionEngineService {
         SectionResponse response = sectionResponseRepository
                 .findByGroupIdAndSectionId(groupId, section.getId()).orElse(null);
         return buildResponse(group, section, response, status);
+    }
+
+    /**
+     * Second niveau de validation, reserve au DG (regle d'acces dans SecurityConfig). L'approbation
+     * ne porte que sur une section deja validee par le comite de pilotage, et c'est elle — non la
+     * validation — qui fait entrer la contribution dans le Document de consolidation, la Note de
+     * synthese et le Plan Strategique de SENICO.
+     *
+     * <p>Un refus renvoie la section en revision cote direction : elle ressort donc aussi des
+     * documents, puisqu'elle n'est plus validee.</p>
+     */
+    @Transactional
+    public SectionContentResponse dgReview(Long groupId, String sectionCode, DgApprovalRequest request, User dgUser) {
+        WorkGroup group = resolveGroup(groupId);
+        SectionDef section = resolveSection(sectionCode);
+        GroupSectionStatus status = resolveStatus(group, section);
+
+        switch (request.decision()) {
+            case APPROVE -> {
+                requireStatus(status,
+                        "Seules les sections validees par le comite de pilotage peuvent etre approuvees",
+                        SectionStatus.VALIDATED);
+                status.setDgApprovedAt(LocalDateTime.now());
+                status.setDgApprovedBy(dgUser.getId());
+                status.setDgComment(request.comment());
+                activityLogService.log(group, dgUser, ActivityLogService.ACTION_DG_APPROVE, section);
+            }
+            case REJECT -> {
+                requireStatus(status,
+                        "Seule une section validee par le comite de pilotage peut etre refusee par la Direction Generale",
+                        SectionStatus.VALIDATED);
+                status.setStatus(SectionStatus.REVISION_REQUESTED);
+                status.setValidatedAt(null);
+                clearDgApproval(status);
+                status.setDgComment(request.comment());
+                activityLogService.log(group, dgUser, ActivityLogService.ACTION_DG_REJECT, section);
+            }
+        }
+        status.setLastActivityAt(LocalDateTime.now());
+        groupSectionStatusRepository.save(status);
+
+        publishProgress(group, section, status);
+
+        SectionResponse response = sectionResponseRepository
+                .findByGroupIdAndSectionId(groupId, section.getId()).orElse(null);
+        return buildResponse(group, section, response, status);
+    }
+
+    /**
+     * Approuve d'un coup toutes les sections validees d'une direction qui attendaient encore
+     * l'arbitrage du DG. Pendant de {@link #adminValidateAllSubmitted} : sans cela, ouvrir les
+     * documents consolides a une direction demande une vingtaine de passages, section par section.
+     *
+     * <p>Ne touche qu'aux sections VALIDATED pas encore approuvees ; la methode est donc sans
+     * effet si on la rejoue.</p>
+     *
+     * @return le nombre de sections effectivement approuvees
+     */
+    @Transactional
+    public int dgApproveAllValidated(Long groupId, String comment, User dgUser) {
+        WorkGroup group = resolveGroup(groupId);
+        LocalDateTime now = LocalDateTime.now();
+        int approved = 0;
+
+        for (GroupSectionStatus status : groupSectionStatusRepository.findByGroupIdWithSection(groupId)) {
+            if (approvePendingSection(group, status, comment, dgUser, now)) {
+                approved++;
+            }
+        }
+        return approved;
+    }
+
+    /**
+     * Approuve les sections que le DG a cochees dans la liste des soumissions, toutes directions
+     * confondues. Une direction n'est lue qu'une fois, quel que soit le nombre de sections
+     * retenues chez elle.
+     *
+     * <p>Comme les autres approbations en masse, les sections non validees ou deja approuvees
+     * sont ignorees en silence : le compte retourne dit ce qui a vraiment change.</p>
+     *
+     * @return le nombre de sections effectivement approuvees
+     */
+    @Transactional
+    public int dgApproveSelection(List<DgSectionTarget> targets, String comment, User dgUser) {
+        LocalDateTime now = LocalDateTime.now();
+        Map<Long, Set<String>> codesByGroup = new LinkedHashMap<>();
+        for (DgSectionTarget target : targets) {
+            codesByGroup.computeIfAbsent(target.groupId(), id -> new HashSet<>()).add(target.sectionCode());
+        }
+
+        int approved = 0;
+        for (Map.Entry<Long, Set<String>> entry : codesByGroup.entrySet()) {
+            WorkGroup group = resolveGroup(entry.getKey());
+            for (GroupSectionStatus status : groupSectionStatusRepository.findByGroupIdWithSection(entry.getKey())) {
+                if (!entry.getValue().contains(status.getSection().getCode())) {
+                    continue;
+                }
+                if (approvePendingSection(group, status, comment, dgUser, now)) {
+                    approved++;
+                }
+            }
+        }
+        return approved;
+    }
+
+    /**
+     * Approuve d'un coup tout ce qui attend encore l'arbitrage du DG, toutes directions
+     * confondues. C'est le cas courant en fin de campagne : le comite de pilotage a valide les
+     * vingtaines de sections de chaque direction, et les reprendre une a une n'apporterait rien.
+     *
+     * @return le nombre de sections effectivement approuvees
+     */
+    @Transactional
+    public int dgApproveAllPending(String comment, User dgUser) {
+        LocalDateTime now = LocalDateTime.now();
+        int approved = 0;
+
+        for (GroupSectionStatus status : groupSectionStatusRepository.findAllWithGroupAndSection()) {
+            if (approvePendingSection(status.getGroup(), status, comment, dgUser, now)) {
+                approved++;
+            }
+        }
+        return approved;
+    }
+
+    /**
+     * Coeur commun des approbations en masse : n'agit que sur une section validee par le comite
+     * de pilotage et pas encore approuvee, et dit si elle a bouge.
+     */
+    private boolean approvePendingSection(WorkGroup group, GroupSectionStatus status, String comment,
+                                          User dgUser, LocalDateTime now) {
+        if (status.getStatus() != SectionStatus.VALIDATED || status.isDgApproved()) {
+            return false;
+        }
+        status.setDgApprovedAt(now);
+        status.setDgApprovedBy(dgUser.getId());
+        status.setDgComment(comment);
+        status.setLastActivityAt(now);
+        groupSectionStatusRepository.save(status);
+        activityLogService.log(group, dgUser, ActivityLogService.ACTION_DG_APPROVE, status.getSection());
+        publishProgress(group, status.getSection(), status);
+        return true;
     }
 
     @Transactional(readOnly = true)
@@ -589,7 +754,9 @@ public class SectionEngineService {
                 .updatedAt(response != null ? response.getUpdatedAt() : null)
                 .submittedAt(status.getSubmittedAt())
                 .validatedAt(status.getValidatedAt())
+                .dgApprovedAt(status.isDgApproved() ? status.getDgApprovedAt() : null)
                 .adminComment(status.getAdminComment())
+                .dgComment(status.getDgComment())
                 .lastActivityAt(status.getLastActivityAt())
                 .build();
     }
@@ -604,8 +771,10 @@ public class SectionEngineService {
                 .status(status.getStatus().name())
                 .submittedAt(status.getSubmittedAt())
                 .validatedAt(status.getValidatedAt())
+                .dgApprovedAt(status.isDgApproved() ? status.getDgApprovedAt() : null)
                 .lastActivityAt(status.getLastActivityAt())
                 .adminComment(status.getAdminComment())
+                .dgComment(status.getDgComment())
                 .build();
     }
 
@@ -630,6 +799,17 @@ public class SectionEngineService {
     private SectionDef resolveSection(String code) {
         return sectionDefRepository.findByCode(code)
                 .orElseThrow(() -> new ResourceNotFoundException("Section introuvable : " + code));
+    }
+
+    /**
+     * Retire l'approbation du DG, commentaire compris. Appele a chaque transition qui fait sortir
+     * la section de VALIDATED ou qui en change le contenu : l'approbation vaut pour un texte a un
+     * instant donne, jamais pour la section en general.
+     */
+    private void clearDgApproval(GroupSectionStatus status) {
+        status.setDgApprovedAt(null);
+        status.setDgApprovedBy(null);
+        status.setDgComment(null);
     }
 
     private void requireStatus(GroupSectionStatus status, String message, SectionStatus... allowed) {

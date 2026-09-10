@@ -62,7 +62,6 @@ public class DerivedFieldsService {
             case BUDGET -> applyBudgetTotals(applyAxisTitleSync(groupId, content));
             case RISK_MATRIX -> applyRiskCriticality(content);
             case FINANCING_PLAN -> applyFinancingTotals(content);
-            case BUSINESS_PLAN -> applyBusinessPlanComputations(content);
             case PERFORMANCE_REVIEW_2026 -> applyPerformanceReviewRates(content);
             case RESOURCES_SYNTHESIS -> applyResourcesSynthesisSync(groupId, content);
             case LOGFRAME_SYNTHESIS -> applyLogframeSynthesisSync(groupId, content);
@@ -360,67 +359,6 @@ public class DerivedFieldsService {
         return content;
     }
 
-    // ---- S16 : resultats d'exploitation/net + variation et tresorerie cumulee ----
-    private ObjectNode applyBusinessPlanComputations(ObjectNode content) {
-        computeOperatingAccount((ObjectNode) content.path("operatingAccount"));
-        computeCashFlow((ObjectNode) content.path("cashFlow"));
-        return content;
-    }
-
-    private void computeOperatingAccount(ObjectNode operatingAccount) {
-        if (operatingAccount == null || operatingAccount.isMissingNode()) {
-            return;
-        }
-        ObjectNode produits = findRow(operatingAccount, "PRODUITS_EXPLOITATION");
-        ObjectNode charges = findRow(operatingAccount, "CHARGES_EXPLOITATION");
-        ObjectNode resultatExploitation = findRow(operatingAccount, "RESULTAT_EXPLOITATION");
-        ObjectNode chargesFinancieres = findRow(operatingAccount, "CHARGES_FINANCIERES");
-        ObjectNode resultatNet = findRow(operatingAccount, "RESULTAT_NET");
-
-        if (produits == null || charges == null || resultatExploitation == null
-                || chargesFinancieres == null || resultatNet == null) {
-            return;
-        }
-
-        for (int year : YEARS) {
-            String y = String.valueOf(year);
-            double p = yearValue(produits, y);
-            double c = yearValue(charges, y);
-            double re = p - c;
-            double cf = yearValue(chargesFinancieres, y);
-            double rn = re - cf;
-            ((ObjectNode) resultatExploitation.path("years")).put(y, re);
-            ((ObjectNode) resultatNet.path("years")).put(y, rn);
-        }
-        addRowTotals(operatingAccount);
-    }
-
-    private void computeCashFlow(ObjectNode cashFlow) {
-        if (cashFlow == null || cashFlow.isMissingNode()) {
-            return;
-        }
-        ObjectNode exploitation = findRow(cashFlow, "FLUX_EXPLOITATION");
-        ObjectNode investissement = findRow(cashFlow, "FLUX_INVESTISSEMENT");
-        ObjectNode financement = findRow(cashFlow, "FLUX_FINANCEMENT");
-        ObjectNode variationNette = findRow(cashFlow, "VARIATION_NETTE_TRESORERIE");
-        ObjectNode tresorerieFin = findRow(cashFlow, "TRESORERIE_FIN_PERIODE");
-
-        if (exploitation == null || investissement == null || financement == null
-                || variationNette == null || tresorerieFin == null) {
-            return;
-        }
-
-        double cumulative = 0;
-        for (int year : YEARS) {
-            String y = String.valueOf(year);
-            double variation = yearValue(exploitation, y) + yearValue(investissement, y) + yearValue(financement, y);
-            cumulative += variation;
-            ((ObjectNode) variationNette.path("years")).put(y, variation);
-            ((ObjectNode) tresorerieFin.path("years")).put(y, cumulative);
-        }
-        addRowTotals(cashFlow);
-    }
-
     // ---- S01B : taux de realisation 2026 = realise / cible, en pourcentage ----
     private ObjectNode applyPerformanceReviewRates(ObjectNode content) {
         JsonNode rows = content.get("rows");
@@ -539,36 +477,6 @@ public class DerivedFieldsService {
         }
         content.set("totals", totals);
         return content;
-    }
-
-    private void addRowTotals(ObjectNode block) {
-        JsonNode rows = block.get("rows");
-        if (rows == null || !rows.isArray()) {
-            return;
-        }
-        for (JsonNode rowNode : rows) {
-            if (!(rowNode instanceof ObjectNode row)) {
-                continue;
-            }
-            double total = 0;
-            for (int year : YEARS) {
-                total += yearValue(row, String.valueOf(year));
-            }
-            row.put("total", total);
-        }
-    }
-
-    private ObjectNode findRow(ObjectNode block, String label) {
-        JsonNode rows = block.get("rows");
-        if (rows == null || !rows.isArray()) {
-            return null;
-        }
-        for (JsonNode row : rows) {
-            if (row.path("label").asText("").equals(label)) {
-                return (ObjectNode) row;
-            }
-        }
-        return null;
     }
 
     private double yearValue(JsonNode row, String year) {

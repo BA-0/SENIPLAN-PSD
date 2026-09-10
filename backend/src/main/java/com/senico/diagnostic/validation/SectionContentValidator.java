@@ -78,10 +78,6 @@ public class SectionContentValidator {
             case INDICATOR_SHEET -> requireArray(content, "rows", strict);
             case RISK_MATRIX -> requireArray(content, "rows", strict);
             case FINANCING_PLAN -> requireArray(content, "rows", strict);
-            case BUSINESS_PLAN -> {
-                requireField(content, "operatingAccount");
-                requireField(content, "cashFlow");
-            }
             case STRATEGIC_SUMMARY -> {
                 requireField(content, "vision");
                 requireArray(content, "axes", strict);

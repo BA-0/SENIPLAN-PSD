@@ -17,8 +17,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * Recette de completude du "Plan Strategique de SENICO" : le document consolide ne doit
- * plus comporter la moindre rubrique vide une fois les cinq directions saisies et validees.
+ * Recette de completude du "Plan Strategique de SENICO" : le document consolide ne doit plus
+ * comporter la moindre rubrique vide une fois les cinq directions saisies, validees par le
+ * comite de pilotage puis approuvees par le DG — cette derniere approbation conditionnant
+ * desormais l'entree d'une section dans le document.
  *
  * <p>Ce test lit la base de developpement reelle (profil dev, MySQL local) : la completude
  * d'une saisie est une propriete des donnees, pas du code, et ne peut donc pas se verifier
@@ -35,7 +37,9 @@ class PsdFinalDocumentCompletenessIT {
     private static final List<String> MARQUEURS_DE_VIDE = List.of(
             "(contenu à renseigner)",
             "Aucune donnée saisie",
-            "Section non validée");
+            "Section non validée",
+            "Section non approuvée",
+            "en attente d'approbation de la Direction Générale");
 
     @Autowired
     private WordExportService wordExportService;

@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Archive, CheckCheck, FileDown, FileText, KeyRound, Pencil, Plus, Power, RotateCcw } from "lucide-react";
+import { Archive, CheckCheck, FileDown, FileText, KeyRound, Pencil, Plus, Power, RotateCcw, ShieldCheck, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,12 +33,13 @@ import {
   getGroupCycleSections,
   listGroupCycles,
   startNewCycle,
+  dgApproveAllValidated,
   validateAllSubmitted,
 } from "@/lib/api/admin";
 import { downloadConsolidatedExcel, downloadGroupPdf, downloadGroupWord } from "@/lib/api/exports";
-import { canAdminister } from "@/lib/roles";
+import { canAdminister, canApproveAsDg } from "@/lib/roles";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { listStaffAccounts, resetStaffPassword } from "@/lib/api/admin";
+import { createUserAccount, listUserAccounts, resetUserPassword } from "@/lib/api/admin";
 import { extractErrorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
 import { CycleArchivePanel } from "@/components/cycles/cycle-archive-panel";
@@ -54,6 +55,28 @@ const schema = z.object({
   leaderPassword: z.union([z.string().min(6, "Au moins 6 caractères"), z.literal("")]).optional(),
 });
 
+/**
+ * Creation d'un compte. La direction n'a de sens que pour un chef de groupe : c'est elle qui
+ * decide du canevas rempli, et le serveur refuse le rattachement pour les autres roles.
+ */
+const accountSchema = z
+  .object({
+    username: z
+      .string()
+      .min(1, "L'identifiant est requis")
+      .regex(/^[a-zA-Z0-9._-]+$/, "Lettres, chiffres, point, tiret ou tiret bas uniquement"),
+    fullName: z.string().min(1, "Le nom complet est requis"),
+    role: z.enum(["ADMIN", "DIRECTEUR_GENERAL", "GROUP_LEADER"]),
+    groupId: z.string().optional(),
+    password: z.union([z.string().min(8, "Au moins 8 caractères"), z.literal("")]).optional(),
+  })
+  .refine((v) => v.role !== "GROUP_LEADER" || !!v.groupId, {
+    path: ["groupId"],
+    message: "La direction est requise pour un chef de groupe",
+  });
+
+type AccountFormValues = z.infer<typeof accountSchema>;
+
 const editSchema = z.object({
   name: z.string().min(1, "Le nom du groupe est requis"),
   description: z.string().optional(),
@@ -67,12 +90,15 @@ export default function AdminGroupsPage() {
   // Creation, edition, cycles, mots de passe, activation : administration technique,
   // fermee au DG cote serveur (SecurityConfig) autant qu'ici.
   const peutAdministrer = canAdminister(user?.role);
+  // Second niveau : le DG seul ouvre les documents consolides a une direction.
+  const peutApprouver = canApproveAsDg(user?.role);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<WorkGroupDto | null>(null);
   const [newCredentials, setNewCredentials] = useState<{ username: string; password: string } | null>(null);
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportPeriodMonths, setExportPeriodMonths] = useState(4);
   const [archiveGroup, setArchiveGroup] = useState<WorkGroupDto | null>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   async function handleExportExcel() {
     setExportingExcel(true);
@@ -100,6 +126,19 @@ export default function AdminGroupsPage() {
     reset: resetEdit,
     formState: { errors: editErrors },
   } = useForm<UpdateWorkGroupPayload>({ resolver: zodResolver(editSchema) });
+
+  const {
+    register: registerAccount,
+    handleSubmit: handleAccountSubmit,
+    reset: resetAccount,
+    watch: watchAccount,
+    formState: { errors: accountErrors },
+  } = useForm<AccountFormValues>({
+    resolver: zodResolver(accountSchema),
+    defaultValues: { role: "GROUP_LEADER" },
+  });
+
+  const accountRole = watchAccount("role");
 
   function openEditDialog(group: WorkGroupDto) {
     setEditingGroup(group);
@@ -150,16 +189,42 @@ export default function AdminGroupsPage() {
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la réinitialisation")),
   });
 
-  const { data: staffAccounts } = useQuery({
-    queryKey: ["admin", "users", "staff"],
-    queryFn: listStaffAccounts,
+  const { data: accounts } = useQuery({
+    queryKey: ["admin", "users"],
+    queryFn: listUserAccounts,
     enabled: peutAdministrer,
   });
 
-  const resetStaffPasswordMutation = useMutation({
-    mutationFn: resetStaffPassword,
-    onSuccess: (data) => setNewCredentials({ username: data.username, password: data.temporaryPassword }),
+  const resetUserPasswordMutation = useMutation({
+    mutationFn: resetUserPassword,
+    onSuccess: (data) => {
+      setNewCredentials({ username: data.username, password: data.temporaryPassword });
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la réinitialisation")),
+  });
+
+  const createAccountMutation = useMutation({
+    mutationFn: (values: AccountFormValues) =>
+      createUserAccount({
+        username: values.username,
+        fullName: values.fullName,
+        role: values.role,
+        groupId: values.role === "GROUP_LEADER" && values.groupId ? Number(values.groupId) : undefined,
+        password: values.password ? values.password : undefined,
+      }),
+    onSuccess: (account) => {
+      setAccountOpen(false);
+      resetAccount({ role: "GROUP_LEADER" });
+      // Mot de passe choisi par l'admin : rien a afficher, il le connait deja.
+      if (account.temporaryPassword) {
+        setNewCredentials({ username: account.username, password: account.temporaryPassword });
+      } else {
+        toast.success(`Compte ${account.username} créé`);
+      }
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec de la création du compte")),
   });
 
   const validateAllMutation = useMutation({
@@ -173,6 +238,19 @@ export default function AdminGroupsPage() {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
     },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la validation en masse")),
+  });
+
+  const dgApproveAllMutation = useMutation({
+    mutationFn: (groupId: number) => dgApproveAllValidated(groupId),
+    onSuccess: (result) => {
+      if (result.approvedCount === 0) {
+        toast.info("Aucune section validée n'attend l'approbation de la Direction Générale");
+      } else {
+        toast.success(`${result.approvedCount} section(s) approuvée(s)`);
+      }
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'approbation en masse")),
   });
 
   const newCycleMutation = useMutation({
@@ -376,9 +454,10 @@ export default function AdminGroupsPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Valider toutes les sections soumises ?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Toutes les sections de {g.name} au statut « Soumis » passeront à « Validé », et seront
-                          donc reprises dans le Plan Stratégique de SENICO. Les brouillons en cours et les sections
-                          renvoyées pour révision ne sont pas touchés.
+                          Toutes les sections de {g.name} au statut « Soumis » passeront à « Validé ». Elles
+                          n&apos;entreront dans les documents consolidés qu&apos;une fois approuvées par la Direction
+                          Générale. Les brouillons en cours et les sections renvoyées pour révision ne sont pas
+                          touchés.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -389,6 +468,31 @@ export default function AdminGroupsPage() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                  {peutApprouver && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" title="Approuver toutes les sections validées">
+                        <ShieldCheck className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Approuver toutes les sections validées ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Toutes les sections de {g.name} au statut « Validé » qui attendent encore votre arbitrage
+                          seront approuvées, et entreront dans le Document de consolidation, la Note de synthèse et
+                          le Plan Stratégique de SENICO. Les sections non validées ne sont pas touchées.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => dgApproveAllMutation.mutate(g.id)}>
+                          Tout approuver
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -462,25 +566,121 @@ export default function AdminGroupsPage() {
         </DialogContent>
       </Dialog>
 
-      {peutAdministrer && (staffAccounts?.length ?? 0) > 0 && (
+      {peutAdministrer && (
         <Card>
-          <CardHeader>
-            <CardTitle>Comptes transverses</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <CardTitle>Comptes utilisateurs</CardTitle>
+            <Dialog open={accountOpen} onOpenChange={setAccountOpen}>
+              <DialogTrigger asChild>
+                <Button variant="primary" size="sm">
+                  <UserPlus className="h-4 w-4" /> Créer un compte
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Créer un compte</DialogTitle>
+                </DialogHeader>
+                <form
+                  onSubmit={handleAccountSubmit((values) => createAccountMutation.mutate(values))}
+                  className="space-y-4"
+                >
+                  <div className="space-y-1.5">
+                    <Label>Rôle</Label>
+                    <NativeSelect {...registerAccount("role")}>
+                      <option value="GROUP_LEADER">Chef de groupe — remplit le canevas d&apos;une direction</option>
+                      <option value="ADMIN">Administrateur — pilotage et administration technique</option>
+                      <option value="DIRECTEUR_GENERAL">
+                        Direction Générale — consulte et approuve les documents
+                      </option>
+                    </NativeSelect>
+                  </div>
+
+                  {accountRole === "GROUP_LEADER" && (
+                    <div className="space-y-1.5">
+                      <Label>Direction</Label>
+                      <NativeSelect {...registerAccount("groupId")} defaultValue="">
+                        <option value="">Choisir une direction…</option>
+                        {(groups ?? []).map((g) => (
+                          <option key={g.id} value={g.id}>
+                            {g.name}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                      {accountErrors.groupId && (
+                        <p className="text-[13px] text-accent-700 dark:text-accent-300">
+                          {accountErrors.groupId.message}
+                        </p>
+                      )}
+                      <p className="text-[12px] text-muted-foreground">
+                        Le compte travaillera sur le canevas de cette direction, aux côtés de son chef de groupe.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <Label>Nom complet</Label>
+                    <Input {...registerAccount("fullName")} error={!!accountErrors.fullName} />
+                    {accountErrors.fullName && (
+                      <p className="text-[13px] text-accent-700 dark:text-accent-300">
+                        {accountErrors.fullName.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Identifiant</Label>
+                    <Input {...registerAccount("username")} error={!!accountErrors.username} placeholder="p.diop" />
+                    {accountErrors.username && (
+                      <p className="text-[13px] text-accent-700 dark:text-accent-300">
+                        {accountErrors.username.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Mot de passe (optionnel)</Label>
+                    <Input type="text" {...registerAccount("password")} error={!!accountErrors.password} />
+                    {accountErrors.password ? (
+                      <p className="text-[13px] text-accent-700 dark:text-accent-300">
+                        {accountErrors.password.message}
+                      </p>
+                    ) : (
+                      <p className="text-[12px] text-muted-foreground">
+                        Laissé vide, un mot de passe est généré et affiché une seule fois. Dans les deux cas, la
+                        personne devra le remplacer à sa première connexion.
+                      </p>
+                    )}
+                  </div>
+
+                  <DialogFooter>
+                    <Button type="submit" variant="primary" loading={createAccountMutation.isPending}>
+                      Créer le compte
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-[13px] text-muted-foreground">
-              Comptes qui ne dépendent d&apos;aucune direction. C&apos;est ici qu&apos;on donne son accès au DG : le
-              mot de passe généré ne s&apos;affiche qu&apos;une seule fois.
+              Tous les accès à l&apos;application, directions comprises. Le mot de passe généré ne s&apos;affiche
+              qu&apos;une seule fois ; son titulaire le remplace à sa première connexion.
             </p>
             <div className="divide-y divide-border">
-              {(staffAccounts ?? []).map((account) => (
+              {(accounts ?? []).map((account) => (
                 <div key={account.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
                     <p className="text-[14px] font-medium text-foreground">
                       {account.fullName}
                       <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] font-normal text-muted-foreground">
                         {account.roleLabel}
+                        {account.groupName ? ` · ${account.groupName}` : ""}
                       </span>
+                      {account.mustChangePassword && (
+                        <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-normal text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">
+                          Mot de passe à changer
+                        </span>
+                      )}
                     </p>
                     <p className="text-[12px] text-muted-foreground">
                       {account.username}
@@ -500,12 +700,13 @@ export default function AdminGroupsPage() {
                         <AlertDialogTitle>Réinitialiser le mot de passe ?</AlertDialogTitle>
                         <AlertDialogDescription>
                           Un nouveau mot de passe sera généré pour {account.fullName} ({account.username}) et affiché
-                          une seule fois. L&apos;ancien cessera immédiatement de fonctionner.
+                          une seule fois. L&apos;ancien cessera immédiatement de fonctionner, et la personne devra
+                          choisir le sien à sa prochaine connexion.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => resetStaffPasswordMutation.mutate(account.id)}>
+                        <AlertDialogAction onClick={() => resetUserPasswordMutation.mutate(account.id)}>
                           Réinitialiser
                         </AlertDialogAction>
                       </AlertDialogFooter>

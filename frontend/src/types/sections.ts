@@ -413,37 +413,6 @@ export interface FinancingPlanContent {
   total?: number; // calcule
 }
 
-// ---- S16 : Business plan ----
-export interface YearlyRow {
-  label: string;
-  years: Record<string, number>;
-  total?: number; // calcule
-}
-export interface YearlyBlock {
-  rows: YearlyRow[];
-}
-export interface BusinessPlanContent {
-  operatingAccount: YearlyBlock;
-  cashFlow: YearlyBlock;
-}
-export const OPERATING_ACCOUNT_LABELS: Record<string, string> = {
-  PRODUITS_EXPLOITATION: "Produits d'exploitation / Chiffre d'affaires",
-  CHARGES_EXPLOITATION: "Charges d'exploitation",
-  RESULTAT_EXPLOITATION: "Résultat d'exploitation",
-  CHARGES_FINANCIERES: "Charges financières",
-  RESULTAT_NET: "Résultat net",
-};
-export const CASH_FLOW_LABELS: Record<string, string> = {
-  FLUX_EXPLOITATION: "Flux d'exploitation",
-  FLUX_INVESTISSEMENT: "Flux d'investissement",
-  FLUX_FINANCEMENT: "Flux de financement",
-  VARIATION_NETTE_TRESORERIE: "Variation nette de trésorerie",
-  TRESORERIE_FIN_PERIODE: "Trésorerie de fin de période",
-};
-export const COMPUTED_ROW_LABELS = new Set([
-  "RESULTAT_EXPLOITATION", "RESULTAT_NET", "VARIATION_NETTE_TRESORERIE", "TRESORERIE_FIN_PERIODE",
-]);
-
 // ---- S17 : Tableau de synthese du cadre strategique ----
 export interface SummaryAction {
   label: string;

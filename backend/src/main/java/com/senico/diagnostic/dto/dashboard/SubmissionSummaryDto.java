@@ -17,7 +17,9 @@ public record SubmissionSummaryDto(
         Integer version,
         LocalDateTime submittedAt,
         LocalDateTime validatedAt,
+        LocalDateTime dgApprovedAt,
         LocalDateTime lastActivityAt,
-        String adminComment
+        String adminComment,
+        String dgComment
 ) {
 }

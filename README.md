@@ -1,6 +1,6 @@
 # SENICO Diagnostic Stratégique
 
-Application web digitalisant le canevas de diagnostic stratégique du **Plan Stratégique de Développement (PSD) 2027-2031** de SENICO SA (Sénégalaise Industrie & Commerce). Les départements de l'entreprise, constitués en groupes de travail, saisissent les 17 sections du canevas ; un administrateur (comité de pilotage) suit l'avancement en temps réel, relit et valide les soumissions, puis exporte les résultats.
+Application web digitalisant le canevas de diagnostic stratégique du **Plan Stratégique de Développement (PSD) 2027-2031** de SENICO SA (Sénégalaise Industrie & Commerce). Les départements de l'entreprise, constitués en groupes de travail, saisissent les 17 sections du canevas ; un administrateur (comité de pilotage) suit l'avancement en temps réel, relit et valide les soumissions, puis le Directeur Général approuve celles qui entrent dans les documents consolidés, exportables en PDF, Word et Excel.
 
 ## Architecture
 
@@ -14,7 +14,9 @@ Monorepo à deux applications :
 
 ### Backend
 
-- **Auth** : JWT (access + refresh), bcrypt, rôles `ADMIN` / `GROUP_LEADER`, rate limiting sur le login.
+- **Auth** : JWT (access + refresh), bcrypt, rôles `ADMIN` / `DIRECTEUR_GENERAL` / `GROUP_LEADER`, rate limiting sur le login. Le DG consulte et arbitre tout, sans l'administration technique (groupes, mots de passe, cycles, édition des saisies), qui reste à l'admin — frontière posée dans `SecurityConfig` et vérifiée par `DirectionGeneraleAccessIT`.
+- **Comptes** : l'admin crée les comptes (`/admin/users`) pour les trois rôles — un chef de groupe est rattaché à une direction, dont il remplit le canevas — et le mot de passe généré ne s'affiche qu'une fois. Tout mot de passe attribué par un tiers (création, réinitialisation) lève `must_change_password` : le serveur refuse alors tout appel autre que la connexion et le changement de mot de passe (`PasswordChangeGuardFilter`), jusqu'à ce que le titulaire choisisse le sien. Vérifié par `PremiereConnexionIT`.
+- **Validation à deux niveaux** : le comité de pilotage valide une section soumise (`SUBMITTED` → `VALIDATED`), puis le DG l'approuve (`dg_approved_at`). Seule cette approbation fait entrer une contribution dans le Document de consolidation, la Note de synthèse et le Plan Stratégique de SENICO ; le plan sectoriel d'une direction reste un document de travail et affiche tout. Toute sortie de `VALIDATED` — révision, main rendue au groupe, nouvelle soumission, correction du contenu par l'admin — retire l'approbation, qui est alors à redemander.
 - **Moteur de sections** : stockage JSON générique par section (`SectionResponse`), validation structurelle par type de section, verrouillage serveur des sections soumises, historique des 20 dernières révisions.
 - **Champs calculés / synchronisations** (calculés à la lecture, jamais figés en base) :
   - Section 5 (TOWS) ← listes SWOT de la Section 4
@@ -26,6 +28,8 @@ Monorepo à deux applications :
   - Section 16 (Business plan) : résultat d'exploitation, résultat net, variation et trésorerie cumulée
 - **Temps réel** : WebSocket STOMP/SockJS (`/ws`) pousse au dashboard admin les changements de statut, soumissions et activité ; le frontend bascule sur du polling (15s) si la connexion est indisponible.
 - **Exports** : PDF (OpenPDF) et Word (Apache POI) par groupe, Excel consolidé (une feuille par section, toutes les réponses de tous les groupes).
+- **Note de synthèse** (`PsdBriefBuilder`) : le PSD sur le plan d'un plan stratégique publié — sigles, mot du DG, l'essentiel du plan, contexte, méthode, présentation, parties prenantes, diagnostic (performances, PESTEL, SWOT, orientations croisées, risques), bilan, enjeux, facteurs clés, cadre stratégique, mise en œuvre (budget par axe avec graphiques, financement, effectifs), pilotage, synthèse du cadre stratégique, conclusion et annexes. PDF en deux passes pour un sommaire paginé ; police Roboto embarquée (`resources/fonts`, licence Apache 2.0).
+- **Cadre stratégique de l'entreprise** : vision, mission, valeurs, dispositif de pilotage et axes stratégiques sont arrêtés par la Direction Générale (blocs narratifs, écran « Plan Stratégique de SENICO ») et remplacent dans les documents les propositions de chaque direction. Les axes (`AXES_CONSOLIDES`, format lu par `PsdConsolidatedAxes`) regroupent les axes des directions : objectifs, budget et actions s'additionnent sous l'axe de l'entreprise ; un axe de direction non rattaché est signalé.
 
 ### Frontend
 

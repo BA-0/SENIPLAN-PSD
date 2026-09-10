@@ -13,7 +13,9 @@ public record SectionStatusSummary(
         String status,
         LocalDateTime submittedAt,
         LocalDateTime validatedAt,
+        LocalDateTime dgApprovedAt,
         LocalDateTime lastActivityAt,
-        String adminComment
+        String adminComment,
+        String dgComment
 ) {
 }

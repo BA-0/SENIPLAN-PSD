@@ -52,6 +52,10 @@ public class GroupCycleArchive {
     @Column(name = "validated_at")
     private LocalDateTime validatedAt;
 
+    /** Date d'approbation par le DG au moment de la cloture du cycle, nulle s'il n'avait pas tranche. */
+    @Column(name = "dg_approved_at")
+    private LocalDateTime dgApprovedAt;
+
     @Column(name = "admin_comment", columnDefinition = "TEXT")
     private String adminComment;
 

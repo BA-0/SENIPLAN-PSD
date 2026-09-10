@@ -68,11 +68,15 @@ record PsdKeyFigures(int directions, int sectionsCovered, int axes, int specific
                 actions, budget, financing, staffFirstYear, staffLastYear);
     }
 
-    /** Effectifs a zero des deux cotes : la section n'est pas renseignee, "0 -> 0" ne dirait rien. */
+    /**
+     * Effectifs a zero des deux cotes : la section n'est pas renseignee, "0 a 0" ne dirait rien.
+     * « de A à B » plutot qu'une fleche : aucune police courante n'a de glyphe « → » dans le jeu
+     * standard, et le libelle se lit aussi bien a voix haute.
+     */
     String staffEvolutionLabel() {
         if (staffFirstYear == 0 && staffLastYear == 0) {
             return "—";
         }
-        return staffFirstYear + " → " + staffLastYear + " agents";
+        return JsonUtil.formatNumber(staffFirstYear) + " à " + JsonUtil.formatNumber(staffLastYear) + " agents";
     }
 }

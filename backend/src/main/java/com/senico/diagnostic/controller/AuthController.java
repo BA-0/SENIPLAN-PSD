@@ -1,6 +1,7 @@
 package com.senico.diagnostic.controller;
 
 import com.senico.diagnostic.dto.auth.AuthResponse;
+import com.senico.diagnostic.dto.auth.ChangePasswordRequest;
 import com.senico.diagnostic.dto.auth.LoginRequest;
 import com.senico.diagnostic.dto.auth.RefreshRequest;
 import com.senico.diagnostic.security.UserPrincipal;
@@ -27,6 +28,14 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         return ResponseEntity.ok(authService.refresh(request.refreshToken()));
+    }
+
+    /** Changement par le titulaire lui-meme, impose a la premiere connexion. */
+    @PostMapping("/change-password")
+    public ResponseEntity<AuthResponse> changePassword(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        return ResponseEntity.ok(authService.changePassword(principal.getId(), request));
     }
 
     @GetMapping("/me")

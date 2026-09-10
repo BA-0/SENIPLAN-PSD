@@ -102,6 +102,6 @@ class PsdKeyFiguresTest {
                         : "{}"),
                 1);
 
-        assertThat(figures.staffEvolutionLabel()).isEqualTo("412 → 508 agents");
+        assertThat(figures.staffEvolutionLabel()).isEqualTo("412 à 508 agents");
     }
 }

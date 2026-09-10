@@ -53,7 +53,9 @@ export default function LoginPage() {
       const auth = await login(values.username, values.password);
       setAuth(auth.accessToken, auth.refreshToken, auth.user);
       toast.success(`Bienvenue, ${auth.user.fullName}`);
-      router.push(homePathFor(auth.user.role));
+      // Premiere connexion avec un mot de passe remis par l'admin : rien d'autre n'est
+      // accessible tant qu'il n'a pas ete remplace.
+      router.push(auth.user.mustChangePassword ? "/change-password" : homePathFor(auth.user.role));
     } catch (error) {
       setServerError(extractErrorMessage(error, "Identifiant ou mot de passe incorrect"));
     } finally {
@@ -76,9 +78,7 @@ export default function LoginPage() {
       */}
       <div className="relative z-10 mx-auto flex h-screen w-full max-w-[1500px] flex-col items-center overflow-y-auto px-5 pb-[3vh] pt-[4vh]">
         <BrandLockup className="w-[clamp(230px,42vw,430px)] lg:hidden" />
-        <div className="hidden shrink-0 lg:flex lg:h-[28vh] lg:w-full lg:items-end lg:justify-center lg:pb-[2vh]">
-          <PlanMention />
-        </div>
+        <div aria-hidden className="hidden shrink-0 lg:block lg:h-[28vh] lg:w-full" />
 
         <div className="mt-[clamp(16px,4vh,44px)] w-full max-w-[368px] lg:mt-0">
           {/* Panneau opaque : plus de fond translucide flouté, qui brouillait à la
@@ -88,11 +88,11 @@ export default function LoginPage() {
                 qui coupait le logo. */}
             <div className="absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
 
-            <h1 className="text-center mb-2.5 text-[24px] leading-tight text-white">Plan Stratégique</h1>
+            <h1 className="text-center mb-2.5 text-[24px] leading-tight text-white">SENIPLAN</h1>
             {/* Le trait vert est descendu : il souligne le titre au lieu de
                 traverser le lettrage du logo. */}
             <div className="mx-auto h-[2px] w-14 rounded-full bg-gradient-to-r from-primary-600 via-primary-300 to-primary-600" />
-            <p className="text-center text-[13px] text-white/65 mt-2.5 mb-5">PSD 2027-2031 — Connexion</p>
+            <p className="text-center text-[13px] text-white/65 mt-2.5 mb-5">PSD 2027-2031</p>
 
             {/* `autoComplete="off"` : sans lui, le navigateur restaure
                 l'identifiant et le mot de passe à chaque rechargement de la
@@ -213,73 +213,50 @@ function BrandLockup({ className }: { className?: string }) {
         priority
         className="relative h-auto w-full drop-shadow-[0_14px_34px_rgba(0,0,0,0.6)] animate-fade-in-up"
       />
-      <PlanMention className="mt-2" />
     </div>
-  );
-}
-
-/**
- * Mention « PS 2031 » sous le lettrage SENIPLAN, demandée en revue client. Sur lg+ le
- * lettrage est incrusté dans la photo : la mention est alors posée en bas de la réserve
- * de 28 vh laissée sous lui, donc juste sous le lettrage, comme sous lg où elle suit
- * directement l'image.
- */
-function PlanMention({ className }: { className?: string }) {
-  return (
-    <p
-      className={cn(
-        "text-center text-[13px] font-semibold uppercase tracking-[0.42em] text-white/85 drop-shadow-[0_4px_14px_rgba(0,0,0,0.75)]",
-        className
-      )}
-    >
-      PS 2031
-    </p>
   );
 }
 
 function BackgroundPhoto() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
-      {/* Le mot-symbole et ses pylônes sont dans la photo, pas posés dessus :
-          c'est le ciel de la capture de référence, aucun calque ne vient le
-          recouvrir. Seule différence avec `login-bg.jpg` : le lettrage y était
-          gris-vert, il est repeint au vert de marque (#2D7A45, celui du bouton
-          « Se connecter ») et la vague au rouge (#ED141B). Le masque vient de
-          la différence de luminance avec `login-bg-clean.jpg`, où le lettrage
-          est effacé — les treillis sont donc conservés au pixel près.
-          Régénération : scripts/greenify.ps1.
+      {/* `login-bg-senico.jpg` : la photo fournie par le client, mot-symbole
+          dans le ciel. Celui qu'elle portait n'était qu'une imitation délavée
+          par le soleil qu'elle a derrière — le bas du « c » et du « o » s'y
+          dissolvait, le point du « i » y était rose : scripts/recolor-logo.py
+          l'efface et repose à sa place `logo-senico-mark.png`, le vrai logo,
+          au même emplacement et à la même largeur (le pipeline `login-bg.jpg`
+          + greenify.ps1 valait pour l'ancienne photo). Même format que la
+          capture de référence, 1377 × 768 : les positions en pourcentage
+          posées dans `COVER_BOX` retombent au même endroit.
 
-          Sous `lg`, `BrandLockup` affiche déjà ce même lettrage en net devant
-          la carte : on garde ici `login-bg-clean.jpg` (sans lettrage) pour ne
-          pas superposer les deux logos, ce qui arrivait dès que la fenêtre
-          rendait la page sous 1024px CSS (zoom navigateur, mise à l'échelle
-          Windows) sans que `BrandLockup` ait disparu du cadre. */}
+          Sous `lg`, `BrandLockup` affiche déjà ce lettrage en net au-dessus de
+          la carte. Comme le cadrage `object-cover` d'un écran étroit rogne le
+          mot-symbole de la photo sur les côtés — il en resterait « nic » juste
+          sous le logo net —, on zoome la photo depuis son bas : le ciel et son
+          lettrage sortent du champ, il ne reste que le groupe et la mer. */}
       <div className={COVER_BOX}>
         <Image
-          src="/login-bg-clean.jpg"
+          src="/login-bg-senico.jpg"
           alt=""
           fill
           priority
           sizes="100vw"
-          className="object-cover [filter:saturate(1.08)_contrast(1.06)] lg:hidden"
+          className="scale-[1.6] object-cover object-bottom origin-bottom [filter:saturate(1.04)_contrast(1.04)] lg:hidden"
         />
         <Image
-          src="/login-bg-vert.jpg"
+          src="/login-bg-senico.jpg"
           alt=""
           fill
           priority
           sizes="100vw"
-          className="hidden object-cover [filter:saturate(1.08)_contrast(1.06)] lg:block"
+          className="hidden object-cover [filter:saturate(1.04)_contrast(1.04)] lg:block"
         />
       </div>
 
-      {/* Le soleil se lève. Le halo est descendu sur la ligne d'horizon
-          (y 33 %), sous le lettrage qui s'arrête à 29,7 % : il réchauffe la mer
-          et le bas du ciel sans délaver le SENICO. Dans une COVER_BOX, donc
-          collé aux mêmes pixels quelle que soit la fenêtre. */}
-      <div className={cn(COVER_BOX, "mix-blend-screen")}>
-        <div className="absolute left-[66%] top-[36%] h-[26%] w-[44%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,214,140,0.38)_0%,rgba(255,168,66,0.18)_34%,rgba(255,126,42,0.06)_60%,transparent_78%)] blur-2xl" />
-      </div>
+      {/* Plus de halo de lever de soleil posé en calque : il réchauffait le ciel
+          plat de l'ancienne photo. Celle-ci a son propre soleil sur l'horizon,
+          et le `mix-blend-screen` par-dessus délavait le reflet sur la mer. */}
 
       {/* Voiles limités au haut (lettrage) et au bas (formulaire, pied de
           page) : la photo reste lisible entre les deux. Celui du haut reste

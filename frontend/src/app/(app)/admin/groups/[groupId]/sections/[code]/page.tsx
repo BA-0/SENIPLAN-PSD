@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Pencil, RotateCcw, Save, Trash2, Undo2, X } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Pencil, RotateCcw, Save, ShieldCheck, Trash2, Undo2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,12 +27,15 @@ import { SectionFormRouter } from "@/components/sections/section-form-router";
 import { VersionHistory } from "@/components/sections/version-history";
 import {
   adminUpdateSectionContent,
+  dgReviewSection,
   getGroupSectionContent,
   listGroupSections,
   resetGroupSection,
   reviewSection,
 } from "@/lib/api/admin";
 import { listGroups } from "@/lib/api/groups";
+import { canApproveAsDg } from "@/lib/roles";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { extractErrorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
 import type { SectionType } from "@/types/common";
@@ -46,7 +49,11 @@ export default function AdminSectionReviewPage() {
   const groupId = Number(params.groupId);
   const code = params.code;
   const [comment, setComment] = useState("");
+  const [dgComment, setDgComment] = useState("");
   const [editContent, setEditContent] = useState<unknown>(null);
+  const { user } = useCurrentUser();
+  // Second niveau : le DG seul approuve ce qui entre dans les documents consolides.
+  const peutApprouver = canApproveAsDg(user?.role);
 
   const { data: groups } = useQuery({ queryKey: ["admin", "groups"], queryFn: listGroups });
   const { data: sections } = useQuery({
@@ -79,6 +86,20 @@ export default function AdminSectionReviewPage() {
       invalidateAll();
     },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'action")),
+  });
+
+  const dgMutation = useMutation({
+    mutationFn: (decision: "APPROVE" | "REJECT") => dgReviewSection(groupId, code, decision, dgComment),
+    onSuccess: (_, decision) => {
+      toast.success(
+        decision === "APPROVE"
+          ? "Section approuvée — elle entre dans les documents consolidés"
+          : "Section refusée et renvoyée en révision"
+      );
+      setDgComment("");
+      invalidateAll();
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'arbitrage")),
   });
 
   const updateContentMutation = useMutation({
@@ -181,6 +202,7 @@ export default function AdminSectionReviewPage() {
             <MetaItem label="Version" value={data.version > 0 ? String(data.version) : "—"} />
             <MetaItem label="Soumis le" value={formatDateTime(data.submittedAt) || "—"} />
             <MetaItem label="Validé le" value={formatDateTime(data.validatedAt) || "—"} />
+            <MetaItem label="Approuvé par la DG le" value={formatDateTime(data.dgApprovedAt) || "—"} />
             <MetaItem label="Dernière activité" value={formatDateTime(data.lastActivityAt) || "—"} />
           </div>
 
@@ -247,6 +269,70 @@ export default function AdminSectionReviewPage() {
                     </Button>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {!editing && data.status === "VALIDATED" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Approbation de la Direction Générale</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {data.dgApprovedAt ? (
+                  <p className="text-[13px] text-emerald-700 dark:text-emerald-400">
+                    Approuvée par la Direction Générale le {formatDateTime(data.dgApprovedAt)}. Cette section est
+                    reprise dans le Document de consolidation, la Note de synthèse et le Plan Stratégique de SENICO.
+                  </p>
+                ) : (
+                  <p className="text-[13px] text-amber-700 dark:text-amber-400">
+                    Validée par le comité de pilotage, en attente de la Direction Générale. Tant que le DG n&apos;a
+                    pas approuvé, le contenu de cette section n&apos;entre dans aucun document consolidé.
+                  </p>
+                )}
+
+                {data.dgComment && (
+                  <p className="text-[13px] text-muted-foreground">
+                    <span className="font-medium">Commentaire du DG : </span>
+                    {data.dgComment}
+                  </p>
+                )}
+
+                {peutApprouver ? (
+                  <>
+                    <Textarea
+                      placeholder="Commentaire du DG (optionnel pour une approbation, recommandé pour un refus)…"
+                      value={dgComment}
+                      onChange={(e) => setDgComment(e.target.value)}
+                      rows={3}
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      {!data.dgApprovedAt && (
+                        <Button
+                          variant="primary"
+                          onClick={() => dgMutation.mutate("APPROVE")}
+                          loading={dgMutation.isPending}
+                        >
+                          <ShieldCheck className="h-4 w-4" /> Approuver pour les documents consolidés
+                        </Button>
+                      )}
+                      <Button
+                        variant="secondary"
+                        onClick={() => dgMutation.mutate("REJECT")}
+                        loading={dgMutation.isPending}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        {data.dgApprovedAt
+                          ? "Retirer l'approbation et renvoyer en révision"
+                          : "Refuser et renvoyer en révision"}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-[13px] text-muted-foreground">
+                    Seule la Direction Générale peut approuver ou refuser une section validée.
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}

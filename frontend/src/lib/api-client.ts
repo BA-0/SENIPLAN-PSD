@@ -60,6 +60,15 @@ apiClient.interceptors.response.use(
       }
     }
 
+    // L'admin a pu reinitialiser le mot de passe d'une session deja ouverte : le serveur ferme
+    // alors tout sauf le changement de mot de passe, et l'interface doit y conduire.
+    if (error.response?.status === 403
+        && (error.response.data as { code?: string } | undefined)?.code === "PASSWORD_CHANGE_REQUIRED"
+        && typeof window !== "undefined"
+        && !window.location.pathname.startsWith("/change-password")) {
+      window.location.href = "/change-password";
+    }
+
     return Promise.reject(error);
   }
 );

@@ -12,6 +12,7 @@ import { CompletionGauge } from "@/components/charts/completion-gauge";
 import { KpiCard } from "@/components/kpi-card";
 import { CycleArchivePanel } from "@/components/cycles/cycle-archive-panel";
 import { getMyCycleSectionContent, getMyCycleSections, getMyDashboard, listMyCycles } from "@/lib/api/me";
+import { countValidated, groupSectionsByPart } from "@/lib/section-groups";
 
 export default function GroupDashboardPage() {
   const { data, isLoading } = useQuery({ queryKey: ["me", "dashboard"], queryFn: getMyDashboard });
@@ -20,6 +21,10 @@ export default function GroupDashboardPage() {
   if (isLoading || !data) {
     return <DashboardSkeleton />;
   }
+
+  // La checklist a plat des 23 sections etait trop longue a parcourir : on la
+  // presente par partie du canevas, dans le meme ordre.
+  const checklistParts = groupSectionsByPart(data.checklist);
 
   return (
     <div className="space-y-6">
@@ -83,24 +88,45 @@ export default function GroupDashboardPage() {
           <CardTitle>Checklist des {data.checklist.length} sections</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="divide-y divide-border">
-            {data.checklist.map((s) => (
-              <Link
-                key={s.code}
-                href={`/sections/${s.code}`}
-                className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-primary-50/60 dark:hover:bg-white/5 transition-colors"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[13px] text-muted-foreground w-8 shrink-0">{s.code}</span>
-                  <span className="text-[13px] text-foreground truncate">{s.title}</span>
+          {checklistParts.map(({ part, subGroups, sections }, partIndex) => (
+            <div key={part.id} className={partIndex > 0 ? "border-t border-border" : undefined}>
+              <div className="flex items-center justify-between gap-3 bg-muted/40 px-5 py-2">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {part.numeral ? `Partie ${part.numeral} — ${part.title}` : part.title}
+                </p>
+                <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
+                  {countValidated(sections)}/{sections.length} validées
+                </span>
+              </div>
+              {subGroups.map((subGroup) => (
+                <div key={subGroup.title ?? "sections"}>
+                  {subGroup.title && (
+                    <p className="border-t border-border px-5 py-1.5 text-[12px] font-medium text-muted-foreground/80">
+                      {subGroup.title}
+                    </p>
+                  )}
+                  <div className="divide-y divide-border border-t border-border">
+                    {subGroup.sections.map((s) => (
+                      <Link
+                        key={s.code}
+                        href={`/sections/${s.code}`}
+                        className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-primary-50/60 dark:hover:bg-white/5 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-[13px] text-muted-foreground w-8 shrink-0">{s.code}</span>
+                          <span className="text-[13px] text-foreground truncate">{s.title}</span>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <StatusBadge status={s.status} />
+                          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <StatusBadge status={s.status} />
-                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </Link>
-            ))}
-          </div>
+              ))}
+            </div>
+          ))}
         </CardContent>
       </Card>
 

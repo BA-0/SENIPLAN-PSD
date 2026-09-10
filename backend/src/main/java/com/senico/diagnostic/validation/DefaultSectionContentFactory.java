@@ -38,14 +38,6 @@ public class DefaultSectionContentFactory {
             "RESSOURCES_PROPRES", "SUBVENTIONS_PUBLIQUES", "PARTENAIRES_TECHNIQUES_FINANCIERS", "EMPRUNTS", "AUTRES_SOURCES"
     };
 
-    public static final String[] OPERATING_ACCOUNT_ROWS = {
-            "PRODUITS_EXPLOITATION", "CHARGES_EXPLOITATION", "RESULTAT_EXPLOITATION", "CHARGES_FINANCIERES", "RESULTAT_NET"
-    };
-
-    public static final String[] CASH_FLOW_ROWS = {
-            "FLUX_EXPLOITATION", "FLUX_INVESTISSEMENT", "FLUX_FINANCEMENT", "VARIATION_NETTE_TRESORERIE", "TRESORERIE_FIN_PERIODE"
-    };
-
     /**
      * Lignes du plan d'evolution des effectifs (S14B), issues du modele client
      * "PLAN D'EVOLUTION DES EFFECTIFS (STATUT, HIERARCHIE, GENRE)" et corrigees en revue :
@@ -99,7 +91,6 @@ public class DefaultSectionContentFactory {
             case BUDGET -> actionPlanOrBudget(true);
             case PERFORMANCE_FRAMEWORK -> performanceFramework();
             case FINANCING_PLAN -> financingPlan();
-            case BUSINESS_PLAN -> businessPlan();
             case STRATEGIC_SUMMARY -> strategicSummary();
         };
     }
@@ -347,27 +338,4 @@ public class DefaultSectionContentFactory {
         return n;
     }
 
-    private ObjectNode businessPlan() {
-        ObjectNode n = F.objectNode();
-        n.set("operatingAccount", yearlyRows(OPERATING_ACCOUNT_ROWS));
-        n.set("cashFlow", yearlyRows(CASH_FLOW_ROWS));
-        return n;
-    }
-
-    private ObjectNode yearlyRows(String[] labels) {
-        ObjectNode block = F.objectNode();
-        ArrayNode rows = F.arrayNode();
-        for (String label : labels) {
-            ObjectNode row = F.objectNode();
-            row.put("label", label);
-            ObjectNode years = F.objectNode();
-            for (int y : YEARS) {
-                years.put(String.valueOf(y), 0);
-            }
-            row.set("years", years);
-            rows.add(row);
-        }
-        block.set("rows", rows);
-        return block;
-    }
 }

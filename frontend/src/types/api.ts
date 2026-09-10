@@ -7,6 +7,8 @@ export interface AuthUser {
   role: Role;
   groupId: number | null;
   groupName: string | null;
+  /** Mot de passe encore celui remis par l'admin : l'application reste fermée tant qu'il n'est pas remplacé. */
+  mustChangePassword: boolean;
 }
 
 export interface AuthResponse {
@@ -139,8 +141,11 @@ export interface SubmissionSummaryDto {
   version: number;
   submittedAt: string | null;
   validatedAt: string | null;
+  /** Approbation du DG, second niveau : nulle tant qu'il n'a pas tranché. */
+  dgApprovedAt: string | null;
   lastActivityAt: string | null;
   adminComment: string | null;
+  dgComment: string | null;
 }
 
 export interface ApiErrorBody {

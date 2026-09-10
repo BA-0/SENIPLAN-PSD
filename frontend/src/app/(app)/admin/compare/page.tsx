@@ -11,7 +11,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { listGroups } from "@/lib/api/groups";
 import { compareSection } from "@/lib/api/admin";
 import { formatDateTime } from "@/lib/utils";
-import { SECTION_CODES } from "@/types/common";
+import { SECTION_PARTS, partCodes } from "@/lib/section-groups";
 import type { SectionType } from "@/types/common";
 
 export default function ComparePage() {
@@ -44,10 +44,14 @@ export default function ComparePage() {
           <div className="space-y-1.5">
             <p className="text-[13px] font-medium text-foreground/90">Section</p>
             <NativeSelect value={sectionCode} onChange={(e) => setSectionCode(e.target.value)} className="w-64">
-              {SECTION_CODES.map((code) => (
-                <option key={code} value={code}>
-                  {code}
-                </option>
+              {SECTION_PARTS.map((part) => (
+                <optgroup key={part.id} label={`Partie ${part.numeral} — ${part.title}`}>
+                  {partCodes(part).map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </NativeSelect>
           </div>

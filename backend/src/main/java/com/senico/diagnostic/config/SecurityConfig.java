@@ -2,6 +2,7 @@ package com.senico.diagnostic.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.senico.diagnostic.security.JwtAuthenticationFilter;
+import com.senico.diagnostic.security.PasswordChangeGuardFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +33,7 @@ import java.util.Map;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final PasswordChangeGuardFilter passwordChangeGuardFilter;
     private final UserDetailsService userDetailsService;
     private final ObjectMapper objectMapper;
 
@@ -51,9 +53,17 @@ public class SecurityConfig {
                                 writeJsonError(response, HttpServletResponse.SC_FORBIDDEN, "Acces refuse"))
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // Changer son mot de passe suppose de savoir qui le demande : cette
+                        // route precede le permitAll de /auth, qui ne vaut que pour la connexion.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/change-password").authenticated()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/ws/**").permitAll()
+                        // Lire la liste des directions : indispensable au DG pour naviguer
+                        // (selecteurs de groupe, ecrans de documents). L'ecriture sur /groups —
+                        // creation, modification, mot de passe — reste a l'admin, juste en dessous.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/groups", "/api/v1/groups/*")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_DIRECTEUR_GENERAL")
                         // Administration technique : reste a l'admin, y compris vis-a-vis du DG.
                         // Ces regles precedent celle de /admin/** : la premiere qui correspond gagne.
                         .requestMatchers("/api/v1/groups/**").hasAuthority("ROLE_ADMIN")
@@ -61,12 +71,25 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/groups/*/cycles/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/admin/groups/*/sections/*/content").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/groups/*/sections/**").hasAuthority("ROLE_ADMIN")
+                        // Second niveau de validation : le DG seul approuve ce qui entre dans les
+                        // documents consolides, l'admin ne pouvant pas se l'accorder a lui-meme.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/groups/*/sections/*/dg-approval")
+                        .hasAuthority("ROLE_DIRECTEUR_GENERAL")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/groups/*/sections/dg-approve-all")
+                        .hasAuthority("ROLE_DIRECTEUR_GENERAL")
+                        // Meme arbitrage, mais a l'echelle de la campagne : selection cochee dans
+                        // la liste des soumissions, ou tout ce qui attend encore le DG.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/dg-approvals/**")
+                        .hasAuthority("ROLE_DIRECTEUR_GENERAL")
                         // Consultation, revision et validation : admin et direction generale.
                         .requestMatchers("/api/v1/admin/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_DIRECTEUR_GENERAL")
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // Apres l'authentification : le garde a besoin du principal pour savoir si le
+                // compte doit d'abord changer son mot de passe.
+                .addFilterAfter(passwordChangeGuardFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

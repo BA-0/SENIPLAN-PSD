@@ -9,7 +9,7 @@ import java.util.function.Predicate;
 
 /**
  * Construit un ExportBlock.Table pour les sections a colonnes annees 2027-2031
- * (S10 Plan d'actions, S11 Budget, S12 Cadre de mesure de rendement, S16 Business plan).
+ * (S10 Plan d'actions, S11 Budget, S12 Cadre de mesure de rendement).
  */
 final class YearlyTableRenderer {
 

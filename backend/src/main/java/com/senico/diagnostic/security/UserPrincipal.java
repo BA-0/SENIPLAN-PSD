@@ -19,6 +19,8 @@ public class UserPrincipal implements UserDetails {
     private final String role;
     private final Long groupId;
     private final boolean enabled;
+    /** Voir {@link com.senico.diagnostic.domain.User#isMustChangePassword()}. */
+    private final boolean mustChangePassword;
 
     public UserPrincipal(User user) {
         this.id = user.getId();
@@ -28,6 +30,7 @@ public class UserPrincipal implements UserDetails {
         this.role = user.getRole().name();
         this.groupId = user.getGroup() != null ? user.getGroup().getId() : null;
         this.enabled = user.isEnabled();
+        this.mustChangePassword = user.isMustChangePassword();
     }
 
     @Override

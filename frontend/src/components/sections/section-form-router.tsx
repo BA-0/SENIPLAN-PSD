@@ -21,7 +21,6 @@ import { IndicatorSheetForm } from "./forms/indicator-sheet-form";
 import { RiskMatrixForm } from "./forms/risk-matrix-form";
 import { StaffEvolutionForm } from "./forms/staff-evolution-form";
 import { FinancingPlanForm } from "./forms/financing-plan-form";
-import { BusinessPlanForm } from "./forms/business-plan-form";
 import { StrategicSummaryForm } from "./forms/strategic-summary-form";
 import type { SectionType } from "@/types/common";
 
@@ -80,8 +79,6 @@ export function SectionFormRouter({ type, content, onChange, readOnly }: Section
       return <StaffEvolutionForm {...props} />;
     case "FINANCING_PLAN":
       return <FinancingPlanForm {...props} />;
-    case "BUSINESS_PLAN":
-      return <BusinessPlanForm {...props} />;
     case "STRATEGIC_SUMMARY":
       return <StrategicSummaryForm {...props} />;
     default:

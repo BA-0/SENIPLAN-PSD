@@ -31,12 +31,18 @@ export function AuthGuard({ requiredRole, children }: { requiredRole?: Role; chi
       router.replace("/login");
       return;
     }
+    // Le serveur refuse deja tout le reste dans ce cas (PasswordChangeGuardFilter) : sans cette
+    // redirection, l'utilisateur verrait une application entierement en erreur.
+    if (user.mustChangePassword) {
+      router.replace("/change-password");
+      return;
+    }
     if (!satisfies(user.role, requiredRole)) {
       router.replace(homePathFor(user.role));
     }
   }, [hydrated, user, requiredRole, router]);
 
-  if (!hydrated || !user || !satisfies(user.role, requiredRole)) {
+  if (!hydrated || !user || user.mustChangePassword || !satisfies(user.role, requiredRole)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="h-8 w-8 rounded-full border-2 border-primary-200 border-t-primary-500 animate-spin" />

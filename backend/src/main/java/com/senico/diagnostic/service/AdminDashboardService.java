@@ -140,8 +140,10 @@ public class AdminDashboardService {
                             .version(versionsByGroupAndSection.getOrDefault(key, 0))
                             .submittedAt(s.getSubmittedAt())
                             .validatedAt(s.getValidatedAt())
+                            .dgApprovedAt(s.isDgApproved() ? s.getDgApprovedAt() : null)
                             .lastActivityAt(s.getLastActivityAt())
                             .adminComment(s.getAdminComment())
+                            .dgComment(s.getDgComment())
                             .build();
                 })
                 .sorted(Comparator.comparing(SubmissionSummaryDto::groupName)

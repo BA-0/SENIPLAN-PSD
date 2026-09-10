@@ -85,6 +85,9 @@ public class WorkGroupService {
                 .role(Role.GROUP_LEADER)
                 .group(group)
                 .enabled(true)
+                // Mot de passe remis en main propre par l'admin : le chef de groupe le
+                // remplace des sa premiere connexion (cf. PasswordChangeGuardFilter).
+                .mustChangePassword(true)
                 .build();
         leader = userRepository.save(leader);
 
@@ -137,6 +140,7 @@ public class WorkGroupService {
         }
         String rawPassword = passwordGeneratorService.generate();
         group.getLeader().setPasswordHash(passwordEncoder.encode(rawPassword));
+        group.getLeader().setMustChangePassword(true);
         userRepository.save(group.getLeader());
         return new ResetPasswordResponse(group.getLeader().getUsername(), rawPassword);
     }

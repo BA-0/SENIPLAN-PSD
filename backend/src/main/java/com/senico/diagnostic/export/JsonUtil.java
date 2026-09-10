@@ -17,12 +17,15 @@ final class JsonUtil {
     private static final DecimalFormat CURRENCY_FORMAT;
     /** Taux de realisation (S01B) : une decimale, la ou les montants restent entiers. */
     private static final DecimalFormat RATE_FORMAT;
+    /** Milliards dans le texte : deux decimales, « 12,51 milliards ». */
+    private static final DecimalFormat AMOUNT_FORMAT;
     static {
         DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.FRANCE);
         symbols.setGroupingSeparator(' ');
         symbols.setDecimalSeparator(',');
         CURRENCY_FORMAT = new DecimalFormat("#,##0", symbols);
         RATE_FORMAT = new DecimalFormat("#,##0.#", symbols);
+        AMOUNT_FORMAT = new DecimalFormat("#,##0.##", symbols);
     }
 
     private JsonUtil() {
@@ -88,6 +91,31 @@ final class JsonUtil {
 
     static String formatRate(double percent) {
         return RATE_FORMAT.format(percent) + " %";
+    }
+
+    /** Valeur a une decimale au plus (3,8 jours ; 96,5 %) : formatNumber arrondirait 3,8 a 4. */
+    static String formatDecimal(double value) {
+        return RATE_FORMAT.format(value);
+    }
+
+    /** Montant exprime en millions, a une decimale : l'unite des tableaux de budget de la note. */
+    static String formatMillions(double amount) {
+        return RATE_FORMAT.format(amount / 1_000_000d);
+    }
+
+    /**
+     * Montant en toutes lettres pour le corps du texte, comme dans un PSD publie :
+     * « 12,51 milliards FCFA » plutot que « 12 511 100 000 FCFA ».
+     */
+    static String formatAmountLabel(double amount) {
+        double abs = Math.abs(amount);
+        if (abs >= 1_000_000_000d) {
+            return AMOUNT_FORMAT.format(amount / 1_000_000_000d) + " milliards FCFA";
+        }
+        if (abs >= 1_000_000d) {
+            return RATE_FORMAT.format(amount / 1_000_000d) + " millions FCFA";
+        }
+        return formatCurrency(amount);
     }
 
     static String formatPercent(double percent) {

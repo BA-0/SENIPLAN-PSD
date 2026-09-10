@@ -22,7 +22,6 @@ export type SectionType =
   | "RISK_MATRIX"
   | "STAFF_EVOLUTION"
   | "FINANCING_PLAN"
-  | "BUSINESS_PLAN"
   | "STRATEGIC_SUMMARY";
 
 export type Role = "ADMIN" | "DIRECTEUR_GENERAL" | "GROUP_LEADER";
@@ -35,8 +34,11 @@ export interface SectionStatusSummary {
   status: SectionStatus;
   submittedAt: string | null;
   validatedAt: string | null;
+  /** Approbation du DG, second niveau : nulle tant qu'il n'a pas tranché. */
+  dgApprovedAt: string | null;
   lastActivityAt: string | null;
   adminComment: string | null;
+  dgComment: string | null;
 }
 
 export interface SectionContentResponse<T = unknown> {
@@ -54,7 +56,10 @@ export interface SectionContentResponse<T = unknown> {
   updatedAt: string | null;
   submittedAt: string | null;
   validatedAt: string | null;
+  /** Approbation du DG, second niveau : nulle tant qu'il n'a pas tranché. */
+  dgApprovedAt: string | null;
   adminComment: string | null;
+  dgComment: string | null;
   lastActivityAt: string | null;
 }
 
@@ -79,5 +84,5 @@ export interface SectionRevisionContentResponse<T = unknown> {
 export const SECTION_CODES = [
   "S01", "S01B", "S02", "S03", "S03B", "S04", "S05", "S06", "S06B", "S07",
   "S07B", "S08", "S09", "S09B", "S11", "S10", "S13", "S12", "S14", "S14B",
-  "S15", "S16", "S17",
+  "S15", "S17",
 ] as const;

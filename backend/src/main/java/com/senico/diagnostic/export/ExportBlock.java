@@ -9,6 +9,10 @@ import java.util.List;
  */
 public sealed interface ExportBlock {
 
+    /**
+     * Intertitre. Le niveau 1 ouvre une partie numerotee (« I. CONTEXTE ») et commence une
+     * nouvelle page, comme dans un PSD publie ; les niveaux 1 et 2 alimentent le sommaire.
+     */
     record Heading(String text, int level) implements ExportBlock {
         public Heading(String text) {
             this(text, 2);
@@ -30,13 +34,67 @@ public sealed interface ExportBlock {
     record BulletList(String title, List<String> items) implements ExportBlock {
     }
 
-    record Cell(String text, boolean bold, Align align, Background background) {
+    /**
+     * Un element du document et les directions qui l'ont ecrit, par leur couleur.
+     *
+     * <p>Une seule couleur : le texte prend celle de la direction, et le lecteur sait d'un
+     * coup d'oeil d'ou vient la phrase. Plusieurs : le constat est partage, aucune direction
+     * ne peut se l'approprier — le texte reste neutre et porte une pastille par contributrice.
+     * C'est precisement l'information qu'un document consolide doit rendre visible.</p>
+     */
+    record Attribution(String text, List<String> colorHexes) {
+        public Attribution(String text) {
+            this(text, List.of());
+        }
+    }
+
+    /** Liste a puces dont chaque element porte la couleur de la direction qui l'a ecrit. */
+    record AttributedList(String title, List<Attribution> items) implements ExportBlock {
+    }
+
+    /** Case d'un cadran : un titre, une ligne de lecture facultative (« À impliquer... »), les elements. */
+    record AttributedQuadrantCell(String title, String caption, List<Attribution> items) {
+        public AttributedQuadrantCell(String title, List<Attribution> items) {
+            this(title, null, items);
+        }
+    }
+
+    /**
+     * Cadran de quatre cases (SWOT, matrice des parties prenantes, orientations croisees), chaque
+     * element portant l'attribution de sa ou ses directions. Les teintes suivent l'ordre des cases ;
+     * sans teintes, celles du SWOT (vert, orange, bleu, rouge).
+     */
+    record AttributedQuadrant(List<AttributedQuadrantCell> cells, List<Background> tints) implements ExportBlock {
+        public AttributedQuadrant(List<AttributedQuadrantCell> cells) {
+            this(cells, List.of());
+        }
+    }
+
+    /** Legende d'attribution : une pastille de couleur par direction. */
+    record ColorLegend(String title, List<Attribution> entries) implements ExportBlock {
+    }
+
+    /**
+     * Cellule de tableau. Quand {@code attributions} n'est pas vide, la cellule rend ces
+     * elements en puces coloriees par direction plutot que son {@code text} : c'est le meme
+     * contenu, mais on voit qui l'a ecrit.
+     */
+    record Cell(String text, boolean bold, Align align, Background background,
+                List<Attribution> attributions) {
         public Cell(String text) {
-            this(text, false, Align.LEFT, Background.NONE);
+            this(text, false, Align.LEFT, Background.NONE, List.of());
         }
 
         public Cell(String text, Background background) {
-            this(text, false, Align.LEFT, background);
+            this(text, false, Align.LEFT, background, List.of());
+        }
+
+        public Cell(String text, boolean bold, Align align, Background background) {
+            this(text, bold, align, background, List.of());
+        }
+
+        public Cell(List<Attribution> attributions) {
+            this("", false, Align.LEFT, Background.NONE, attributions);
         }
     }
 
@@ -50,7 +108,36 @@ public sealed interface ExportBlock {
         }
     }
 
-    record Table(List<String> columnHeaders, List<TableRow> rows) implements ExportBlock {
+    /**
+     * Tableau. {@code widths} donne la largeur relative de chaque colonne ; vide, les colonnes
+     * sont egales — ce qui convient a un tableau de chiffres, pas a un intitule suivi de montants.
+     */
+    record Table(List<String> columnHeaders, List<TableRow> rows, List<Integer> widths) implements ExportBlock {
+        public Table(List<String> columnHeaders, List<TableRow> rows) {
+            this(columnHeaders, rows, List.of());
+        }
+    }
+
+    /**
+     * Encadre de lecture : la phrase qu'on attend apres un tableau chiffre (« Analyse : ... »),
+     * ou l'avertissement qui explique un document vide. En simple paragraphe italique, cette
+     * phrase se noyait dans le corps du texte ; l'encadre la detache, comme dans un PSD publie.
+     */
+    record Callout(String text, Tone tone) implements ExportBlock {
+        public Callout(String text) {
+            this(text, Tone.ANALYSIS);
+        }
+    }
+
+    /** Un chiffre cle et son intitule, rendus en tuile plutot qu'en ligne de tableau. */
+    record Metric(String label, String value) {
+    }
+
+    /**
+     * Les chiffres cles en tuiles sur deux colonnes : un comite lit « 28 820 000 000 FCFA »
+     * d'un coup d'oeil, la ou une colonne « Valeur » oblige a suivre la ligne jusqu'au bout.
+     */
+    record MetricGrid(List<Metric> metrics) implements ExportBlock {
     }
 
     record QuadrantCell(String title, List<String> items) {
@@ -59,7 +146,28 @@ public sealed interface ExportBlock {
     record Quadrant(List<QuadrantCell> cells) implements ExportBlock {
     }
 
+    /** Une serie d'un graphique : son nom (legende), sa couleur, une valeur par categorie. */
+    record ChartSeries(String name, String colorHex, List<Double> values) {
+    }
+
+    /**
+     * Graphique, rendu en image par {@link ChartImageRenderer} pour les deux formats. Il accompagne
+     * toujours le tableau des memes chiffres : le graphique donne la forme, le tableau les valeurs.
+     */
+    record Chart(ChartKind kind, String title, String subtitle, List<String> categories,
+                 List<ChartSeries> series) implements ExportBlock {
+    }
+
+    /**
+     * STACKED_COLUMNS : une colonne par categorie, empilee par serie (budget par exercice et par axe).
+     * STACKED_BAR : une seule barre horizontale partagee entre les series (part couverte d'un total).
+     */
+    enum ChartKind { STACKED_COLUMNS, STACKED_BAR }
+
     enum Align { LEFT, CENTER, RIGHT }
 
-    enum Background { NONE, RED, ORANGE, BLUE, GREEN, GREY, PRIMARY_LIGHT }
+    /** ANALYSIS = lecture d'un tableau chiffre ; WARNING = ce qu'il faut savoir avant de lire. */
+    enum Tone { ANALYSIS, WARNING }
+
+    enum Background { NONE, RED, ORANGE, BLUE, GREEN, GREY, PRIMARY_LIGHT, VIOLET }
 }

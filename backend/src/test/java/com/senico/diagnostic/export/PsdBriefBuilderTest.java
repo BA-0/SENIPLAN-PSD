@@ -41,15 +41,18 @@ class PsdBriefBuilderTest {
 
     private static final Map<String, SectionType> TYPES = Map.ofEntries(
             Map.entry("S01", SectionType.STAKEHOLDERS),
+            Map.entry("S02", SectionType.RESOURCES_MATRIX),
             Map.entry("S04", SectionType.SWOT),
             Map.entry("S06B", SectionType.CONSTRAINTS_SYNTHESIS),
             Map.entry("S07B", SectionType.STRATEGIC_FRAMEWORK),
             Map.entry("S08", SectionType.STRATEGIC_AXES),
             Map.entry("S11", SectionType.BUDGET),
+            Map.entry("S12", SectionType.PERFORMANCE_FRAMEWORK),
             Map.entry("S13", SectionType.INDICATOR_SHEET),
             Map.entry("S14", SectionType.RISK_MATRIX),
             Map.entry("S14B", SectionType.STAFF_EVOLUTION),
-            Map.entry("S15", SectionType.FINANCING_PLAN));
+            Map.entry("S15", SectionType.FINANCING_PLAN),
+            Map.entry("S17", SectionType.STRATEGIC_SUMMARY));
 
     private final Map<String, SectionDef> sectionsByCode = new LinkedHashMap<>();
     private final Map<String, SectionResponse> responsesByKey = new LinkedHashMap<>();
@@ -217,10 +220,10 @@ class PsdBriefBuilderTest {
         assertThat(note).contains(
                 "Réseau national",                          // V. diagnostic
                 "Parc technique vieillissant",
-                "Courrier", "Compenser par le colis",       // annexe, tableau 1
+                "Courrier", "Compenser par le colis",       // VII.3 synthese des contraintes
                 "Devenir l'opérateur logistique de référence", "Fiabilité",  // IX. propositions des directions
                 "Croissance commerciale",                   // IX. et X.
-                "Lancer l'offre grands comptes",            // XII. synthese du cadre strategique
+                "Lancer l'offre grands comptes",            // XII.2 recapitulatif du plan
                 "Perte de parts de marché",                 // V.5 risques de criticite elevee
                 "1 000 FCFA",                               // budget global (600 + 400)
                 "Trimestrielle",                            // XI. pilotage
@@ -237,6 +240,80 @@ class PsdBriefBuilderTest {
         assertThat(blocs)
                 .as("le budget s'accompagne de son graphique")
                 .anyMatch(bloc -> bloc instanceof ExportBlock.Chart);
+    }
+
+    @Test
+    @DisplayName("Les tableaux du modèle client : ressources, synthèse du cadre stratégique, récapitulatif, impact, collecte")
+    void rendLesTableauxDuModeleClient() {
+        WorkGroup commerciale = group(1, "Direction commerciale");
+        saisie(commerciale, "S02", """
+                {"rows":[{"resourceKey":"RECHERCHE_DEVELOPPEMENT","strengths":"Cellule innovation",
+                          "weaknesses":"","challenges":"Financer la R&D"}]}""");
+        saisie(commerciale, "S08", """
+                {"axes":[{"axisCode":"AXE1","title":"Croissance commerciale",
+                          "specificObjectives":["Développer le chiffre d'affaires"]}]}""");
+        saisie(commerciale, "S11", """
+                {"axes":[{"axisCode":"AXE1","effects":[{"effectLabel":"Développer le chiffre d'affaires",
+                          "rows":[{"extrant":"Offre grands comptes","activities":"Lancer l'offre grands comptes",
+                                   "years":{"2027":600000000}}]}]}]}""");
+        saisie(commerciale, "S12", """
+                {"axes":[{"axisCode":"AXE1","groups":[{"level":"EFFET","rows":[
+                          {"resultOrExtrant":"Développer le chiffre d'affaires","indicator":"Chiffre d'affaires annuel",
+                           "years":{"2031":"25 Mds FCFA"}}]}]}]}""");
+        saisie(commerciale, "S17", """
+                {"axes":[{"axisCode":"AXE1","orientations":[{"label":"Conquérir les grands comptes",
+                          "actions":[{"label":"Créer une cellule grands comptes",
+                                      "constraintsOrOpportunities":"Concurrence des majors"}]}]}]}""");
+        saisie(commerciale, "S13", """
+                {"rows":[{"indicatorTitle":"Chiffre d'affaires","collectionSource":"Extraction du logiciel de facturation"}]}""");
+        saisie(commerciale, "S14", """
+                {"rows":[{"category":"Commercial","riskDetails":"Perte de parts de marché","impactAreas":"Transport de fret",
+                          "levelN":3,"quotationQ":3,"mitigationActions":"Différenciation"}]}""");
+
+        String note = texte(build(commerciale));
+
+        assertThat(note).as("matrice des ressources, lignes ajoutées par le client comprises")
+                .contains("Recherche et développement", "Cellule innovation", "Financer la R&D");
+        assertThat(note).as("synthèse du cadre stratégique : OS, actions numérotées, contraintes")
+                .contains("OS1 : Conquérir les grands comptes", "Action 1.1 : Créer une cellule grands comptes",
+                        "Concurrence des majors");
+        assertThat(note).as("récapitulatif : indicateur et cible 2031 repris du cadre de mesure de rendement")
+                .contains("Chiffre d'affaires annuel", "25 Mds FCFA", "Cible 2031");
+        assertThat(note).as("fiche des indicateurs : moyens de collecte")
+                .contains("Sources et moyens de collecte", "Extraction du logiciel de facturation");
+        assertThat(note).as("cartographie des risques : impact")
+                .contains("Impact sur les activités", "Transport de fret");
+    }
+
+    @Test
+    @DisplayName("Effectifs : par hiérarchie et par statut, sans compter deux fois les mêmes agents")
+    void rendLesEffectifsParHierarchieEtStatut() {
+        WorkGroup commerciale = group(1, "Direction commerciale");
+        saisie(commerciale, "S14B", """
+                {"rows":[{"category":"HIERARCHIE","staffKey":"CADRE","years":{"2027":{"male":8,"female":4}}},
+                         {"category":"STATUT","staffKey":"FONCTIONNAIRE","years":{"2027":{"male":8,"female":4}}}]}""");
+
+        List<ExportBlock> blocs = build(commerciale);
+        assertThat(texte(blocs)).contains("Hiérarchie", "Cadre", "Statut", "Fonctionnaire", "TOTAUX");
+
+        ExportBlock.Table effectifs = blocs.stream()
+                .filter(ExportBlock.Table.class::isInstance).map(ExportBlock.Table.class::cast)
+                .filter(table -> table.columnHeaders().get(0).equals("Effectifs"))
+                .findFirst().orElseThrow();
+        assertThat(effectifs.bands()).as("les années coiffent les colonnes M, F, Total").isNotEmpty();
+        List<ExportBlock.Cell> totaux = effectifs.rows().get(effectifs.rows().size() - 1).cells();
+        assertThat(totaux.get(3).text())
+                .as("hiérarchie et statut ventilent les mêmes 12 agents : le total ne les additionne pas")
+                .isEqualTo("12");
+    }
+
+    @Test
+    @DisplayName("La note ne présente pas SENICO comme dotée d'un plan stratégique de développement")
+    void neParlePasDePlanStrategiqueDeDeveloppement() {
+        String note = texte(build(group(1, "Direction commerciale")));
+
+        assertThat(note).doesNotContainIgnoringCase("stratégique de développement").doesNotContain("PSD");
+        assertThat(note).contains("VI. BILAN DES PERFORMANCES DES ANNÉES PRÉCÉDENTES", "VII. PRINCIPAUX ENJEUX ET DÉFIS");
     }
 
     @Test

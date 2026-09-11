@@ -92,7 +92,7 @@ export default function LoginPage() {
             {/* Le trait vert est descendu : il souligne le titre au lieu de
                 traverser le lettrage du logo. */}
             <div className="mx-auto h-[2px] w-14 rounded-full bg-gradient-to-r from-primary-600 via-primary-300 to-primary-600" />
-            <p className="text-center text-[13px] text-white/65 mt-2.5 mb-5">PSD 2027-2031</p>
+            <p className="text-center text-[13px] text-white/65 mt-2.5 mb-5">Plan Stratégique 2027-2031</p>
 
             {/* `autoComplete="off"` : sans lui, le navigateur restaure
                 l'identifiant et le mot de passe à chaque rechargement de la

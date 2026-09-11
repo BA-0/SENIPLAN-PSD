@@ -100,7 +100,7 @@ export function ActionPlanForm({ content, onChange, readOnly }: SectionFormProps
                       <TableHead className="min-w-[180px]">Objectif</TableHead>
                       <TableHead className="min-w-[120px] text-right">Budget (FCFA)</TableHead>
                       {PLAN_YEARS.map((y) => (
-                        <TableHead key={y} className="text-center">{y}</TableHead>
+                        <TableHead key={y} className="text-center">Prévu {y}</TableHead>
                       ))}
                       <TableHead className="min-w-[140px]">Responsables</TableHead>
                       {!readOnly && <TableHead className="w-10" />}

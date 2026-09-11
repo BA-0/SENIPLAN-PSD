@@ -19,7 +19,8 @@ public enum NarrativeBlockKey {
     MISSIONS("Rappel des missions"),
     ORGANISATION("Organisation"),
     RESSOURCES("Ressources"),
-    BILAN_PSD_PRECEDENT("Bilan du plan stratégique précédent"),
+    /** SENICO n'a pas encore eu de plan strategique : le bilan porte sur les performances passees. */
+    BILAN_PSD_PRECEDENT("Bilan des performances des années précédentes"),
     DEFIS_A_RELEVER("Défis à relever"),
     ENJEUX("Enjeux"),
     FACTEURS_CLES("Facteurs clés de réussite et d'échec"),

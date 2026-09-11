@@ -72,7 +72,7 @@ export default function AdminDashboardPage() {
     <div className="space-y-6">
       <div>
         <h1>Tableau de bord administrateur</h1>
-        <p className="text-[13px] text-muted-foreground mt-1">Suivi en temps réel du plan stratégique PSD 2027-2031</p>
+        <p className="text-[13px] text-muted-foreground mt-1">Suivi en temps réel du Plan Stratégique 2027-2031</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">

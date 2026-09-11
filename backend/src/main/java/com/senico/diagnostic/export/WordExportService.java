@@ -96,7 +96,7 @@ public class WordExportService {
             // La consolidation ne reprend que ce que le DG a approuve (cf. PsdApprovedContent).
             responsesByKey = PsdApprovedContent.approvedOnly(responsesByKey, statusesByKey);
 
-            addFooter(doc, "Plan Stratégique de SENICO — PSD 2027-2031");
+            addFooter(doc, "Plan Stratégique de SENICO 2027-2031");
             addPsdFinalCoverPage(doc);
             doc.createParagraph().setPageBreak(true);
             addPsdFinalSommaire(doc, entries, groups);
@@ -145,7 +145,7 @@ public class WordExportService {
 
             List<ExportBlock> blocks = psdBriefBuilder.build(groups, sectionsByCode, responsesByKey, statusesByKey, narratives());
 
-            addFooter(doc, "Plan Stratégique de Développement 2027-2031 — Note de synthèse");
+            addFooter(doc, "Plan Stratégique 2027-2031 — Note de synthèse");
             addSynthesisNoteCoverPage(doc);
             doc.createParagraph().setPageBreak(true);
             addSynthesisNoteSommaire(doc, blocks);
@@ -203,7 +203,7 @@ public class WordExportService {
     /** Pendant Word de {@link PdfExportService#addSynthesisNoteCoverPage(com.lowagie.text.Document)}. */
     private void addSynthesisNoteCoverPage(XWPFDocument doc) {
         addCoverLogo(doc);
-        addCenteredTitle(doc, "PLAN STRATÉGIQUE DE DÉVELOPPEMENT", 26, PRIMARY_HEX);
+        addCenteredTitle(doc, "PLAN STRATÉGIQUE", 26, PRIMARY_HEX);
         addCenteredTitle(doc, "2027 - 2031", 26, PRIMARY_HEX);
         addCenteredTitle(doc, "SENICO SA", 14, "64748B");
         addCenteredTitle(doc, "NOTE DE SYNTHÈSE", 16, DARK_HEX);
@@ -288,7 +288,7 @@ public class WordExportService {
         XWPFParagraph subtitle = doc.createParagraph();
         subtitle.setAlignment(ParagraphAlignment.CENTER);
         XWPFRun subtitleRun = subtitle.createRun();
-        subtitleRun.setText("Plan Stratégique de Développement (PSD) 2027-2031");
+        subtitleRun.setText("Horizon 2027-2031");
         subtitleRun.setFontSize(14);
         subtitleRun.setColor("64748B");
 
@@ -720,7 +720,7 @@ public class WordExportService {
         XWPFParagraph subtitle = doc.createParagraph();
         subtitle.setAlignment(ParagraphAlignment.CENTER);
         XWPFRun subtitleRun = subtitle.createRun();
-        subtitleRun.setText("Plan Stratégique de Développement (PSD) 2027-2031");
+        subtitleRun.setText("Horizon 2027-2031");
         subtitleRun.setFontSize(14);
         subtitleRun.setColor("64748B");
 

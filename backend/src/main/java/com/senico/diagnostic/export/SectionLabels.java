@@ -55,7 +55,10 @@ final class SectionLabels {
             Map.entry("SUIVI_EVALUATION", "Suivi évaluation"),
             Map.entry("COMMUNICATION", "Communication"),
             Map.entry("AUTRES_ACHATS_EXPLOITATION_TECHNIQUE_RH", "Autres (Achats, Exploitation commerciale, Technique et armement, RH)"),
-            Map.entry("COMPETENCES", "Compétences")
+            Map.entry("COMPETENCES", "Compétences"),
+            Map.entry("PRODUITS_SERVICES", "Produits et services à délivrer (portefeuille, qualité, production, marque, tarification, force de vente, compétitivité…)"),
+            Map.entry("CLIENTELE_BENEFICIAIRES", "Clientèle ou bénéficiaires des prestations (taille, fidélité…)"),
+            Map.entry("RECHERCHE_DEVELOPPEMENT", "Recherche et développement")
     );
 
     static final Map<String, String> PESTEL_LABELS = Map.of(
@@ -102,6 +105,7 @@ final class SectionLabels {
             "AGENTS_MAITRISE", "Agents de maîtrise",
             "EMPLOYE", "Employé",
             "JOURNALIER", "Journalier",
+            "FONCTIONNAIRE", "Fonctionnaire",
             "CDI", "CDI",
             "CDD", "CDD",
             "EXPATRIE", "Expatrié"

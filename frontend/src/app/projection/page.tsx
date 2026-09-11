@@ -172,7 +172,7 @@ function ProjectionPage() {
           <div className="min-w-0 animate-fade-in-up" style={{ animationDelay: "80ms" }}>
             <p className="text-[22px] font-bold leading-tight truncate">Plan Stratégique — SENICO</p>
             <p className="text-[13px] text-white/60 truncate">
-              Plan Stratégique de Développement 2027-2031 · Séance de travail des groupes
+              Plan Stratégique 2027-2031 · Séance de travail des groupes
             </p>
           </div>
         </div>

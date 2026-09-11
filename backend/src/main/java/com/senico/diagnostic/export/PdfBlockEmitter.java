@@ -304,9 +304,14 @@ public class PdfBlockEmitter {
         table.setWidthPercentage(100);
         table.setSpacingBefore(4);
         table.setSpacingAfter(10);
+        boolean banded = t.bands() != null && !t.bands().isEmpty();
+        // Au-dela de dix colonnes (effectifs : M, F et total sur cinq exercices), le corps de texte
+        // habituel ne tient plus « 1 568 » sur une ligne : le tableau se resserre.
+        boolean dense = columns > 10;
+        float fontSize = dense ? 7.5f : 8.5f;
         // Un tableau qui deborde sur la page suivante y reprend ses en-tetes : sans cela, la
         // seconde moitie d'un budget sur cinq exercices devient illisible.
-        table.setHeaderRows(1);
+        table.setHeaderRows(banded ? 2 : 1);
         // Une ligne haute commence sur la page en cours plutot que de laisser un blanc au-dessus.
         table.setSplitLate(false);
         if (t.widths() != null && t.widths().size() == columns) {
@@ -320,16 +325,40 @@ public class PdfBlockEmitter {
             }
         }
 
+        if (banded) {
+            for (ExportBlock.HeaderBand band : t.bands()) {
+                PdfPCell cell = textCell(band.label(), PdfFonts.font(fontSize, Font.BOLD, Color.WHITE), Element.ALIGN_CENTER, PRIMARY_DARK);
+                cell.setColspan(Math.max(1, band.span()));
+                cell.setBorderColor(PRIMARY_DARK);
+                table.addCell(cell);
+            }
+        }
         for (String header : t.columnHeaders()) {
-            PdfPCell cell = textCell(header, PdfFonts.font(8.5f, Font.BOLD, Color.WHITE), Element.ALIGN_LEFT, PRIMARY);
+            PdfPCell cell = textCell(header, PdfFonts.font(fontSize, Font.BOLD, Color.WHITE),
+                    banded ? Element.ALIGN_CENTER : Element.ALIGN_LEFT, PRIMARY);
             cell.setBorderColor(PRIMARY);
             cell.setPaddingTop(5);
             cell.setPaddingBottom(6);
+            if (dense) {
+                cell.setPaddingLeft(2);
+                cell.setPaddingRight(2);
+            }
             table.addCell(cell);
         }
 
         int rowIndex = 0;
         for (ExportBlock.TableRow row : t.rows()) {
+            if (row.band()) {
+                String text = row.cells().isEmpty() ? "" : row.cells().get(0).text();
+                Color bg = row.rowBackground() != ExportBlock.Background.NONE
+                        ? awtColor(row.rowBackground()) : awtColor(ExportBlock.Background.GREY);
+                PdfPCell cell = textCell(text, PdfFonts.font(fontSize + 0.5f, Font.BOLD, INK), Element.ALIGN_LEFT, bg);
+                cell.setColspan(columns);
+                cell.setBorderColor(BORDER);
+                table.addCell(cell);
+                rowIndex = 0;
+                continue;
+            }
             // Le tramage ne vaut que pour les lignes sans couleur propre : une ligne de total
             // ou une ligne coloree par le metier garde la sienne.
             Color defaultBg = rowIndex % 2 == 1 ? ZEBRA : Color.WHITE;
@@ -339,7 +368,7 @@ public class PdfBlockEmitter {
                         ? awtColor(cell.background())
                         : (row.rowBackground() != ExportBlock.Background.NONE ? awtColor(row.rowBackground())
                         : (row.emphasized() ? awtColor(ExportBlock.Background.GREY) : defaultBg));
-                Font font = PdfFonts.font(8.5f, (cell.bold() || row.emphasized()) ? Font.BOLD : Font.NORMAL, INK);
+                Font font = PdfFonts.font(fontSize, (cell.bold() || row.emphasized()) ? Font.BOLD : Font.NORMAL, INK);
                 int align = switch (cell.align()) {
                     case CENTER -> Element.ALIGN_CENTER;
                     case RIGHT -> Element.ALIGN_RIGHT;
@@ -349,6 +378,10 @@ public class PdfBlockEmitter {
                         ? textCell(cell.text(), font, align, bg)
                         : attributedCell(cell.attributions(), bg);
                 pdfCell.setBorderColor(BORDER);
+                if (dense) {
+                    pdfCell.setPaddingLeft(2);
+                    pdfCell.setPaddingRight(2);
+                }
                 table.addCell(pdfCell);
             }
             rowIndex++;

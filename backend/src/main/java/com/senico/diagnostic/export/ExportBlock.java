@@ -98,23 +98,46 @@ public sealed interface ExportBlock {
         }
     }
 
-    record TableRow(List<Cell> cells, boolean emphasized, Background rowBackground) {
+    /**
+     * Ligne de tableau. Une ligne {@code band} est un intertitre qui occupe toute la largeur du
+     * tableau (« AXE 1 : ... », « Hiérarchie ») : seule sa premiere cellule est rendue.
+     */
+    record TableRow(List<Cell> cells, boolean emphasized, Background rowBackground, boolean band) {
         public TableRow(List<Cell> cells) {
-            this(cells, false, Background.NONE);
+            this(cells, false, Background.NONE, false);
         }
 
         public TableRow(List<Cell> cells, boolean emphasized) {
-            this(cells, emphasized, Background.NONE);
+            this(cells, emphasized, Background.NONE, false);
         }
+
+        public TableRow(List<Cell> cells, boolean emphasized, Background rowBackground) {
+            this(cells, emphasized, rowBackground, false);
+        }
+
+        public static TableRow band(String text, Background background) {
+            return new TableRow(List.of(new Cell(text, true, Align.LEFT, Background.NONE)), true, background, true);
+        }
+    }
+
+    /** Intitule qui coiffe {@code span} colonnes voisines (« 2027 » au-dessus de M, F, Total). */
+    record HeaderBand(String label, int span) {
     }
 
     /**
      * Tableau. {@code widths} donne la largeur relative de chaque colonne ; vide, les colonnes
      * sont egales — ce qui convient a un tableau de chiffres, pas a un intitule suivi de montants.
+     * {@code bands}, s'il n'est pas vide, ajoute au-dessus des en-tetes une ligne d'intitules
+     * regroupant plusieurs colonnes ; la somme des {@code span} vaut le nombre de colonnes.
      */
-    record Table(List<String> columnHeaders, List<TableRow> rows, List<Integer> widths) implements ExportBlock {
+    record Table(List<String> columnHeaders, List<TableRow> rows, List<Integer> widths,
+                 List<HeaderBand> bands) implements ExportBlock {
         public Table(List<String> columnHeaders, List<TableRow> rows) {
-            this(columnHeaders, rows, List.of());
+            this(columnHeaders, rows, List.of(), List.of());
+        }
+
+        public Table(List<String> columnHeaders, List<TableRow> rows, List<Integer> widths) {
+            this(columnHeaders, rows, widths, List.of());
         }
     }
 

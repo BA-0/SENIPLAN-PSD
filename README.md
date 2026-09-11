@@ -1,6 +1,6 @@
 # SENICO Diagnostic Stratégique
 
-Application web digitalisant le canevas de diagnostic stratégique du **Plan Stratégique de Développement (PSD) 2027-2031** de SENICO SA (Sénégalaise Industrie & Commerce). Les départements de l'entreprise, constitués en groupes de travail, saisissent les 17 sections du canevas ; un administrateur (comité de pilotage) suit l'avancement en temps réel, relit et valide les soumissions, puis le Directeur Général approuve celles qui entrent dans les documents consolidés, exportables en PDF, Word et Excel.
+Application web digitalisant le canevas de diagnostic stratégique du **Plan Stratégique 2027-2031** de SENICO SA (Sénégalaise Industrie & Commerce). Les départements de l'entreprise, constitués en groupes de travail, saisissent les 17 sections du canevas ; un administrateur (comité de pilotage) suit l'avancement en temps réel, relit et valide les soumissions, puis le Directeur Général approuve celles qui entrent dans les documents consolidés, exportables en PDF, Word et Excel.
 
 ## Architecture
 
@@ -23,12 +23,14 @@ Monorepo à deux applications :
   - Section 7 (Inventaire) ← agrégation des Sections 1, 3, 4, 6
   - Sections 9, 10, 11, 12, 17 ← intitulés d'axes de la Section 8
   - Section 11 (Budget) : totaux ligne / colonne / axe / général
+  - Section 2 (Ressources) : lignes du modèle client rajoutées à leur place dans une matrice saisie avant leur ajout
   - Section 14 (Risques) : criticité = Niveau × Quotation
+  - Section 14B (Effectifs) : totaux par année, qui suivent la hiérarchie (hiérarchie et statut ventilent les mêmes agents) ; ligne « Fonctionnaire » rajoutée si absente
   - Section 15 (Financement) : pourcentages par source
   - Section 16 (Business plan) : résultat d'exploitation, résultat net, variation et trésorerie cumulée
 - **Temps réel** : WebSocket STOMP/SockJS (`/ws`) pousse au dashboard admin les changements de statut, soumissions et activité ; le frontend bascule sur du polling (15s) si la connexion est indisponible.
 - **Exports** : PDF (OpenPDF) et Word (Apache POI) par groupe, Excel consolidé (une feuille par section, toutes les réponses de tous les groupes).
-- **Note de synthèse** (`PsdBriefBuilder`) : le PSD sur le plan d'un plan stratégique publié — sigles, mot du DG, l'essentiel du plan, contexte, méthode, présentation, parties prenantes, diagnostic (performances, PESTEL, SWOT, orientations croisées, risques), bilan, enjeux, facteurs clés, cadre stratégique, mise en œuvre (budget par axe avec graphiques, financement, effectifs), pilotage, synthèse du cadre stratégique, conclusion et annexes. PDF en deux passes pour un sommaire paginé ; police Roboto embarquée (`resources/fonts`, licence Apache 2.0).
+- **Note de synthèse** (`PsdBriefBuilder`) : le Plan Stratégique sur le plan d'un plan stratégique publié — sigles, mot du DG, l'essentiel du plan, contexte, méthode, présentation, parties prenantes, diagnostic (performances, ressources et compétences, PESTEL, SWOT, orientations croisées, risques et leur impact), bilan des performances des années précédentes, principaux enjeux et défis (avec la synthèse des contraintes par domaine d'activités), facteurs clés, cadre stratégique, mise en œuvre (budget par axe avec graphiques, financement, effectifs par hiérarchie, statut et genre), pilotage, synthèse du cadre stratégique (tableau OS / actions / contraintes du modèle client, puis récapitulatif unique objectifs, actions, indicateur, cible 2031 et coût), conclusion et annexes. Les tableaux du modèle client (matrice des ressources, effectifs, synthèse du cadre stratégique, contraintes) en reprennent les lignes et les colonnes. PDF en deux passes pour un sommaire paginé ; police Roboto embarquée (`resources/fonts`, licence Apache 2.0).
 - **Cadre stratégique de l'entreprise** : vision, mission, valeurs, dispositif de pilotage et axes stratégiques sont arrêtés par la Direction Générale (blocs narratifs, écran « Plan Stratégique de SENICO ») et remplacent dans les documents les propositions de chaque direction. Les axes (`AXES_CONSOLIDES`, format lu par `PsdConsolidatedAxes`) regroupent les axes des directions : objectifs, budget et actions s'additionnent sous l'axe de l'entreprise ; un axe de direction non rattaché est signalé.
 
 ### Frontend

@@ -11,8 +11,10 @@ import type { SectionFormProps } from "./types";
 /**
  * S14B — plan d'evolution des effectifs (statut, hierarchie, genre), place juste avant
  * le plan de financement. Trois colonnes par annee : hommes, femmes, total (calcule).
- * Les lignes suivent le modele client tel que corrige en revue : "Journalier" ferme le
- * bloc hierarchie, la ligne "Fonctionnaire" a ete supprimee, "Expatrie" reste au statut.
+ * Les lignes suivent le modele client : "Journalier" ferme le bloc hierarchie, "Fonctionnaire"
+ * ouvre le bloc statut et "Expatrie" le ferme. Le serveur rajoute a sa place une ligne fixe
+ * absente d'un plan saisi avant son ajout, et le TOTAUX suit la hierarchie : les deux blocs
+ * ventilent les memes agents.
  */
 export function StaffEvolutionForm({ content, onChange, readOnly }: SectionFormProps<StaffEvolutionContent>) {
   const rows = content.rows ?? [];
@@ -74,7 +76,7 @@ export function StaffEvolutionForm({ content, onChange, readOnly }: SectionFormP
           <TableRow>
             {PLAN_YEARS.map((y) => (
               <Fragment key={y}>
-                <TableHead className="text-right border-l border-border">H</TableHead>
+                <TableHead className="text-right border-l border-border">M</TableHead>
                 <TableHead className="text-right">F</TableHead>
                 <TableHead className="text-right">Total</TableHead>
               </Fragment>

@@ -12,6 +12,11 @@ import com.senico.diagnostic.validation.DefaultSectionContentFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -63,9 +68,10 @@ public class DerivedFieldsService {
             case RISK_MATRIX -> applyRiskCriticality(content);
             case FINANCING_PLAN -> applyFinancingTotals(content);
             case PERFORMANCE_REVIEW_2026 -> applyPerformanceReviewRates(content);
+            case RESOURCES_MATRIX -> normalizeResourceRows(content);
             case RESOURCES_SYNTHESIS -> applyResourcesSynthesisSync(groupId, content);
             case LOGFRAME_SYNTHESIS -> applyLogframeSynthesisSync(groupId, content);
-            case STAFF_EVOLUTION -> applyStaffTotals(content);
+            case STAFF_EVOLUTION -> applyStaffTotals(normalizeStaffRows(content));
             default -> content;
         };
     }
@@ -382,10 +388,47 @@ public class DerivedFieldsService {
         return content;
     }
 
+    // ---- S02 : lignes fixes de la matrice, dans l'ordre du modele client ----
+    /**
+     * Une matrice saisie avant l'ajout d'une ressource au modele n'en a pas la ligne : elle est
+     * rajoutee, vide, a sa place, pour que la direction la renseigne et que les documents
+     * l'affichent. Une ligne a cle inconnue est conservee, en fin de matrice.
+     */
+    private ObjectNode normalizeResourceRows(ObjectNode content) {
+        Map<String, JsonNode> byKey = new LinkedHashMap<>();
+        List<JsonNode> others = new ArrayList<>();
+        for (JsonNode row : arrayOrEmpty(content, "rows")) {
+            String key = row.path("resourceKey").asText("");
+            if (!key.isEmpty() && !byKey.containsKey(key)) {
+                byKey.put(key, row);
+            } else {
+                others.add(row);
+            }
+        }
+        ArrayNode rows = F.arrayNode();
+        for (String key : DefaultSectionContentFactory.RESOURCE_KEYS) {
+            JsonNode row = byKey.remove(key);
+            if (row == null) {
+                ObjectNode empty = F.objectNode();
+                empty.put("resourceKey", key);
+                empty.put("strengths", "");
+                empty.put("weaknesses", "");
+                empty.put("challenges", "");
+                row = empty;
+            }
+            rows.add(row);
+        }
+        byKey.values().forEach(rows::add);
+        others.forEach(rows::add);
+        content.set("rows", rows);
+        return content;
+    }
+
     // ---- S03B : rappel en lecture seule des lignes de la matrice des ressources (S02) ----
     private ObjectNode applyResourcesSynthesisSync(Long groupId, ObjectNode content) {
         sectionResponseRepository.findByGroupIdAndSectionId(groupId, SECTION_RESOURCES_MATRIX_ID)
-                .ifPresentOrElse(r -> content.set("resources", arrayOrEmpty(readTree(r), "rows")),
+                .ifPresentOrElse(r -> content.set("resources", readTree(r) instanceof ObjectNode matrix
+                                ? arrayOrEmpty(normalizeResourceRows(matrix), "rows") : F.arrayNode()),
                         () -> content.set("resources", F.arrayNode()));
         return content;
     }
@@ -440,40 +483,114 @@ public class DerivedFieldsService {
         return joined.toString();
     }
 
+    // ---- S14B : lignes fixes du modele client, rajoutees a leur place ----
+    /**
+     * Un plan saisi avant l'ajout d'une ligne au modele (« Fonctionnaire ») n'en a pas la ligne :
+     * elle est rajoutee, a zero, dans son bloc. Les lignes libres d'une direction restent en fin
+     * de leur bloc ; une ligne de bloc inconnu reste en fin de tableau.
+     */
+    private ObjectNode normalizeStaffRows(ObjectNode content) {
+        JsonNode stored = content.get("rows");
+        if (stored == null || !stored.isArray()) {
+            return content;
+        }
+        List<JsonNode> remaining = new ArrayList<>();
+        stored.forEach(remaining::add);
+        List<String> categories = new ArrayList<>();
+        for (String[] fixed : DefaultSectionContentFactory.STAFF_ROWS) {
+            if (!categories.contains(fixed[0])) {
+                categories.add(fixed[0]);
+            }
+        }
+
+        ArrayNode rows = F.arrayNode();
+        for (String category : categories) {
+            for (String[] fixed : DefaultSectionContentFactory.STAFF_ROWS) {
+                if (!fixed[0].equals(category)) {
+                    continue;
+                }
+                JsonNode match = null;
+                for (JsonNode row : remaining) {
+                    if (fixed[1].equals(row.path("staffKey").asText(""))) {
+                        match = row;
+                        break;
+                    }
+                }
+                if (match != null) {
+                    remaining.remove(match);
+                    rows.add(match);
+                } else {
+                    rows.add(emptyStaffRow(fixed[0], fixed[1]));
+                }
+            }
+            for (Iterator<JsonNode> it = remaining.iterator(); it.hasNext(); ) {
+                JsonNode row = it.next();
+                if (category.equals(row.path("category").asText(""))) {
+                    rows.add(row);
+                    it.remove();
+                }
+            }
+        }
+        remaining.forEach(rows::add);
+        content.set("rows", rows);
+        return content;
+    }
+
+    private ObjectNode emptyStaffRow(String category, String staffKey) {
+        ObjectNode row = F.objectNode();
+        row.put("category", category);
+        row.put("staffKey", staffKey);
+        row.put("label", "");
+        ObjectNode years = F.objectNode();
+        for (int year : YEARS) {
+            ObjectNode cell = F.objectNode();
+            cell.put("male", 0);
+            cell.put("female", 0);
+            years.set(String.valueOf(year), cell);
+        }
+        row.set("years", years);
+        return row;
+    }
+
     // ---- S14B : total H+F par ligne et par annee, plus la ligne TOTAUX ----
+    /**
+     * La hierarchie et le statut ventilent les memes agents, chacun a sa facon : additionner les
+     * deux blocs comptait chaque agent deux fois. Le total suit la hierarchie, et le statut pour
+     * un exercice ou seule la ventilation par statut est renseignee.
+     */
     private ObjectNode applyStaffTotals(ObjectNode content) {
         JsonNode rows = content.get("rows");
         if (rows == null || !rows.isArray()) {
             return content;
         }
 
-        ObjectNode totals = F.objectNode();
-        for (int year : YEARS) {
-            ObjectNode cell = F.objectNode();
-            cell.put("male", 0);
-            cell.put("female", 0);
-            cell.put("total", 0);
-            totals.set(String.valueOf(year), cell);
-        }
-
+        int[][] byHierarchy = new int[YEARS.length][2];
+        int[][] byStatus = new int[YEARS.length][2];
         for (JsonNode rowNode : rows) {
             if (!(rowNode instanceof ObjectNode row) || !(row.get("years") instanceof ObjectNode years)) {
                 continue;
             }
-            for (int year : YEARS) {
-                String y = String.valueOf(year);
-                if (!(years.get(y) instanceof ObjectNode cell)) {
+            int[][] bucket = "STATUT".equals(row.path("category").asText("")) ? byStatus : byHierarchy;
+            for (int y = 0; y < YEARS.length; y++) {
+                if (!(years.get(String.valueOf(YEARS[y])) instanceof ObjectNode cell)) {
                     continue;
                 }
                 int male = cell.path("male").asInt(0);
                 int female = cell.path("female").asInt(0);
                 cell.put("total", male + female);
-
-                ObjectNode totalCell = (ObjectNode) totals.get(y);
-                totalCell.put("male", totalCell.path("male").asInt(0) + male);
-                totalCell.put("female", totalCell.path("female").asInt(0) + female);
-                totalCell.put("total", totalCell.path("total").asInt(0) + male + female);
+                bucket[y][0] += male;
+                bucket[y][1] += female;
             }
+        }
+
+        ObjectNode totals = F.objectNode();
+        for (int y = 0; y < YEARS.length; y++) {
+            int[] counted = byHierarchy[y][0] + byHierarchy[y][1] > 0 ? byHierarchy[y] : byStatus[y];
+            ObjectNode cell = F.objectNode();
+            cell.put("male", counted[0]);
+            cell.put("female", counted[1]);
+            cell.put("total", counted[0] + counted[1]);
+            totals.set(String.valueOf(YEARS[y]), cell);
         }
         content.set("totals", totals);
         return content;

@@ -21,25 +21,36 @@ const PARTS: { title: string; description: string }[] = [
   { title: "IV. Analyse des parties prenantes", description: "matrice intérêt / pouvoir d'influence." },
   {
     title: "V. Diagnostic stratégique",
-    description: "performances 2026, PESTEL, SWOT, orientations croisées et risques de criticité élevée.",
+    description:
+      "performances 2026, ressources et compétences, PESTEL, SWOT, orientations croisées et risques de criticité élevée avec leur impact.",
   },
-  { title: "VI. Bilan du plan précédent", description: "résultats et enseignements." },
-  { title: "VII. Enjeux et défis — VIII. Facteurs clés de réussite et d'échec", description: "" },
+  { title: "VI. Bilan des performances des années précédentes", description: "résultats et enseignements." },
+  {
+    title: "VII. Principaux enjeux et défis — VIII. Facteurs clés de réussite et d'échec",
+    description: "dont la synthèse des contraintes, enjeux, défis et priorités par domaine d'activités.",
+  },
   {
     title: "IX. Cadre stratégique",
     description: "vision, mission, valeurs et axes arrêtés par la Direction Générale, avec les objectifs des directions.",
   },
-  { title: "X. Cadre de mise en œuvre", description: "budget par axe et par exercice, plan de financement, effectifs." },
+  {
+    title: "X. Cadre de mise en œuvre",
+    description: "budget par axe et par exercice, plan de financement, effectifs par hiérarchie, statut et genre.",
+  },
   { title: "XI. Cadre de pilotage et de suivi-évaluation", description: "dispositif de pilotage et indicateurs." },
-  { title: "XII. Synthèse du cadre stratégique", description: "objectifs, actions, coûts et responsables par axe." },
+  {
+    title: "XII. Synthèse du cadre stratégique",
+    description:
+      "tableau de synthèse (OS, actions, contraintes ou opportunités) et récapitulatif des objectifs, actions, cibles 2031, indicateurs et coûts.",
+  },
   {
     title: "XIII. Conclusion et annexes",
-    description: "contraintes par domaine, parties prenantes, matrice des risques, fiche des indicateurs.",
+    description: "parties prenantes, matrice des risques, fiche des indicateurs.",
   },
 ];
 
 /**
- * Note de synthese : le Plan Stratégique de Développement présenté sur le plan d'un PSD publié
+ * Note de synthese : le Plan Stratégique 2027-2031 présenté sur le plan d'un plan stratégique publié
  * (page de garde, sommaire paginé, parties numérotées, graphiques), à partir des contributions des
  * directions et des textes arrêtés par la Direction Générale. Plus courte que le Plan Stratégique
  * de SENICO, qui reprend en détail les tableaux de chaque direction.
@@ -70,7 +81,7 @@ export default function SynthesisPage() {
       <div>
         <h1>Note de synthèse</h1>
         <p className="text-[13px] text-muted-foreground mt-1">
-          Le Plan Stratégique de Développement présenté comme un plan stratégique publié — page de garde, sommaire
+          Le Plan Stratégique 2027-2031 présenté comme un plan stratégique publié — page de garde, sommaire
           paginé, parties numérotées, graphiques — sans le détail des tableaux de chaque direction. Pour le Conseil
           d&apos;Administration et le comité de pilotage.
         </p>

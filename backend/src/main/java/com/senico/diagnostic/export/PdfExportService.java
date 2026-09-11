@@ -96,7 +96,7 @@ public class PdfExportService {
             Document document = new Document(PageSize.A4, 40, 40, 60, 50);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             PdfWriter writer = PdfWriter.getInstance(document, baos);
-            writer.setPageEvent(new DocumentFooter("Document de consolidation — PSD 2027-2031"));
+            writer.setPageEvent(new DocumentFooter("Document de consolidation — Plan Stratégique 2027-2031"));
             document.open();
 
             List<WorkGroup> groups = workGroupRepository.findAll();
@@ -133,7 +133,7 @@ public class PdfExportService {
             Document document = new Document(PageSize.A4, 40, 40, 60, 50);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             PdfWriter writer = PdfWriter.getInstance(document, baos);
-            writer.setPageEvent(new DocumentFooter("Plan Stratégique de SENICO — PSD 2027-2031"));
+            writer.setPageEvent(new DocumentFooter("Plan Stratégique de SENICO 2027-2031"));
             document.open();
 
             List<WorkGroup> groups = workGroupRepository.findAll();
@@ -229,7 +229,7 @@ public class PdfExportService {
             // Un graphique qui ne tient plus en bas de page passe a la suivante sans que le texte
             // qui le suit ne remonte avant lui.
             writer.setStrictImageSequence(true);
-            DocumentFooter footer = new DocumentFooter("Plan Stratégique de Développement 2027-2031 — Note de synthèse");
+            DocumentFooter footer = new DocumentFooter("Plan Stratégique 2027-2031 — Note de synthèse");
             writer.setPageEvent(footer);
             document.open();
 
@@ -391,7 +391,7 @@ public class PdfExportService {
         title.setAlignment(Element.ALIGN_CENTER);
         document.add(title);
 
-        Paragraph subtitle = new Paragraph("Plan Stratégique de Développement (PSD) 2027-2031", subtitleFont);
+        Paragraph subtitle = new Paragraph("Horizon 2027-2031", subtitleFont);
         subtitle.setAlignment(Element.ALIGN_CENTER);
         subtitle.setSpacingBefore(10);
         document.add(subtitle);
@@ -838,7 +838,7 @@ public class PdfExportService {
         document.add(title);
 
         Font subtitleFont = PdfFonts.font(14, Font.NORMAL, SLATE);
-        Paragraph subtitle = new Paragraph("Plan Stratégique de Développement (PSD) 2027-2031", subtitleFont);
+        Paragraph subtitle = new Paragraph("Horizon 2027-2031", subtitleFont);
         subtitle.setAlignment(Element.ALIGN_CENTER);
         subtitle.setSpacingBefore(10);
         document.add(subtitle);
@@ -1035,7 +1035,7 @@ public class PdfExportService {
         title.setAlignment(Element.ALIGN_CENTER);
         document.add(title);
 
-        Paragraph subtitle = new Paragraph("Plan Stratégique de Développement (PSD) 2027-2031", subtitleFont);
+        Paragraph subtitle = new Paragraph("Horizon 2027-2031", subtitleFont);
         subtitle.setAlignment(Element.ALIGN_CENTER);
         subtitle.setSpacingBefore(10);
         document.add(subtitle);

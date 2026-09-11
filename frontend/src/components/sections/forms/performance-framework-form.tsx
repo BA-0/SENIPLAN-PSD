@@ -74,7 +74,7 @@ export function PerformanceFrameworkForm({ content, onChange, readOnly }: Sectio
                     <TableHead className="min-w-[180px]">Indicateur (IOV)</TableHead>
                     <TableHead className="min-w-[140px]">Réf. 2026</TableHead>
                     {PLAN_YEARS.map((y) => (
-                      <TableHead key={y} className="min-w-[90px]">{y}</TableHead>
+                      <TableHead key={y} className="min-w-[90px]">Cible {y}</TableHead>
                     ))}
                     <TableHead className="min-w-[130px]">Responsables</TableHead>
                     {!readOnly && <TableHead className="w-10" />}

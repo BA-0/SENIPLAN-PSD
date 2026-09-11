@@ -66,7 +66,7 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
             onChange={(e) => onChange((prev) => ({ ...prev, vision: e.target.value }))}
             readOnly={readOnly}
             rows={3}
-            placeholder="Vision globale du PSD 2027-2031…"
+            placeholder="Vision globale du Plan Stratégique 2027-2031…"
           />
         </CardContent>
       </Card>

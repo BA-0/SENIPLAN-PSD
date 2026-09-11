@@ -89,10 +89,10 @@ export default function AdminPsdFinalPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1>Plan Stratégique de SENICO — PSD 2027-2031</h1>
+        <h1>Plan Stratégique de SENICO 2027-2031</h1>
         <p className="text-[13px] text-muted-foreground mt-1">
-          Le document consolidé de l&apos;entreprise. Il reprend le sommaire officiel du PSD (Mot du DG, Préambule,
-          Synthèse du PSD, Cadre stratégique, Cadre de mise en œuvre…) en combinant les textes ci-dessous avec les
+          Le document consolidé de l&apos;entreprise. Il reprend le sommaire officiel du Plan Stratégique (Mot du DG,
+          Préambule, Synthèse du Plan Stratégique, Cadre stratégique, Cadre de mise en œuvre…) en combinant les textes ci-dessous avec les
           tableaux saisis dans le canevas, identifiés par la couleur de chaque direction. Les mêmes textes alimentent la
           note de synthèse.
         </p>

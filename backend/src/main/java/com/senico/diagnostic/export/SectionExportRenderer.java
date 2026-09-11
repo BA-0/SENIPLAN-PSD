@@ -312,7 +312,7 @@ public class SectionExportRenderer {
             for (JsonNode effect : JsonUtil.arr(axis, "effects")) {
                 blocks.add(new ExportBlock.Heading(effectTitle(effect), 4));
                 blocks.add(YearlyTableRenderer.render(
-                        JsonUtil.arr(effect, "rows"), leading, SectionLabels.YEARS,
+                        JsonUtil.arr(effect, "rows"), leading, "Prévu ", SectionLabels.YEARS,
                         (yearsNode, year) -> JsonUtil.formatCheck(yearsNode != null && yearsNode.has(year) && yearsNode.get(year).asBoolean()),
                         trailing, row -> false));
             }
@@ -387,12 +387,19 @@ public class SectionExportRenderer {
 
     // ---- S14B ----
     private List<ExportBlock> renderStaffEvolution(JsonNode content) {
+        // Mise en page du modele client : l'annee coiffe ses trois colonnes M, F, Total.
         List<String> headers = new ArrayList<>();
+        List<ExportBlock.HeaderBand> bands = new ArrayList<>();
+        List<Integer> widths = new ArrayList<>();
         headers.add("Effectifs");
+        bands.add(new ExportBlock.HeaderBand("Années", 1));
+        widths.add(16);
         for (String year : SectionLabels.YEARS) {
-            headers.add(year + " H");
-            headers.add(year + " F");
-            headers.add(year + " Total");
+            bands.add(new ExportBlock.HeaderBand(year, 3));
+            headers.add("M");
+            headers.add("F");
+            headers.add("Total");
+            widths.addAll(List.of(5, 5, 6));
         }
 
         List<ExportBlock.TableRow> rows = new ArrayList<>();
@@ -403,7 +410,7 @@ public class SectionExportRenderer {
             String category = JsonUtil.text(row, "category");
             if (!category.equals(currentCategory)) {
                 currentCategory = category;
-                rows.add(categoryHeadingRow(SectionLabels.staffCategory(category), headers.size()));
+                rows.add(ExportBlock.TableRow.band(SectionLabels.staffCategory(category), ExportBlock.Background.GREY));
             }
             List<ExportBlock.Cell> cells = new ArrayList<>();
             cells.add(new ExportBlock.Cell(SectionLabels.staffRow(JsonUtil.text(row, "staffKey"), JsonUtil.text(row, "label"))));
@@ -429,21 +436,11 @@ public class SectionExportRenderer {
             }
             rows.add(new ExportBlock.TableRow(cells, true, ExportBlock.Background.PRIMARY_LIGHT));
         }
-        return List.of(new ExportBlock.Table(headers, rows));
+        return List.of(new ExportBlock.Table(headers, rows, widths, bands));
     }
 
     private ExportBlock.Cell staffCell(double value) {
         return new ExportBlock.Cell(JsonUtil.formatNumber(value), false, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE);
-    }
-
-    /** Ligne d'intertitre occupant toute la largeur (les colonnes suivantes restent vides). */
-    private ExportBlock.TableRow categoryHeadingRow(String label, int columnCount) {
-        List<ExportBlock.Cell> cells = new ArrayList<>();
-        cells.add(new ExportBlock.Cell(label, true, ExportBlock.Align.LEFT, ExportBlock.Background.NONE));
-        for (int i = 1; i < columnCount; i++) {
-            cells.add(new ExportBlock.Cell(""));
-        }
-        return new ExportBlock.TableRow(cells, true, ExportBlock.Background.GREY);
     }
 
     // ---- S11 ----
@@ -508,7 +505,7 @@ public class SectionExportRenderer {
             for (JsonNode group : JsonUtil.arr(axis, "groups")) {
                 blocks.add(new ExportBlock.Heading(SectionLabels.logframe(JsonUtil.text(group, "level")), 4));
                 blocks.add(YearlyTableRenderer.render(
-                        JsonUtil.arr(group, "rows"), leading, SectionLabels.YEARS,
+                        JsonUtil.arr(group, "rows"), leading, "Cible ", SectionLabels.YEARS,
                         (yearsNode, year) -> JsonUtil.dash(yearsNode != null && yearsNode.has(year) ? yearsNode.get(year).asText() : ""),
                         trailing, row -> false));
             }

@@ -9,11 +9,13 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
 import org.springframework.stereotype.Component;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.math.BigInteger;
 import java.util.List;
 
 /**
@@ -281,37 +283,72 @@ public class WordBlockEmitter {
 
     private void table(XWPFDocument doc, ExportBlock.Table t) {
         int cols = Math.max(1, t.columnHeaders().size());
-        XWPFTable table = doc.createTable(1 + t.rows().size(), cols);
+        boolean banded = t.bands() != null && !t.bands().isEmpty();
+        int offset = banded ? 1 : 0;
+        // Meme regle que le PDF : au-dela de dix colonnes, le tableau se resserre.
+        boolean dense = cols > 10;
+        int headerFont = dense ? 7 : 8;
+        int bodyFont = dense ? 7 : 9;
+        XWPFTable table = doc.createTable(offset + 1 + t.rows().size(), cols);
         table.setWidth("100%");
+        if (dense) {
+            table.setCellMargins(0, 30, 0, 30);
+        }
         boolean sized = t.widths() != null && t.widths().size() == cols;
         int totalWidth = sized ? t.widths().stream().mapToInt(Integer::intValue).sum() : 0;
 
-        XWPFTableRow headerRow = table.getRow(0);
+        if (banded) {
+            XWPFTableRow bandRow = table.getRow(0);
+            bandRow.setRepeatHeader(true);
+            int count = Math.min(t.bands().size(), cols);
+            for (int b = 0; b < count; b++) {
+                ExportBlock.HeaderBand band = t.bands().get(b);
+                XWPFTableCell cell = bandRow.getCell(b);
+                setCell(cell, band.label(), true, ParagraphAlignment.CENTER, "FFFFFF", PRIMARY_DARK_HEX, headerFont);
+                span(cell, band.span());
+            }
+            keepCells(bandRow, count);
+        }
+
+        XWPFTableRow headerRow = table.getRow(offset);
         headerRow.setRepeatHeader(true);
         for (int c = 0; c < cols; c++) {
             String header = c < t.columnHeaders().size() ? t.columnHeaders().get(c) : "";
-            setCell(headerRow.getCell(c), header, true, ParagraphAlignment.LEFT, "FFFFFF", PRIMARY_HEX, 8);
+            setCell(headerRow.getCell(c), header, true, banded ? ParagraphAlignment.CENTER : ParagraphAlignment.LEFT,
+                    "FFFFFF", PRIMARY_HEX, headerFont);
             if (sized && totalWidth > 0) {
                 headerRow.getCell(c).setWidth(Math.round(t.widths().get(c) * 100f / totalWidth) + "%");
             }
         }
 
+        int zebra = 0;
         for (int r = 0; r < t.rows().size(); r++) {
             ExportBlock.TableRow row = t.rows().get(r);
-            XWPFTableRow tableRow = table.getRow(r + 1);
+            XWPFTableRow tableRow = table.getRow(offset + r + 1);
+            if (row.band()) {
+                String text = row.cells().isEmpty() ? "" : row.cells().get(0).text();
+                String bg = row.rowBackground() != ExportBlock.Background.NONE
+                        ? hex(row.rowBackground()) : hex(ExportBlock.Background.GREY);
+                setCell(tableRow.getCell(0), text, true, ParagraphAlignment.LEFT, DARK_HEX, bg, bodyFont);
+                span(tableRow.getCell(0), cols);
+                keepCells(tableRow, 1);
+                zebra = 0;
+                continue;
+            }
+            zebra++;
             for (int c = 0; c < cols; c++) {
                 ExportBlock.Cell cell = c < row.cells().size() ? row.cells().get(c) : new ExportBlock.Cell("");
                 String bg = cell.background() != ExportBlock.Background.NONE ? hex(cell.background())
                         : (row.rowBackground() != ExportBlock.Background.NONE ? hex(row.rowBackground())
                         : (row.emphasized() ? hex(ExportBlock.Background.GREY)
-                        : (r % 2 == 1 ? ZEBRA_HEX : null)));
+                        : (zebra % 2 == 0 ? ZEBRA_HEX : null)));
                 ParagraphAlignment align = switch (cell.align()) {
                     case CENTER -> ParagraphAlignment.CENTER;
                     case RIGHT -> ParagraphAlignment.RIGHT;
                     default -> ParagraphAlignment.LEFT;
                 };
                 if (cell.attributions().isEmpty()) {
-                    setCell(tableRow.getCell(c), cell.text(), cell.bold() || row.emphasized(), align, DARK_HEX, bg, 9);
+                    setCell(tableRow.getCell(c), cell.text(), cell.bold() || row.emphasized(), align, DARK_HEX, bg, bodyFont);
                 } else {
                     XWPFTableCell tableCell = tableRow.getCell(c);
                     if (bg != null) {
@@ -388,6 +425,22 @@ public class WordBlockEmitter {
         run.setItalic(italic);
         run.setFontSize(9);
         run.setColor(italic ? SLATE_HEX : DARK_HEX);
+    }
+
+    /** Etend la cellule sur {@code span} colonnes de la grille du tableau. */
+    private void span(XWPFTableCell cell, int span) {
+        if (span <= 1) {
+            return;
+        }
+        CTTcPr properties = cell.getCTTc().isSetTcPr() ? cell.getCTTc().getTcPr() : cell.getCTTc().addNewTcPr();
+        properties.addNewGridSpan().setVal(BigInteger.valueOf(span));
+    }
+
+    /** Retire les cellules devenues inutiles d'une ligne dont les premieres ont ete etendues. */
+    private void keepCells(XWPFTableRow row, int count) {
+        while (row.getTableCells().size() > count) {
+            row.removeCell(row.getTableCells().size() - 1);
+        }
     }
 
     private void setCell(XWPFTableCell cell, String text, boolean bold, ParagraphAlignment align, String colorHex, String bgHex, int fontSize) {

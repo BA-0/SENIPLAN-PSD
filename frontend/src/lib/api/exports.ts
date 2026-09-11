@@ -40,19 +40,19 @@ export function downloadConsolidatedPdf() {
 
 /** Note de synthese : le resume de toutes les directions, sans le detail des tableaux. */
 export function downloadSynthesisNotePdf() {
-  return downloadBlob("/admin/exports/synthesis/pdf", "note-de-synthese-psd-2027-2031.pdf");
+  return downloadBlob("/admin/exports/synthesis/pdf", "note-de-synthese-plan-strategique-2027-2031.pdf");
 }
 
 export function downloadSynthesisNoteWord() {
-  return downloadBlob("/admin/exports/synthesis/word", "note-de-synthese-psd-2027-2031.docx");
+  return downloadBlob("/admin/exports/synthesis/word", "note-de-synthese-plan-strategique-2027-2031.docx");
 }
 
 export function downloadPsdFinalPdf() {
-  return downloadBlob("/admin/exports/psd-final/pdf", "psd-2027-2031-document-final.pdf");
+  return downloadBlob("/admin/exports/psd-final/pdf", "plan-strategique-senico-2027-2031.pdf");
 }
 
 export function downloadPsdFinalWord() {
-  return downloadBlob("/admin/exports/psd-final/word", "psd-2027-2031-document-final.docx");
+  return downloadBlob("/admin/exports/psd-final/word", "plan-strategique-senico-2027-2031.docx");
 }
 
 export function downloadConsolidatedExcelFull() {

@@ -60,13 +60,13 @@ public final class PsdDocumentStructure {
                 new NarrativeEntry("Préambule", NarrativeBlockKey.PREAMBULE),
                 new NarrativeEntry("Introduction", NarrativeBlockKey.INTRODUCTION),
                 new NarrativeEntry("Approche méthodologique", NarrativeBlockKey.APPROCHE_METHODOLOGIQUE),
-                new SynthesisEntry("Synthèse du PSD"),
+                new SynthesisEntry("Synthèse du Plan Stratégique"),
 
                 new MajorHeading("Présentation de la structure"),
                 new NarrativeEntry("Rappel des missions", NarrativeBlockKey.MISSIONS),
                 new NarrativeEntry("Organisation", NarrativeBlockKey.ORGANISATION),
                 new NarrativeEntry("Ressources", NarrativeBlockKey.RESSOURCES),
-                new NarrativeEntry("Bilan du plan stratégique précédent", NarrativeBlockKey.BILAN_PSD_PRECEDENT),
+                new NarrativeEntry("Bilan des performances des années précédentes", NarrativeBlockKey.BILAN_PSD_PRECEDENT),
 
                 new MajorHeading("Diagnostic stratégique"),
                 new SectionEntry("Analyse des performances de l'année 2026", "S01B"),

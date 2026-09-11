@@ -15,11 +15,17 @@ public class DefaultSectionContentFactory {
 
     private static final JsonNodeFactory F = JsonNodeFactory.instance;
 
+    /**
+     * Lignes de la matrice des ressources et competences (S02), dans l'ordre de la "MATRICE
+     * D'ANALYSE DE RESSOURCES ET DE COMPETENCES" transmise par le client, qui y ajoute les produits
+     * et services, la clientele et la recherche et developpement. "Autres" ferme la matrice.
+     */
     public static final String[] RESOURCE_KEYS = {
-            "CADRE_JURIDIQUE_INSTITUTIONNEL", "LEADERSHIP_PILOTAGE_GOUVERNANCE", "POSITION_CONCURRENTIELLE",
-            "CAPACITES_INSTITUTIONNELLES", "BUDGET_RESSOURCES_FINANCIERES", "COMPTABILITE_GESTION_FINANCIERE",
-            "SYSTEME_CONTROLE", "SYSTEME_INFORMATION_GESTION", "SUIVI_EVALUATION", "COMMUNICATION",
-            "AUTRES_ACHATS_EXPLOITATION_TECHNIQUE_RH", "COMPETENCES"
+            "CADRE_JURIDIQUE_INSTITUTIONNEL", "LEADERSHIP_PILOTAGE_GOUVERNANCE", "CAPACITES_INSTITUTIONNELLES",
+            "BUDGET_RESSOURCES_FINANCIERES", "COMPETENCES", "POSITION_CONCURRENTIELLE",
+            "COMPTABILITE_GESTION_FINANCIERE", "SYSTEME_INFORMATION_GESTION", "SUIVI_EVALUATION", "COMMUNICATION",
+            "SYSTEME_CONTROLE", "PRODUITS_SERVICES", "CLIENTELE_BENEFICIAIRES", "RECHERCHE_DEVELOPPEMENT",
+            "AUTRES_ACHATS_EXPLOITATION_TECHNIQUE_RH"
     };
 
     public static final String[] PESTEL_AXES = {
@@ -40,15 +46,16 @@ public class DefaultSectionContentFactory {
 
     /**
      * Lignes du plan d'evolution des effectifs (S14B), issues du modele client
-     * "PLAN D'EVOLUTION DES EFFECTIFS (STATUT, HIERARCHIE, GENRE)" et corrigees en revue :
-     * la ligne "Fonctionnaire" est supprimee, "Journalier" est ajoutee en fin de bloc
-     * hierarchie (donc avant le bloc statut), "Expatrie" est conservee au statut.
+     * "PLAN D'EVOLUTION DES EFFECTIFS (STATUT, HIERARCHIE, GENRE)" : "Journalier" ferme le bloc
+     * hierarchie, "Fonctionnaire" — retiree en premiere revue, redemandee par le client avec son
+     * modele de tableau — ouvre le bloc statut, "Expatrie" le ferme.
      */
     public static final String[][] STAFF_ROWS = {
             {"HIERARCHIE", "CADRE"},
             {"HIERARCHIE", "AGENTS_MAITRISE"},
             {"HIERARCHIE", "EMPLOYE"},
             {"HIERARCHIE", "JOURNALIER"},
+            {"STATUT", "FONCTIONNAIRE"},
             {"STATUT", "CDI"},
             {"STATUT", "CDD"},
             {"STATUT", "EXPATRIE"},

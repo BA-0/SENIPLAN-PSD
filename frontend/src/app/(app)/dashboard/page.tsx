@@ -32,7 +32,7 @@ export default function GroupDashboardPage() {
         <div>
           <h1>Tableau de bord — {data.groupName}</h1>
           <p className="text-[13px] text-muted-foreground mt-1">
-            Suivi de l&apos;avancement du plan stratégique PSD 2027-2031 · Cycle {data.currentCycle} en cours
+            Suivi de l&apos;avancement du Plan Stratégique 2027-2031 · Cycle {data.currentCycle} en cours
           </p>
         </div>
         {data.currentCycle > 1 && (

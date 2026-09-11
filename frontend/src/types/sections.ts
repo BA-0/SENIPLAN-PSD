@@ -51,11 +51,13 @@ export interface PerformanceReview2026Content {
 }
 
 // ---- S02 : Matrice d'analyse des ressources et competences ----
+// Ordre de la matrice transmise par le client (cf. DefaultSectionContentFactory.RESOURCE_KEYS).
 export const RESOURCE_KEYS = [
-  "CADRE_JURIDIQUE_INSTITUTIONNEL", "LEADERSHIP_PILOTAGE_GOUVERNANCE", "POSITION_CONCURRENTIELLE",
-  "CAPACITES_INSTITUTIONNELLES", "BUDGET_RESSOURCES_FINANCIERES", "COMPTABILITE_GESTION_FINANCIERE",
-  "SYSTEME_CONTROLE", "SYSTEME_INFORMATION_GESTION", "SUIVI_EVALUATION", "COMMUNICATION",
-  "AUTRES_ACHATS_EXPLOITATION_TECHNIQUE_RH", "COMPETENCES",
+  "CADRE_JURIDIQUE_INSTITUTIONNEL", "LEADERSHIP_PILOTAGE_GOUVERNANCE", "CAPACITES_INSTITUTIONNELLES",
+  "BUDGET_RESSOURCES_FINANCIERES", "COMPETENCES", "POSITION_CONCURRENTIELLE",
+  "COMPTABILITE_GESTION_FINANCIERE", "SYSTEME_INFORMATION_GESTION", "SUIVI_EVALUATION", "COMMUNICATION",
+  "SYSTEME_CONTROLE", "PRODUITS_SERVICES", "CLIENTELE_BENEFICIAIRES", "RECHERCHE_DEVELOPPEMENT",
+  "AUTRES_ACHATS_EXPLOITATION_TECHNIQUE_RH",
 ] as const;
 export const RESOURCE_LABELS: Record<string, string> = {
   CADRE_JURIDIQUE_INSTITUTIONNEL: "Cadre juridique, institutionnel et organisationnel",
@@ -70,6 +72,10 @@ export const RESOURCE_LABELS: Record<string, string> = {
   COMMUNICATION: "Communication",
   AUTRES_ACHATS_EXPLOITATION_TECHNIQUE_RH: "Autres (Achats, Exploitation commerciale, Technique et armement, RH)",
   COMPETENCES: "Compétences",
+  PRODUITS_SERVICES:
+    "Produits et services à délivrer (portefeuille, qualité, production, marque, tarification, force de vente, compétitivité…)",
+  CLIENTELE_BENEFICIAIRES: "Clientèle ou bénéficiaires des prestations (taille, fidélité…)",
+  RECHERCHE_DEVELOPPEMENT: "Recherche et développement",
 };
 export interface ResourceRow {
   resourceKey: string;
@@ -371,6 +377,7 @@ export const STAFF_LABELS: Record<string, string> = {
   AGENTS_MAITRISE: "Agents de maîtrise",
   EMPLOYE: "Employé",
   JOURNALIER: "Journalier",
+  FONCTIONNAIRE: "Fonctionnaire",
   CDI: "CDI",
   CDD: "CDD",
   EXPATRIE: "Expatrié",

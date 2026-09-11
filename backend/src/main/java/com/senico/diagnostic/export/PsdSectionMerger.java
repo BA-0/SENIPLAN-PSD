@@ -79,8 +79,7 @@ final class PsdSectionMerger {
                 slots.putIfAbsent("H:" + String.join(" > ", headingPath), heading);
             } else if (block instanceof ExportBlock.Table table) {
                 String key = "T:" + String.join(" > ", headingPath) + "|" + String.join("~", table.columnHeaders());
-                MergedTable merged = (MergedTable) slots.computeIfAbsent(
-                        key, k -> new MergedTable(table.columnHeaders()));
+                MergedTable merged = (MergedTable) slots.computeIfAbsent(key, k -> new MergedTable(table));
                 merged.append(entry.group(), table);
             } else {
                 if (!directionHeaderEmitted) {
@@ -108,18 +107,41 @@ final class PsdSectionMerger {
         path.add(heading.text());
     }
 
-    /** Tableau en cours de constitution : les colonnes d'origine, precedees de la direction. */
+    /**
+     * Tableau en cours de constitution : les colonnes d'origine, precedees de la direction. La
+     * ligne d'intitules qui coiffe les colonnes (« 2027 » au-dessus de M, F, Total) et les largeurs
+     * suivent : sans elles, un tableau d'effectifs ne dirait plus a quelle annee se rapporte chaque
+     * colonne.
+     */
     private static final class MergedTable {
+        private static final int DIRECTION_WIDTH = 14;
+
         private final List<String> headers = new ArrayList<>();
         private final List<ExportBlock.TableRow> rows = new ArrayList<>();
+        private final List<Integer> widths = new ArrayList<>();
+        private final List<ExportBlock.HeaderBand> bands = new ArrayList<>();
 
-        MergedTable(List<String> originalHeaders) {
+        MergedTable(ExportBlock.Table original) {
             headers.add(DIRECTION_COLUMN);
-            headers.addAll(originalHeaders);
+            headers.addAll(original.columnHeaders());
+            if (original.widths() != null && !original.widths().isEmpty()) {
+                widths.add(DIRECTION_WIDTH);
+                widths.addAll(original.widths());
+            }
+            if (original.bands() != null && !original.bands().isEmpty()) {
+                bands.add(new ExportBlock.HeaderBand("", 1));
+                bands.addAll(original.bands());
+            }
         }
 
         void append(WorkGroup group, ExportBlock.Table table) {
             for (ExportBlock.TableRow row : table.rows()) {
+                if (row.band()) {
+                    // L'intertitre (« Hiérarchie ») garde toute la largeur ; il dit en plus de quelle direction il s'agit.
+                    String text = row.cells().isEmpty() ? "" : row.cells().get(0).text();
+                    rows.add(ExportBlock.TableRow.band(group.getName() + " — " + text, row.rowBackground()));
+                    continue;
+                }
                 List<ExportBlock.Cell> cells = new ArrayList<>();
                 cells.add(new ExportBlock.Cell(group.getName()));
                 cells.addAll(row.cells());
@@ -128,7 +150,7 @@ final class PsdSectionMerger {
         }
 
         ExportBlock.Table toBlock() {
-            return new ExportBlock.Table(headers, rows);
+            return new ExportBlock.Table(headers, rows, widths, bands);
         }
     }
 }

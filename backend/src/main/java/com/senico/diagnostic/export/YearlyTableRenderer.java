@@ -28,10 +28,26 @@ final class YearlyTableRenderer {
             YearValueFormatter yearFormatter,
             List<JsonUtil.Column> trailingColumns,
             Predicate<JsonNode> emphasize) {
+        return render(rows, leadingColumns, "", years, yearFormatter, trailingColumns, emphasize);
+    }
+
+    /**
+     * @param yearHeaderPrefix precede chaque annee dans l'en-tete (« Cible 2027 », « Prévu 2027 ») :
+     *                         sous un simple « 2027 », une valeur de 20 % se lit comme un resultat
+     *                         deja atteint, alors que l'exercice n'a pas commence.
+     */
+    static ExportBlock.Table render(
+            List<JsonNode> rows,
+            List<JsonUtil.Column> leadingColumns,
+            String yearHeaderPrefix,
+            String[] years,
+            YearValueFormatter yearFormatter,
+            List<JsonUtil.Column> trailingColumns,
+            Predicate<JsonNode> emphasize) {
 
         List<String> headers = new ArrayList<>();
         leadingColumns.forEach(c -> headers.add(c.header()));
-        headers.addAll(Arrays.asList(years));
+        Arrays.stream(years).forEach(year -> headers.add(yearHeaderPrefix + year));
         trailingColumns.forEach(c -> headers.add(c.header()));
 
         List<ExportBlock.TableRow> tableRows = rows.stream().map(row -> {

@@ -50,6 +50,27 @@ class PsdSectionMergerTest {
     }
 
     @Test
+    @DisplayName("La fusion garde les annees qui coiffent les colonnes et les intertitres pleine largeur")
+    void garderLesIntitulesDeColonnesEtLesIntertitres() {
+        ExportBlock.Table effectifs = new ExportBlock.Table(List.of("Effectifs", "M", "F", "Total"),
+                List.of(ExportBlock.TableRow.band("Hiérarchie", ExportBlock.Background.GREY),
+                        new ExportBlock.TableRow(List.of(new ExportBlock.Cell("Cadre"), new ExportBlock.Cell("8"),
+                                new ExportBlock.Cell("4"), new ExportBlock.Cell("12")))),
+                List.of(40, 20, 20, 20),
+                List.of(new ExportBlock.HeaderBand("Années", 1), new ExportBlock.HeaderBand("2027", 3)));
+
+        ExportBlock.Table merged = PsdSectionMerger.merge(List.of(included(group(1, "Commerciale"), List.of(effectifs))))
+                .stream().filter(ExportBlock.Table.class::isInstance).map(ExportBlock.Table.class::cast)
+                .findFirst().orElseThrow();
+
+        assertThat(merged.bands()).extracting(ExportBlock.HeaderBand::label).containsExactly("", "Années", "2027");
+        assertThat(merged.widths()).hasSize(merged.columnHeaders().size());
+        assertThat(merged.rows().get(0).band()).isTrue();
+        assertThat(merged.rows().get(0).cells().get(0).text()).isEqualTo("Commerciale — Hiérarchie");
+        assertThat(merged.rows().get(1).cells().get(0).text()).isEqualTo("Commerciale");
+    }
+
+    @Test
     @DisplayName("Memes colonnes sous des intertitres differents : deux tableaux distincts, pas un melange")
     void neMelangePasDeuxAxesAuxMemesColonnes() {
         List<String> headers = List.of("Extrant", "Budget");

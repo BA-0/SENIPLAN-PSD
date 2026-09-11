@@ -105,6 +105,27 @@ public class UserAccountService {
     }
 
     /**
+     * Change l'identifiant de connexion, mot de passe inchange. Les jetons en cours portent
+     * l'ancien identifiant et cessent donc de valoir : le titulaire se reconnecte avec le nouveau.
+     */
+    @Transactional
+    public UserAccountDto changeUsername(Long userId, String newUsername) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable : " + userId));
+
+        // Le compte lui-meme est exclu : il peut par exemple ne changer que la casse du sien.
+        boolean prisParUnAutre = userRepository.findByUsername(newUsername)
+                .filter(other -> !other.getId().equals(userId))
+                .isPresent();
+        if (prisParUnAutre) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cet identifiant existe deja");
+        }
+
+        user.setUsername(newUsername);
+        return toDto(userRepository.save(user));
+    }
+
+    /**
      * Le rattachement a une direction est ce qui decide du canevas rempli par le compte : exige
      * pour un chef de groupe, refuse pour les autres roles, ou il n'aurait aucun effet visible
      * tout en laissant croire le contraire.

@@ -195,6 +195,12 @@ export async function resetUserPassword(userId: number): Promise<{ username: str
   return data;
 }
 
+/** Mot de passe inchangé ; les sessions ouvertes du compte se ferment, il se reconnecte avec le nouvel identifiant. */
+export async function updateUserUsername(userId: number, username: string): Promise<UserAccount> {
+  const { data } = await apiClient.patch<UserAccount>(`/admin/users/${userId}/username`, { username });
+  return data;
+}
+
 export async function adminUpdateSectionContent<T>(
   groupId: number,
   code: string,

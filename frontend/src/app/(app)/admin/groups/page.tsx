@@ -39,7 +39,8 @@ import {
 import { downloadConsolidatedExcel, downloadGroupPdf, downloadGroupWord } from "@/lib/api/exports";
 import { canAdminister, canApproveAsDg } from "@/lib/roles";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { createUserAccount, listUserAccounts, resetUserPassword } from "@/lib/api/admin";
+import { createUserAccount, listUserAccounts, resetUserPassword, updateUserUsername } from "@/lib/api/admin";
+import type { UserAccount } from "@/lib/api/admin";
 import { extractErrorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
 import { CycleArchivePanel } from "@/components/cycles/cycle-archive-panel";
@@ -55,16 +56,21 @@ const schema = z.object({
   leaderPassword: z.union([z.string().min(6, "Au moins 6 caractères"), z.literal("")]).optional(),
 });
 
+/** Memes regles que le serveur, a la creation comme au changement d'identifiant. */
+const usernameField = z
+  .string()
+  .trim()
+  .min(1, "L'identifiant est requis")
+  .max(60, "60 caractères au maximum")
+  .regex(/^[a-zA-Z0-9._-]+$/, "Lettres, chiffres, point, tiret ou tiret bas uniquement");
+
 /**
  * Creation d'un compte. La direction n'a de sens que pour un chef de groupe : c'est elle qui
  * decide du canevas rempli, et le serveur refuse le rattachement pour les autres roles.
  */
 const accountSchema = z
   .object({
-    username: z
-      .string()
-      .min(1, "L'identifiant est requis")
-      .regex(/^[a-zA-Z0-9._-]+$/, "Lettres, chiffres, point, tiret ou tiret bas uniquement"),
+    username: usernameField,
     fullName: z.string().min(1, "Le nom complet est requis"),
     role: z.enum(["ADMIN", "DIRECTEUR_GENERAL", "GROUP_LEADER"]),
     groupId: z.string().optional(),
@@ -77,6 +83,10 @@ const accountSchema = z
 
 type AccountFormValues = z.infer<typeof accountSchema>;
 
+const usernameSchema = z.object({ username: usernameField });
+
+type UsernameFormValues = z.infer<typeof usernameSchema>;
+
 const editSchema = z.object({
   name: z.string().min(1, "Le nom du groupe est requis"),
   description: z.string().optional(),
@@ -86,7 +96,7 @@ const editSchema = z.object({
 
 export default function AdminGroupsPage() {
   const queryClient = useQueryClient();
-  const { user } = useCurrentUser();
+  const { user, logout } = useCurrentUser();
   // Creation, edition, cycles, mots de passe, activation : administration technique,
   // fermee au DG cote serveur (SecurityConfig) autant qu'ici.
   const peutAdministrer = canAdminister(user?.role);
@@ -99,6 +109,7 @@ export default function AdminGroupsPage() {
   const [exportPeriodMonths, setExportPeriodMonths] = useState(4);
   const [archiveGroup, setArchiveGroup] = useState<WorkGroupDto | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [renamingAccount, setRenamingAccount] = useState<UserAccount | null>(null);
 
   async function handleExportExcel() {
     setExportingExcel(true);
@@ -139,6 +150,18 @@ export default function AdminGroupsPage() {
   });
 
   const accountRole = watchAccount("role");
+
+  const {
+    register: registerUsername,
+    handleSubmit: handleUsernameSubmit,
+    reset: resetUsername,
+    formState: { errors: usernameErrors },
+  } = useForm<UsernameFormValues>({ resolver: zodResolver(usernameSchema) });
+
+  function openUsernameDialog(account: UserAccount) {
+    setRenamingAccount(account);
+    resetUsername({ username: account.username });
+  }
 
   function openEditDialog(group: WorkGroupDto) {
     setEditingGroup(group);
@@ -225,6 +248,23 @@ export default function AdminGroupsPage() {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
     },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la création du compte")),
+  });
+
+  const changeUsernameMutation = useMutation({
+    mutationFn: ({ id, username }: { id: number; username: string }) => updateUserUsername(id, username),
+    onSuccess: (account) => {
+      setRenamingAccount(null);
+      // Les jetons de la session portent l'ancien identifiant : ils ne valent plus rien.
+      if (account.id === user?.id) {
+        toast.success(`Identifiant changé en ${account.username} — reconnectez-vous avec celui-ci`);
+        logout();
+        return;
+      }
+      toast.success(`Identifiant changé en ${account.username}`);
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "groups"] });
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec du changement d'identifiant")),
   });
 
   const validateAllMutation = useMutation({
@@ -689,35 +729,77 @@ export default function AdminGroupsPage() {
                         : " · Jamais connecté"}
                     </p>
                   </div>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="secondary" size="sm">
-                        <KeyRound className="h-4 w-4" /> Réinitialiser le mot de passe
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Réinitialiser le mot de passe ?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Un nouveau mot de passe sera généré pour {account.fullName} ({account.username}) et affiché
-                          une seule fois. L&apos;ancien cessera immédiatement de fonctionner, et la personne devra
-                          choisir le sien à sa prochaine connexion.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => resetUserPasswordMutation.mutate(account.id)}>
-                          Réinitialiser
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => openUsernameDialog(account)}>
+                      <Pencil className="h-4 w-4" /> Modifier l&apos;identifiant
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="secondary" size="sm">
+                          <KeyRound className="h-4 w-4" /> Réinitialiser le mot de passe
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Réinitialiser le mot de passe ?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Un nouveau mot de passe sera généré pour {account.fullName} ({account.username}) et affiché
+                            une seule fois. L&apos;ancien cessera immédiatement de fonctionner, et la personne devra
+                            choisir le sien à sa prochaine connexion.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => resetUserPasswordMutation.mutate(account.id)}>
+                            Réinitialiser
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={!!renamingAccount} onOpenChange={(open) => !open && setRenamingAccount(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier l&apos;identifiant</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={handleUsernameSubmit((values) => {
+              if (!renamingAccount) return;
+              if (values.username === renamingAccount.username) {
+                setRenamingAccount(null);
+                return;
+              }
+              changeUsernameMutation.mutate({ id: renamingAccount.id, username: values.username });
+            })}
+            className="space-y-4"
+          >
+            <p className="text-[13px] text-muted-foreground">
+              {renamingAccount?.fullName} se connectera désormais avec ce nouvel identifiant ; son mot de passe ne
+              change pas. Ses sessions ouvertes seront fermées
+              {renamingAccount && renamingAccount.id === user?.id ? ", la vôtre comprise" : ""}.
+            </p>
+            <div className="space-y-1.5">
+              <Label required>Identifiant</Label>
+              <Input {...registerUsername("username")} error={!!usernameErrors.username} />
+              {usernameErrors.username && (
+                <p className="text-[13px] text-accent-700 dark:text-accent-300">{usernameErrors.username.message}</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="submit" variant="primary" loading={changeUsernameMutation.isPending}>
+                Enregistrer
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!newCredentials} onOpenChange={(open) => !open && setNewCredentials(null)}>
         <DialogContent>

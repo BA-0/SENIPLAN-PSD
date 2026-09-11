@@ -2,6 +2,7 @@ package com.senico.diagnostic.controller;
 
 import com.senico.diagnostic.dto.group.ResetPasswordResponse;
 import com.senico.diagnostic.dto.user.CreateUserAccountRequest;
+import com.senico.diagnostic.dto.user.UpdateUsernameRequest;
 import com.senico.diagnostic.dto.user.UserAccountDto;
 import com.senico.diagnostic.service.UserAccountService;
 import jakarta.validation.Valid;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -44,5 +46,12 @@ public class AdminUserController {
     @PostMapping("/{id}/reset-password")
     public ResponseEntity<ResetPasswordResponse> resetPassword(@PathVariable Long id) {
         return ResponseEntity.ok(userAccountService.resetPassword(id));
+    }
+
+    /** Change l'identifiant de connexion ; le titulaire se reconnecte avec le nouveau, meme mot de passe. */
+    @PatchMapping("/{id}/username")
+    public ResponseEntity<UserAccountDto> changeUsername(@PathVariable Long id,
+                                                         @Valid @RequestBody UpdateUsernameRequest request) {
+        return ResponseEntity.ok(userAccountService.changeUsername(id, request.username()));
     }
 }

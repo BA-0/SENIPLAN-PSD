@@ -54,9 +54,150 @@ public class PdfBlockEmitter {
      * page. Sans writer, la position courante n'est pas connue et le titre reste ou il tombe.
      */
     public void emit(Document document, PdfWriter writer, List<ExportBlock> blocks) throws DocumentException {
-        for (ExportBlock block : blocks) {
-            emitOne(document, writer, block);
+        for (int i = 0; i < blocks.size(); i++) {
+            ExportBlock block = blocks.get(i);
+            ExportBlock next = i + 1 < blocks.size() ? blocks.get(i + 1) : null;
+            if (writer != null && block instanceof ExportBlock.Table t) {
+                emitTable(document, writer, t, next instanceof ExportBlock.Callout analysis ? analysis : null);
+            } else {
+                emitOne(document, writer, block);
+            }
         }
+    }
+
+    /**
+     * Tableau pose en connaissant la position sur la page. Il est coupe a chaque bandeau
+     * (« AXE 2 : ... », « Statut ») en tableaux accoles : un bandeau qui ne tient plus en bas de
+     * page avec sa premiere ligne passe a la suivante, au lieu d'y rester seul. Et ses dernieres
+     * lignes accompagnent l'encadre d'analyse qui le suit, plutot que de le laisser seul sur une
+     * page blanche.
+     */
+    private void emitTable(Document document, PdfWriter writer, ExportBlock.Table t, ExportBlock.Callout analysis)
+            throws DocumentException {
+        float width = document.right() - document.left();
+        float pageBody = document.top() - document.bottom();
+        List<List<ExportBlock.TableRow>> chunks = chunksAtBands(t.rows());
+        for (int i = 0; i < chunks.size(); i++) {
+            boolean first = i == 0;
+            boolean last = i == chunks.size() - 1;
+            List<ExportBlock.TableRow> rows = chunks.get(i);
+            PdfPTable pdf = measured(table(withRows(t, rows)), width, first, last);
+
+            float lead = pdf.spacingBefore() + (first ? pdf.getHeaderHeight() : 0) + rowsHeight(pdf, leadingRows(rows));
+            // Un tableau a lignes hautes commence sur la page en cours (cf. table) : le renvoyer
+            // entier a la page suivante laisserait le blanc que cette regle evite.
+            if (pdf.isSplitLate() && writer.getVerticalPosition(true) - document.bottom() < lead) {
+                // Sur la nouvelle page, le tableau reprend ses en-tetes.
+                document.newPage();
+            } else if (!first) {
+                pdf.setSkipFirstHeader(true);
+            }
+
+            if (last && analysis != null && pdf.isSplitLate()) {
+                int tail = trailingRows(rows);
+                float remaining = remainingAfter(pdf, writer.getVerticalPosition(true) - document.bottom(), pageBody,
+                        pdf.isSkipFirstHeader());
+                if (remaining < calloutHeight(analysis, width) && rows.size() - tail >= leadingRows(rows)
+                        && splittable(rows, tail)) {
+                    PdfPTable head = measured(table(withRows(t, rows.subList(0, rows.size() - tail))), width, first, false);
+                    head.setSkipFirstHeader(pdf.isSkipFirstHeader());
+                    document.add(head);
+                    document.newPage();
+                    document.add(measured(table(withRows(t, rows.subList(rows.size() - tail, rows.size()))), width, false, true));
+                    return;
+                }
+            }
+            document.add(pdf);
+        }
+    }
+
+    private static ExportBlock.Table withRows(ExportBlock.Table t, List<ExportBlock.TableRow> rows) {
+        return new ExportBlock.Table(t.columnHeaders(), rows, t.widths(), t.bands());
+    }
+
+    /** Largeur fixee pour pouvoir mesurer les lignes avant de poser le tableau ; accole a ses voisins. */
+    private static PdfPTable measured(PdfPTable pdf, float width, boolean first, boolean last) {
+        pdf.setTotalWidth(width);
+        pdf.setLockedWidth(true);
+        if (!first) {
+            pdf.setSpacingBefore(0);
+        }
+        if (!last) {
+            pdf.setSpacingAfter(0);
+        }
+        return pdf;
+    }
+
+    /** Les lignes d'un tableau, regroupees sous chaque bandeau ; des bandeaux consecutifs restent ensemble. */
+    private static List<List<ExportBlock.TableRow>> chunksAtBands(List<ExportBlock.TableRow> rows) {
+        List<List<ExportBlock.TableRow>> chunks = new java.util.ArrayList<>();
+        List<ExportBlock.TableRow> current = new java.util.ArrayList<>();
+        for (ExportBlock.TableRow row : rows) {
+            if (row.band() && current.stream().anyMatch(previous -> !previous.band())) {
+                chunks.add(current);
+                current = new java.util.ArrayList<>();
+            }
+            current.add(row);
+        }
+        chunks.add(current);
+        return chunks;
+    }
+
+    /** Bandeaux de tete, intitules repetes dessous, et la premiere ligne qu'ils introduisent. */
+    private static int leadingRows(List<ExportBlock.TableRow> rows) {
+        int count = 0;
+        while (count < rows.size() && rows.get(count).band()) {
+            count++;
+        }
+        if (count > 0 && count < rows.size() && rows.get(count).emphasized()) {
+            count++;
+        }
+        return Math.min(rows.size(), count + 1);
+    }
+
+    /** Lignes de total de fin, et au moins une ligne de contenu avec elles. */
+    private static int trailingRows(List<ExportBlock.TableRow> rows) {
+        int count = 0;
+        while (count < rows.size() && rows.get(rows.size() - 1 - count).emphasized()
+                && !rows.get(rows.size() - 1 - count).band()) {
+            count++;
+        }
+        return Math.min(rows.size(), Math.max(2, count + 1));
+    }
+
+    /** Coupe possible avant les {@code tail} dernieres lignes : aucune cellule fusionnee ne l'enjambe. */
+    private static boolean splittable(List<ExportBlock.TableRow> rows, int tail) {
+        ExportBlock.TableRow firstOfTail = rows.get(rows.size() - tail);
+        return !firstOfTail.band() && firstOfTail.cells().stream().noneMatch(ExportBlock.Cell::isCovered);
+    }
+
+    private static float rowsHeight(PdfPTable pdf, int count) {
+        float height = 0;
+        for (int r = pdf.getHeaderRows(); r < Math.min(pdf.size(), pdf.getHeaderRows() + count); r++) {
+            height += pdf.getRowHeight(r);
+        }
+        return height;
+    }
+
+    /**
+     * Place restant sous le tableau une fois pose : les lignes remplissent la page, et celle qui ne
+     * tient plus passe entiere a la suivante, sous les en-tetes repetes.
+     */
+    private static float remainingAfter(PdfPTable pdf, float available, float pageBody, boolean skipFirstHeader) {
+        float header = pdf.getHeaderHeight();
+        float remaining = available - pdf.spacingBefore() - (skipFirstHeader ? 0 : header);
+        for (int r = pdf.getHeaderRows(); r < pdf.size(); r++) {
+            float height = pdf.getRowHeight(r);
+            remaining = height <= remaining ? remaining - height : pageBody - header - height;
+        }
+        return remaining - pdf.spacingAfter();
+    }
+
+    private float calloutHeight(ExportBlock.Callout c, float width) {
+        PdfPTable box = callout(c);
+        box.setTotalWidth(width);
+        box.setLockedWidth(true);
+        return box.spacingBefore() + box.getTotalHeight();
     }
 
     private void emitOne(Document document, PdfWriter writer, ExportBlock block) throws DocumentException {
@@ -305,15 +446,19 @@ public class PdfBlockEmitter {
         table.setSpacingBefore(4);
         table.setSpacingAfter(10);
         boolean banded = t.bands() != null && !t.bands().isEmpty();
+        boolean headed = t.showsHeaders();
         // Au-dela de dix colonnes (effectifs : M, F et total sur cinq exercices), le corps de texte
         // habituel ne tient plus « 1 568 » sur une ligne : le tableau se resserre.
         boolean dense = columns > 10;
         float fontSize = dense ? 7.5f : 8.5f;
         // Un tableau qui deborde sur la page suivante y reprend ses en-tetes : sans cela, la
         // seconde moitie d'un budget sur cinq exercices devient illisible.
-        table.setHeaderRows(banded ? 2 : 1);
-        // Une ligne haute commence sur la page en cours plutot que de laisser un blanc au-dessus.
-        table.setSplitLate(false);
+        table.setHeaderRows((banded ? 1 : 0) + (headed ? 1 : 0));
+        // Une ligne courte qui ne tient plus en bas de page passe entiere a la suivante : coupee,
+        // elle laissait le nom d'une direction sur une page et ses chiffres sur l'autre. Seul un
+        // tableau a lignes hautes (listes de constats) les commence sur la page en cours, pour ne
+        // pas laisser un grand blanc au-dessus d'elles.
+        table.setSplitLate(!hasTallRows(t));
         if (t.widths() != null && t.widths().size() == columns) {
             float[] widths = new float[columns];
             for (int i = 0; i < columns; i++) {
@@ -333,26 +478,31 @@ public class PdfBlockEmitter {
                 table.addCell(cell);
             }
         }
-        for (String header : t.columnHeaders()) {
-            PdfPCell cell = textCell(header, PdfFonts.font(fontSize, Font.BOLD, Color.WHITE),
-                    banded ? Element.ALIGN_CENTER : Element.ALIGN_LEFT, PRIMARY);
-            cell.setBorderColor(PRIMARY);
-            cell.setPaddingTop(5);
-            cell.setPaddingBottom(6);
-            if (dense) {
-                cell.setPaddingLeft(2);
-                cell.setPaddingRight(2);
+        if (headed) {
+            for (String header : t.columnHeaders()) {
+                PdfPCell cell = textCell(header, PdfFonts.font(fontSize, Font.BOLD, Color.WHITE),
+                        banded ? Element.ALIGN_CENTER : Element.ALIGN_LEFT, PRIMARY);
+                cell.setBorderColor(PRIMARY);
+                cell.setPaddingTop(5);
+                cell.setPaddingBottom(6);
+                if (dense) {
+                    cell.setPaddingLeft(2);
+                    cell.setPaddingRight(2);
+                }
+                table.addCell(cell);
             }
-            table.addCell(cell);
         }
 
+        // Lignes restant a recouvrir, par colonne, sous une cellule fusionnee vers le bas.
+        int[] covered = new int[columns];
         int rowIndex = 0;
         for (ExportBlock.TableRow row : t.rows()) {
             if (row.band()) {
                 String text = row.cells().isEmpty() ? "" : row.cells().get(0).text();
                 Color bg = row.rowBackground() != ExportBlock.Background.NONE
                         ? awtColor(row.rowBackground()) : awtColor(ExportBlock.Background.GREY);
-                PdfPCell cell = textCell(text, PdfFonts.font(fontSize + 0.5f, Font.BOLD, INK), Element.ALIGN_LEFT, bg);
+                Color ink = row.rowBackground() == ExportBlock.Background.PRIMARY_DARK ? Color.WHITE : INK;
+                PdfPCell cell = textCell(text, PdfFonts.font(fontSize + 0.5f, Font.BOLD, ink), Element.ALIGN_LEFT, bg);
                 cell.setColspan(columns);
                 cell.setBorderColor(BORDER);
                 table.addCell(cell);
@@ -363,6 +513,10 @@ public class PdfBlockEmitter {
             // ou une ligne coloree par le metier garde la sienne.
             Color defaultBg = rowIndex % 2 == 1 ? ZEBRA : Color.WHITE;
             for (int c = 0; c < columns; c++) {
+                if (covered[c] > 0) {
+                    covered[c]--;
+                    continue;
+                }
                 ExportBlock.Cell cell = c < row.cells().size() ? row.cells().get(c) : new ExportBlock.Cell("");
                 Color bg = cell.background() != ExportBlock.Background.NONE
                         ? awtColor(cell.background())
@@ -382,11 +536,22 @@ public class PdfBlockEmitter {
                     pdfCell.setPaddingLeft(2);
                     pdfCell.setPaddingRight(2);
                 }
+                if (cell.rowSpan() > 1) {
+                    pdfCell.setRowspan(cell.rowSpan());
+                    covered[c] = cell.rowSpan() - 1;
+                }
                 table.addCell(pdfCell);
             }
             rowIndex++;
         }
         return table;
+    }
+
+    /** Un tableau dont une cellule aligne plusieurs constats a des lignes trop hautes pour sauter de page. */
+    private static boolean hasTallRows(ExportBlock.Table t) {
+        return t.rows().stream()
+                .flatMap(row -> row.cells().stream())
+                .anyMatch(cell -> cell.attributions().size() > 3);
     }
 
     private PdfPTable quadrant(ExportBlock.Quadrant q) {
@@ -447,30 +612,27 @@ public class PdfBlockEmitter {
         return table;
     }
 
-    /** Legende d'attribution : pastille de couleur puis nom de la direction. */
-    private PdfPTable colorLegend(ExportBlock.ColorLegend legend) {
-        PdfPTable table = new PdfPTable(2);
-        table.setWidthPercentage(100);
-        table.setSpacingBefore(4);
-        table.setSpacingAfter(12);
-        try {
-            table.setWidths(new float[]{6, 94});
-        } catch (DocumentException ignored) {
+    /**
+     * Legende d'attribution : son titre, puis chaque direction precedee de sa pastille, a la
+     * suite. En tableau d'une ligne par direction, elle ne tenait plus sous le paragraphe qui
+     * l'annonce et partait seule, sans titre, sur la page suivante.
+     */
+    private Paragraph colorLegend(ExportBlock.ColorLegend legend) {
+        Font font = PdfFonts.font(9.5f, Font.NORMAL, INK);
+        Paragraph p = new Paragraph();
+        if (legend.title() != null && !legend.title().isBlank()) {
+            p.add(PdfFonts.phrase(legend.title() + " :   ", PdfFonts.font(9.5f, Font.BOLD, INK)));
         }
-        for (ExportBlock.Attribution entry : legend.entries()) {
-            PdfPCell swatch = new PdfPCell(new Paragraph(" "));
-            swatch.setBackgroundColor(entry.colorHexes().isEmpty()
-                    ? SLATE : hexToColor(entry.colorHexes().get(0)));
-            swatch.setFixedHeight(15);
-            swatch.setBorderColor(Color.WHITE);
-            swatch.setBorderWidth(2f);
-            table.addCell(swatch);
-            PdfPCell name = textCell(entry.text(), PdfFonts.font(9.5f, Font.NORMAL, INK), Element.ALIGN_LEFT, Color.WHITE);
-            name.setBorder(Rectangle.BOTTOM);
-            name.setBorderColor(BORDER);
-            table.addCell(name);
+        List<ExportBlock.Attribution> entries = legend.entries();
+        for (int i = 0; i < entries.size(); i++) {
+            ExportBlock.Attribution entry = entries.get(i);
+            p.add(swatch(entry.colorHexes().isEmpty() ? "#64748B" : entry.colorHexes().get(0), 9.5f));
+            p.add(PdfFonts.phrase(" " + entry.text() + (i < entries.size() - 1 ? "     " : ""), font));
         }
-        return table;
+        p.setLeading(17);
+        p.setSpacingBefore(2);
+        p.setSpacingAfter(10);
+        return p;
     }
 
     /**
@@ -565,6 +727,7 @@ public class PdfBlockEmitter {
             case GREY -> new Color(0xF1, 0xF5, 0xF9);
             case PRIMARY_LIGHT -> new Color(0xE3, 0xF3, 0xE8);
             case VIOLET -> new Color(0xED, 0xE9, 0xFE);
+            case PRIMARY_DARK -> PRIMARY_DARK;
             case NONE -> Color.WHITE;
         };
     }

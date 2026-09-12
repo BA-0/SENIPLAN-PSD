@@ -55,13 +55,36 @@ final class PdfFonts {
      * silencieusement du document.
      */
     static Phrase phrase(String text, Font font) {
-        FontSelector selector = new FontSelector();
-        selector.addFont(font);
-        selector.addFont(new Font(Font.ZAPFDINGBATS, font.getSize(), Font.NORMAL, font.getColor()));
-        selector.addFont(new Font(Font.SYMBOL, font.getSize(), Font.NORMAL, font.getColor()));
-        Phrase phrase = selector.process(text == null ? "" : text);
+        Phrase phrase = SELECTOR.get().process(text == null ? "" : text, font);
         phrase.setLeading(font.getSize() * 1.35f);
         return phrase;
+    }
+
+    /**
+     * Un selecteur par thread, reutilise d'un texte a l'autre. Le constructeur d'OpenPDF relit et
+     * analyse sa police de repli (LiberationSans) a chaque instance : cree pour chaque cellule de
+     * texte, il prenait l'essentiel du temps de generation des PDF.
+     */
+    private static final ThreadLocal<ReusableFontSelector> SELECTOR = ThreadLocal.withInitial(ReusableFontSelector::new);
+
+    private static final class ReusableFontSelector extends FontSelector {
+
+        /** Police de repli qu'OpenPDF place d'office en fin de liste, lue une seule fois. */
+        private final Font fallback = fonts.get(0);
+
+        /**
+         * Meme liste de polices, dans le meme ordre, qu'un {@code new FontSelector()} suivi des trois
+         * {@code addFont} : Roboto, ZapfDingbats, Symbol, puis le repli. Le decoupage reste celui
+         * d'OpenPDF ; les phrases deja rendues gardent leurs polices, que rien ne modifie ici.
+         */
+        Phrase process(String text, Font font) {
+            fonts.clear();
+            fonts.add(new Font(fallback.getBaseFont(), fallback.getSize(), fallback.getStyle(), fallback.getColor()));
+            addFont(font);
+            addFont(new Font(Font.ZAPFDINGBATS, font.getSize(), Font.NORMAL, font.getColor()));
+            addFont(new Font(Font.SYMBOL, font.getSize(), Font.NORMAL, font.getColor()));
+            return process(text);
+        }
     }
 
     /** Meme police pour les graphiques rendus en image : le document garde une seule typographie. */

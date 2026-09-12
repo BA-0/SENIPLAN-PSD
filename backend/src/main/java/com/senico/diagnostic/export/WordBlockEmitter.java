@@ -10,6 +10,8 @@ import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTVMerge;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
 import org.springframework.stereotype.Component;
 
 import javax.imageio.ImageIO;
@@ -203,21 +205,31 @@ public class WordBlockEmitter {
         doc.createParagraph().setSpacingAfter(80);
     }
 
-    /** Legende d'attribution : pastille de couleur puis nom de la direction. */
+    /** Legende d'attribution : son titre, puis chaque direction precedee de sa pastille, a la suite (cf. PDF). */
     private void colorLegend(XWPFDocument doc, ExportBlock.ColorLegend legend) {
         if (legend.entries().isEmpty()) {
             return;
         }
-        XWPFTable table = doc.createTable(legend.entries().size(), 2);
-        table.setWidth("100%");
+        XWPFParagraph p = doc.createParagraph();
+        p.setSpacingAfter(160);
+        if (legend.title() != null && !legend.title().isBlank()) {
+            XWPFRun title = p.createRun();
+            title.setText(legend.title() + " :   ");
+            title.setBold(true);
+            title.setFontSize(9);
+            title.setColor(DARK_HEX);
+        }
         for (int i = 0; i < legend.entries().size(); i++) {
             ExportBlock.Attribution entry = legend.entries().get(i);
-            XWPFTableCell swatch = table.getRow(i).getCell(0);
+            XWPFRun swatch = p.createRun();
+            swatch.setText("■ ");
+            swatch.setFontSize(11);
             swatch.setColor(entry.colorHexes().isEmpty() ? SLATE_HEX : cleanHex(entry.colorHexes().get(0)));
-            swatch.setWidth("8%");
-            setCell(table.getRow(i).getCell(1), entry.text(), false, ParagraphAlignment.LEFT, DARK_HEX, null, 9);
+            XWPFRun name = p.createRun();
+            name.setText(entry.text() + (i < legend.entries().size() - 1 ? "     " : ""));
+            name.setFontSize(9);
+            name.setColor(DARK_HEX);
         }
-        doc.createParagraph().setSpacingAfter(80);
     }
 
     /** Word veut une couleur sans dièse ; une valeur absente ou invalide retombe sur le gris du corps. */
@@ -284,12 +296,14 @@ public class WordBlockEmitter {
     private void table(XWPFDocument doc, ExportBlock.Table t) {
         int cols = Math.max(1, t.columnHeaders().size());
         boolean banded = t.bands() != null && !t.bands().isEmpty();
+        boolean headed = t.showsHeaders();
         int offset = banded ? 1 : 0;
+        int firstBodyRow = offset + (headed ? 1 : 0);
         // Meme regle que le PDF : au-dela de dix colonnes, le tableau se resserre.
         boolean dense = cols > 10;
         int headerFont = dense ? 7 : 8;
         int bodyFont = dense ? 7 : 9;
-        XWPFTable table = doc.createTable(offset + 1 + t.rows().size(), cols);
+        XWPFTable table = doc.createTable(firstBodyRow + t.rows().size(), cols);
         table.setWidth("100%");
         if (dense) {
             table.setCellMargins(0, 30, 0, 30);
@@ -310,26 +324,31 @@ public class WordBlockEmitter {
             keepCells(bandRow, count);
         }
 
-        XWPFTableRow headerRow = table.getRow(offset);
-        headerRow.setRepeatHeader(true);
-        for (int c = 0; c < cols; c++) {
-            String header = c < t.columnHeaders().size() ? t.columnHeaders().get(c) : "";
-            setCell(headerRow.getCell(c), header, true, banded ? ParagraphAlignment.CENTER : ParagraphAlignment.LEFT,
-                    "FFFFFF", PRIMARY_HEX, headerFont);
-            if (sized && totalWidth > 0) {
-                headerRow.getCell(c).setWidth(Math.round(t.widths().get(c) * 100f / totalWidth) + "%");
+        if (headed) {
+            XWPFTableRow headerRow = table.getRow(offset);
+            headerRow.setRepeatHeader(true);
+            for (int c = 0; c < cols; c++) {
+                String header = c < t.columnHeaders().size() ? t.columnHeaders().get(c) : "";
+                setCell(headerRow.getCell(c), header, true, banded ? ParagraphAlignment.CENTER : ParagraphAlignment.LEFT,
+                        "FFFFFF", PRIMARY_HEX, headerFont);
+                if (sized && totalWidth > 0) {
+                    headerRow.getCell(c).setWidth(Math.round(t.widths().get(c) * 100f / totalWidth) + "%");
+                }
             }
         }
 
+        // Lignes restant a recouvrir, par colonne, sous une cellule fusionnee vers le bas.
+        int[] covered = new int[cols];
         int zebra = 0;
         for (int r = 0; r < t.rows().size(); r++) {
             ExportBlock.TableRow row = t.rows().get(r);
-            XWPFTableRow tableRow = table.getRow(offset + r + 1);
+            XWPFTableRow tableRow = table.getRow(firstBodyRow + r);
             if (row.band()) {
                 String text = row.cells().isEmpty() ? "" : row.cells().get(0).text();
                 String bg = row.rowBackground() != ExportBlock.Background.NONE
                         ? hex(row.rowBackground()) : hex(ExportBlock.Background.GREY);
-                setCell(tableRow.getCell(0), text, true, ParagraphAlignment.LEFT, DARK_HEX, bg, bodyFont);
+                String ink = row.rowBackground() == ExportBlock.Background.PRIMARY_DARK ? "FFFFFF" : DARK_HEX;
+                setCell(tableRow.getCell(0), text, true, ParagraphAlignment.LEFT, ink, bg, bodyFont);
                 span(tableRow.getCell(0), cols);
                 keepCells(tableRow, 1);
                 zebra = 0;
@@ -337,7 +356,19 @@ public class WordBlockEmitter {
             }
             zebra++;
             for (int c = 0; c < cols; c++) {
+                if (sized && totalWidth > 0) {
+                    tableRow.getCell(c).setWidth(Math.round(t.widths().get(c) * 100f / totalWidth) + "%");
+                }
+                if (covered[c] > 0) {
+                    covered[c]--;
+                    verticalMerge(tableRow.getCell(c), false);
+                    continue;
+                }
                 ExportBlock.Cell cell = c < row.cells().size() ? row.cells().get(c) : new ExportBlock.Cell("");
+                if (cell.rowSpan() > 1) {
+                    verticalMerge(tableRow.getCell(c), true);
+                    covered[c] = cell.rowSpan() - 1;
+                }
                 String bg = cell.background() != ExportBlock.Background.NONE ? hex(cell.background())
                         : (row.rowBackground() != ExportBlock.Background.NONE ? hex(row.rowBackground())
                         : (row.emphasized() ? hex(ExportBlock.Background.GREY)
@@ -436,6 +467,13 @@ public class WordBlockEmitter {
         properties.addNewGridSpan().setVal(BigInteger.valueOf(span));
     }
 
+    /** Fusion verticale : la premiere cellule ouvre la fusion, celles du dessous la prolongent. */
+    private void verticalMerge(XWPFTableCell cell, boolean start) {
+        CTTcPr properties = cell.getCTTc().isSetTcPr() ? cell.getCTTc().getTcPr() : cell.getCTTc().addNewTcPr();
+        CTVMerge merge = properties.isSetVMerge() ? properties.getVMerge() : properties.addNewVMerge();
+        merge.setVal(start ? STMerge.RESTART : STMerge.CONTINUE);
+    }
+
     /** Retire les cellules devenues inutiles d'une ligne dont les premieres ont ete etendues. */
     private void keepCells(XWPFTableRow row, int count) {
         while (row.getTableCells().size() > count) {
@@ -465,6 +503,7 @@ public class WordBlockEmitter {
             case GREY -> "F1F5F9";
             case PRIMARY_LIGHT -> "E3F3E8";
             case VIOLET -> "EDE9FE";
+            case PRIMARY_DARK -> PRIMARY_DARK_HEX;
             case NONE -> null;
         };
     }

@@ -70,6 +70,17 @@ npm run dev
 
 Le frontend démarre sur `http://localhost:3000`.
 
+### Travailler dans l'application (mode rapide)
+
+`npm run dev` compile chaque page à sa première visite et sert du JavaScript non optimisé : plus de 16 Mo pour le tableau de bord admin, contre 260 Ko une fois buildé. C'est le mode pour modifier le code, pas pour s'en servir. Pour une séance de travail :
+
+```bash
+cd frontend
+npm run prod   # build de production, puis serveur sur http://localhost:3000
+```
+
+Arrêter d'abord `npm run dev` : les deux partagent le dossier `.next` et le port 3000. Relancer `npm run prod` après toute modification du frontend.
+
 ## Comptes de démonstration
 
 Créés automatiquement par la migration `V2__seed_data.sql` :
@@ -91,6 +102,7 @@ Créés automatiquement par la migration `V2__seed_data.sql` :
 | `mvn clean package` | `backend/` | Build du jar exécutable |
 | `npm run dev` | `frontend/` | Démarre le frontend en mode développement |
 | `npm run build` | `frontend/` | Build de production (type-check inclus) |
+| `npm run prod` | `frontend/` | Build de production puis démarrage : le mode rapide pour utiliser l'application |
 | `npm run lint` | `frontend/` | Lint ESLint |
 
 ## Déploiement

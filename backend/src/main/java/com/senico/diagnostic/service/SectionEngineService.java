@@ -725,10 +725,11 @@ public class SectionEngineService {
                 .build();
         revisionRepository.save(revision);
 
-        List<SectionResponseRevision> all = revisionRepository
-                .findBySectionResponseIdOrderByCreatedAtDesc(existing.getId());
-        if (all.size() > MAX_REVISIONS) {
-            revisionRepository.deleteAll(all.subList(MAX_REVISIONS, all.size()));
+        // Appele a chaque sauvegarde automatique : relire le contenu des 20 revisions pour ne
+        // faire que les compter coutait plus que la sauvegarde elle-meme.
+        List<Long> newestFirst = revisionRepository.findIdsBySectionResponseIdNewestFirst(existing.getId());
+        if (newestFirst.size() > MAX_REVISIONS) {
+            revisionRepository.deleteAllByIdInBatch(newestFirst.subList(MAX_REVISIONS, newestFirst.size()));
         }
     }
 

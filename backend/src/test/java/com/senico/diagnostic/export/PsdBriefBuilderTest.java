@@ -13,6 +13,7 @@ import com.senico.diagnostic.service.DerivedFieldsService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -41,6 +42,7 @@ class PsdBriefBuilderTest {
 
     private static final Map<String, SectionType> TYPES = Map.ofEntries(
             Map.entry("S01", SectionType.STAKEHOLDERS),
+            Map.entry("S01B", SectionType.PERFORMANCE_REVIEW_2026),
             Map.entry("S02", SectionType.RESOURCES_MATRIX),
             Map.entry("S04", SectionType.SWOT),
             Map.entry("S06B", SectionType.CONSTRAINTS_SYNTHESIS),
@@ -82,6 +84,18 @@ class PsdBriefBuilderTest {
 
     private List<ExportBlock> build(WorkGroup... groups) {
         return builder.build(List.of(groups), sectionsByCode, responsesByKey, statusesByKey, narratives);
+    }
+
+    private List<ExportBlock> build(LocalDate today, WorkGroup... groups) {
+        return builder.build(List.of(groups), sectionsByCode, responsesByKey, statusesByKey, narratives, today);
+    }
+
+    /** Le tableau de la note coiffe du titre donne. */
+    private ExportBlock.Table tableau(List<ExportBlock> blocs, String titre) {
+        return blocs.stream()
+                .filter(ExportBlock.Table.class::isInstance).map(ExportBlock.Table.class::cast)
+                .filter(table -> table.bands().stream().anyMatch(band -> band.label().equals(titre)))
+                .findFirst().orElseThrow();
     }
 
     /** Toutes les attributions de la note, cadrans et listes confondus. */
@@ -274,8 +288,9 @@ class PsdBriefBuilderTest {
 
         assertThat(note).as("matrice des ressources, lignes ajoutées par le client comprises")
                 .contains("Recherche et développement", "Cellule innovation", "Financer la R&D");
-        assertThat(note).as("synthèse du cadre stratégique : OS, actions numérotées, contraintes")
-                .contains("OS1 : Conquérir les grands comptes", "Action 1.1 : Créer une cellule grands comptes",
+        assertThat(note).as("synthèse du cadre stratégique : les OS du budget, puis celles du seul tableau de synthèse")
+                .contains("OS1 : Développer le chiffre d'affaires", "Action 1.1 : Lancer l'offre grands comptes",
+                        "OS2 : Conquérir les grands comptes", "Action 2.1 : Créer une cellule grands comptes",
                         "Concurrence des majors");
         assertThat(note).as("récapitulatif : indicateur et cible 2031 repris du cadre de mesure de rendement")
                 .contains("Chiffre d'affaires annuel", "25 Mds FCFA", "Cible 2031");
@@ -283,6 +298,73 @@ class PsdBriefBuilderTest {
                 .contains("Sources et moyens de collecte", "Extraction du logiciel de facturation");
         assertThat(note).as("cartographie des risques : impact")
                 .contains("Impact sur les activités", "Transport de fret");
+    }
+
+    @Test
+    @DisplayName("Synthèse du cadre stratégique au modèle client : OS fusionnée sur ses actions, contrainte commune écrite une fois")
+    void rendLaSyntheseDuCadreStrategiqueAuModeleClient() {
+        WorkGroup commerciale = group(1, "Direction commerciale");
+        saisie(commerciale, "S08", """
+                {"axes":[{"axisCode":"AXE1","title":"Croissance commerciale"}]}""");
+        saisie(commerciale, "S11", """
+                {"axes":[{"axisCode":"AXE1","effects":[
+                   {"effectLabel":"Gagner des parts de marché","rows":[
+                      {"extrant":"Offre grands comptes","activities":"Lancer l'offre grands comptes","years":{"2027":100}},
+                      {"extrant":"Agences ouvertes","activities":"Ouvrir deux agences","years":{"2027":50}}]},
+                   {"effectLabel":"Fidéliser la clientèle","rows":[
+                      {"extrant":"Programme de fidélité","activities":"Lancer un programme de fidélité","years":{"2027":30}}]}]}]}""");
+        saisie(commerciale, "S12", """
+                {"axes":[{"axisCode":"AXE1","groups":[{"level":"EXTRANTS","rows":[
+                   {"resultOrExtrant":"Réalisations de l'axe","indicator":"Taux de réalisation des activités programmées",
+                    "years":{"2031":"100%"}}]}]}]}""");
+        saisie(commerciale, "S17", """
+                {"axes":[{"axisCode":"AXE1","orientations":[
+                   {"label":"Gagner des parts de marché","actions":[{"label":"Lancer l'offre grands comptes",
+                     "constraintsOrOpportunities":"Concurrence des opérateurs privés"}]},
+                   {"label":"Fidéliser la clientèle","actions":[{"label":"Lancer un programme de fidélité",
+                     "constraintsOrOpportunities":"Concurrence des opérateurs privés"}]}]}]}""");
+        narratives.put(NarrativeBlockKey.VISION, "Être l'opérateur de référence");
+
+        List<ExportBlock> blocs = build(commerciale);
+        ExportBlock.Table synthese = tableau(blocs, "SYNTHÈSE DU CADRE STRATÉGIQUE");
+        List<ExportBlock.TableRow> lignes = synthese.rows();
+
+        assertThat(synthese.showsHeaders()).as("les intitulés se répètent sous chaque axe, pas en tête du tableau").isFalse();
+        assertThat(lignes.get(0).cells().get(0).text()).as("la vision ouvre le tableau").contains("Vision", "Être l'opérateur de référence");
+        assertThat(lignes.get(1).band()).as("bandeau de l'axe").isTrue();
+        assertThat(lignes.get(2).cells().get(0).text()).isEqualTo("Orientation stratégique (OS)");
+
+        ExportBlock.TableRow premiere = lignes.get(3);
+        assertThat(premiere.cells().get(0).attributions().get(0).text()).isEqualTo("OS1 : Gagner des parts de marché");
+        assertThat(premiere.cells().get(0).rowSpan()).as("l'OS coiffe ses deux actions").isEqualTo(2);
+        assertThat(lignes.get(4).cells().get(0).isCovered()).isTrue();
+        assertThat(lignes.get(4).cells().get(1).attributions().get(0).text()).isEqualTo("Action 1.2 : Ouvrir deux agences");
+        assertThat(premiere.cells().get(2).attributions().get(0).text()).isEqualTo("Concurrence des opérateurs privés");
+        assertThat(premiere.cells().get(2).rowSpan())
+                .as("la contrainte commune aux trois actions n'est écrite qu'une fois").isEqualTo(3);
+        assertThat(lignes.get(5).cells().get(0).attributions().get(0).text()).isEqualTo("OS2 : Fidéliser la clientèle");
+        assertThat(lignes.get(5).cells().get(2).isCovered()).isTrue();
+
+        String note = texte(blocs);
+        assertThat(note).contains("2 orientations stratégiques (OS)");
+        assertThat(note).as("sans indicateur propre, l'OS est suivie par l'indicateur d'extrants de son axe")
+                .contains("Taux de réalisation des activités programmées")
+                .doesNotContain("n'y est encore rattaché");
+    }
+
+    @Test
+    @DisplayName("Tant que 2026 n'est pas clos, ses réalisations sont présentées comme des estimations")
+    void presenteLesRealisations2026CommeDesEstimationsAvantLaCloture() {
+        WorkGroup commerciale = group(1, "Direction commerciale");
+        saisie(commerciale, "S01B", """
+                {"rows":[{"domain":"Ventes","indicator":"Chiffre d'affaires","target2026":4200,"achieved2026":3980}]}""");
+
+        assertThat(texte(build(LocalDate.of(2026, 9, 12), commerciale)))
+                .contains("Estimation 2026", "n'étant pas clos")
+                .doesNotContain("Réalisé 2026");
+        assertThat(texte(build(LocalDate.of(2027, 3, 1), commerciale)))
+                .contains("Réalisé 2026")
+                .doesNotContain("Estimation 2026");
     }
 
     @Test
@@ -346,6 +428,9 @@ class PsdBriefBuilderTest {
         assertThat(note)
                 .as("une vision arrêtée par la DG ne laisse plus place à celles des directions")
                 .doesNotContain("Vision de la direction commerciale");
+        assertThat(note)
+                .as("un axe peut ne regrouper les axes que d'une seule direction")
+                .doesNotContain("aucun ne relève d'une seule direction");
         assertThat(note)
                 .as("un axe de direction non rattaché doit être signalé, pas perdu")
                 .contains("Axe oublié", "Axes non rattachés", "Action orpheline");

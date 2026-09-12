@@ -1,6 +1,7 @@
 package com.senico.diagnostic.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +16,8 @@ import java.util.function.Function;
 public class JwtService {
 
     private final SecretKey signingKey;
+    /** Immuable et sur en concurrence : construit une fois plutot qu'a chaque lecture de jeton. */
+    private final JwtParser parser;
     private final long accessTokenExpirationMs;
     private final long refreshTokenExpirationMs;
 
@@ -23,6 +26,7 @@ public class JwtService {
             @Value("${app.jwt.access-token-expiration-ms}") long accessTokenExpirationMs,
             @Value("${app.jwt.refresh-token-expiration-ms}") long refreshTokenExpirationMs) {
         this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.parser = Jwts.parser().verifyWith(signingKey).build();
         this.accessTokenExpirationMs = accessTokenExpirationMs;
         this.refreshTokenExpirationMs = refreshTokenExpirationMs;
     }
@@ -64,17 +68,22 @@ public class JwtService {
         return username.equals(expectedUsername) && !isTokenExpired(token);
     }
 
+    /**
+     * Claims d'un jeton d'acces, lus en une seule verification (signature et expiration) ; null pour
+     * un jeton d'un autre type. Leve une {@link io.jsonwebtoken.JwtException} si le jeton est
+     * invalide ou expire.
+     */
+    public Claims parseAccessToken(String token) {
+        Claims claims = parser.parseSignedClaims(token).getPayload();
+        return "access".equals(claims.get("type", String.class)) ? claims : null;
+    }
+
     private boolean isTokenExpired(String token) {
         return extractClaim(token, Claims::getExpiration).before(new Date());
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> resolver) {
-        Claims claims = Jwts.parser()
-                .verifyWith(signingKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        return resolver.apply(claims);
+        return resolver.apply(parser.parseSignedClaims(token).getPayload());
     }
 
     public long getAccessTokenExpirationMs() {

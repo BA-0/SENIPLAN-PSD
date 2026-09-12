@@ -15,6 +15,12 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+  # Reponses JSON compressees : contenu des sections, soumissions, comparaisons. Les exports
+  # (PDF, docx, xlsx) sont deja compresses et restent hors de la liste.
+  compression:
+    enabled: true
+    mime-types: application/json
+    min-response-size: 2KB
   error:
     include-message: always
     include-binding-errors: always
@@ -52,10 +58,12 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    # Ecrire chaque requete SQL dans la console ralentit toute l'API (et les exports, qui en
+    # emettent des centaines) : a repasser a true le temps d'un debogage.
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
         jdbc:
           time_zone: Africa/Dakar
   flyway:

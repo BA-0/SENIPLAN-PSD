@@ -274,8 +274,9 @@ public class PdfExportService {
         rule.setLineWidth(1.5f);
         document.add(new Chunk(rule));
 
-        Paragraph title = new Paragraph("PLAN STRATÉGIQUE\nDE DÉVELOPPEMENT",
-                PdfFonts.font(26, Font.BOLD, PRIMARY));
+        // « Plan Strategique », sans « de Developpement » : SENICO n'est pas encore a ce niveau de
+        // planification, et c'est l'intitule que porte deja la page de garde Word.
+        Paragraph title = new Paragraph("PLAN STRATÉGIQUE", PdfFonts.font(26, Font.BOLD, PRIMARY));
         title.setAlignment(Element.ALIGN_CENTER);
         title.setSpacingBefore(34);
         title.setLeading(32);
@@ -366,8 +367,10 @@ public class PdfExportService {
             Integer page = pages.get(PdfBlockEmitter.TOC_TAG + heading.text());
             line.add(new Chunk(page == null ? "" : " " + (page - 1), font));
             line.setIndentationLeft(part ? 0 : 18);
-            line.setSpacingBefore(part ? 4.5f : 0.5f);
-            line.setLeading(part ? 13.5f : 11.5f);
+            // Serre juste assez pour que le sommaire tienne sur une page : sa derniere ligne
+            // debordait seule sur une page blanche.
+            line.setSpacingBefore(part ? 3f : 0.5f);
+            line.setLeading(part ? 13f : 11f);
             document.add(line);
         }
     }

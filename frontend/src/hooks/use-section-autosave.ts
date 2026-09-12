@@ -17,12 +17,16 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
   const [savedAt, setSavedAt] = useState<Date | null>(null);
 
   const initializedForCode = useRef<string | null>(null);
+  // Copie synchrone de la saisie : minuteries et nettoyage lisent la derniere version sans
+  // dependre du rendu, et l'intervalle n'est plus recree a chaque frappe.
+  const contentRef = useRef<T | null>(null);
   const lastSavedRef = useRef<string>("");
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirtyRef = useRef(false);
 
   useEffect(() => {
     if (initial && initializedForCode.current !== code) {
+      contentRef.current = initial.content;
       setContent(initial.content);
       lastSavedRef.current = JSON.stringify(initial.content);
       initializedForCode.current = code;
@@ -32,7 +36,18 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
     }
   }, [initial, code]);
 
-  const mutation = useMutation({
+  // Le cache de la section recoit ce qui vient d'etre enregistre : en y revenant, on repart de
+  // la saisie a jour, et non de la version lue a l'ouverture qu'une sauvegarde suivante aurait
+  // remise en base par-dessus.
+  const storeSaved = useCallback(
+    (response: SectionContentResponse<T>) => {
+      queryClient.setQueryData(["me", "section", response.code], response);
+      queryClient.invalidateQueries({ queryKey: ["me", "sections", "nav"] });
+    },
+    [queryClient]
+  );
+
+  const { mutate } = useMutation({
     mutationFn: (payload: T) => saveMySectionDraft<T>(code, payload),
     onMutate: () => setStatus("saving"),
     onSuccess: (response) => {
@@ -40,7 +55,7 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
       dirtyRef.current = false;
       setStatus("saved");
       setSavedAt(new Date());
-      queryClient.invalidateQueries({ queryKey: ["me", "sections", "nav"] });
+      storeSaved(response);
     },
     onError: (error) => {
       setStatus("error");
@@ -52,42 +67,57 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
     (payload: T) => {
       const serialized = JSON.stringify(payload);
       if (serialized === lastSavedRef.current) return;
-      mutation.mutate(payload);
+      mutate(payload);
     },
-    [mutation]
+    [mutate]
   );
 
   const update = useCallback(
     (updater: (prev: T) => T) => {
-      setContent((prev) => {
-        if (prev === null) return prev;
-        const next = updater(prev);
-        dirtyRef.current = JSON.stringify(next) !== lastSavedRef.current;
-        if (debounceTimer.current) clearTimeout(debounceTimer.current);
-        debounceTimer.current = setTimeout(() => doSave(next), AUTOSAVE_DEBOUNCE_MS);
-        return next;
-      });
+      const prev = contentRef.current;
+      if (prev === null) return;
+      const next = updater(prev);
+      contentRef.current = next;
+      // Pas de serialisation du formulaire entier a chaque frappe : doSave compare de toute facon
+      // avec le dernier enregistrement avant d'envoyer quoi que ce soit.
+      dirtyRef.current = true;
+      setContent(next);
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      debounceTimer.current = setTimeout(() => {
+        debounceTimer.current = null;
+        doSave(next);
+      }, AUTOSAVE_DEBOUNCE_MS);
     },
     [doSave]
   );
 
   const saveNow = useCallback(() => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    if (content !== null) doSave(content);
-  }, [content, doSave]);
+    debounceTimer.current = null;
+    if (contentRef.current !== null) doSave(contentRef.current);
+  }, [doSave]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (dirtyRef.current && content !== null) doSave(content);
+      if (dirtyRef.current && contentRef.current !== null) doSave(contentRef.current);
     }, AUTOSAVE_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [content, doSave]);
+  }, [doSave]);
 
+  // Passer a une autre section moins de 2,5 s apres une frappe annulait l'enregistrement differe :
+  // la saisie en attente etait perdue. Elle part desormais aussitot.
   useEffect(() => {
     return () => {
-      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      if (!debounceTimer.current) return;
+      clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+      const pending = contentRef.current;
+      if (pending === null || JSON.stringify(pending) === lastSavedRef.current) return;
+      saveMySectionDraft<T>(code, pending)
+        .then(storeSaved)
+        .catch((error) => toast.error(extractErrorMessage(error, "Échec de l'enregistrement automatique")));
     };
-  }, []);
+  }, [code, storeSaved]);
 
   return { content, update, status, savedAt, saveNow };
 }

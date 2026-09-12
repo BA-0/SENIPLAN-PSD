@@ -78,23 +78,45 @@ public sealed interface ExportBlock {
      * Cellule de tableau. Quand {@code attributions} n'est pas vide, la cellule rend ces
      * elements en puces coloriees par direction plutot que son {@code text} : c'est le meme
      * contenu, mais on voit qui l'a ecrit.
+     *
+     * <p>{@code rowSpan} fusionne la cellule avec celles du dessous, comme l'OS qui coiffe ses
+     * actions dans le modele client. Les lignes qu'elle recouvre gardent a sa place une cellule
+     * {@link #covered()}, que les emetteurs ne rendent pas : chaque ligne conserve ainsi autant de
+     * cellules que de colonnes, et la position de chacune reste lisible.</p>
      */
     record Cell(String text, boolean bold, Align align, Background background,
-                List<Attribution> attributions) {
+                List<Attribution> attributions, int rowSpan) {
         public Cell(String text) {
-            this(text, false, Align.LEFT, Background.NONE, List.of());
+            this(text, false, Align.LEFT, Background.NONE, List.of(), 1);
         }
 
         public Cell(String text, Background background) {
-            this(text, false, Align.LEFT, background, List.of());
+            this(text, false, Align.LEFT, background, List.of(), 1);
         }
 
         public Cell(String text, boolean bold, Align align, Background background) {
-            this(text, bold, align, background, List.of());
+            this(text, bold, align, background, List.of(), 1);
         }
 
         public Cell(List<Attribution> attributions) {
-            this("", false, Align.LEFT, Background.NONE, attributions);
+            this("", false, Align.LEFT, Background.NONE, attributions, 1);
+        }
+
+        /** Place tenue par une cellule fusionnee d'une ligne superieure. */
+        public static Cell covered() {
+            return new Cell("", false, Align.LEFT, Background.NONE, List.of(), 0);
+        }
+
+        public boolean isCovered() {
+            return rowSpan == 0;
+        }
+
+        public Cell spanning(int rows) {
+            return new Cell(text, bold, align, background, attributions, Math.max(1, rows));
+        }
+
+        public Cell withBackground(Background tint) {
+            return new Cell(text, bold, align, tint, attributions, rowSpan);
         }
     }
 
@@ -129,6 +151,9 @@ public sealed interface ExportBlock {
      * sont egales — ce qui convient a un tableau de chiffres, pas a un intitule suivi de montants.
      * {@code bands}, s'il n'est pas vide, ajoute au-dessus des en-tetes une ligne d'intitules
      * regroupant plusieurs colonnes ; la somme des {@code span} vaut le nombre de colonnes.
+     * Des en-tetes tous vides fixent le nombre de colonnes sans ligne d'en-tete : c'est le cas
+     * d'un tableau qui repete ses intitules sous chaque bandeau, comme la synthese du cadre
+     * strategique du modele client.
      */
     record Table(List<String> columnHeaders, List<TableRow> rows, List<Integer> widths,
                  List<HeaderBand> bands) implements ExportBlock {
@@ -138,6 +163,10 @@ public sealed interface ExportBlock {
 
         public Table(List<String> columnHeaders, List<TableRow> rows, List<Integer> widths) {
             this(columnHeaders, rows, widths, List.of());
+        }
+
+        public boolean showsHeaders() {
+            return columnHeaders.stream().anyMatch(header -> header != null && !header.isBlank());
         }
     }
 
@@ -192,5 +221,6 @@ public sealed interface ExportBlock {
     /** ANALYSIS = lecture d'un tableau chiffre ; WARNING = ce qu'il faut savoir avant de lire. */
     enum Tone { ANALYSIS, WARNING }
 
-    enum Background { NONE, RED, ORANGE, BLUE, GREEN, GREY, PRIMARY_LIGHT, VIOLET }
+    /** PRIMARY_DARK est un fond fonce : le texte pose dessus passe en blanc (bandeau d'axe). */
+    enum Background { NONE, RED, ORANGE, BLUE, GREEN, GREY, PRIMARY_LIGHT, VIOLET, PRIMARY_DARK }
 }

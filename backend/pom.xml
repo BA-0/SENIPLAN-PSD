@@ -137,6 +137,10 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <!-- Par defaut, spring-boot:run lance la JVM en -XX:TieredStopAtLevel=1 : le demarrage
+                         gagne une seconde, mais le code n'est ensuite jamais optimise et les exports
+                         PDF/Word tournent nettement plus lentement. -->
+                    <optimizedLaunch>false</optimizedLaunch>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>

@@ -8,7 +8,7 @@ import { AddRowButton, RemoveRowButton } from "@/components/data-table/row-actio
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { formatFcfa } from "@/lib/utils";
+import { directionAxisLabel, formatFcfa } from "@/lib/utils";
 import { PLAN_YEARS } from "@/types/sections";
 import type { BudgetContent, BudgetEffect, BudgetRow } from "@/types/sections";
 import type { SectionFormProps } from "./types";
@@ -64,8 +64,7 @@ export function BudgetForm({ content, onChange, readOnly }: SectionFormProps<Bud
       <TabsList className="axis-tabs">
         {content.axes.map((axis) => (
           <TabsTrigger key={axis.axisCode} value={axis.axisCode}>
-            {axis.axisCode.replace("AXE", "Axe ")}
-            {axis.axisTitle ? ` — ${axis.axisTitle}` : ""}
+            {directionAxisLabel(axis.axisCode, axis.axisTitle)}
           </TabsTrigger>
         ))}
       </TabsList>

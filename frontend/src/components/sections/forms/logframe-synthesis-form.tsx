@@ -3,6 +3,7 @@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { directionAxisLabel } from "@/lib/utils";
 import { LOGFRAME_LEVELS, LOGFRAME_LABELS } from "@/types/sections";
 import type { LogframeSynthesisAxis, LogframeSynthesisContent } from "@/types/sections";
 import type { SectionFormProps } from "./types";
@@ -33,7 +34,7 @@ export function LogframeSynthesisForm({ content, onChange, readOnly }: SectionFo
         <p className="text-[13px] font-medium text-foreground/90">
           Cadre logique par axe
           <span className="ml-2 font-normal text-[12px] text-muted-foreground">
-            lecture seule — repris du cadre logique (S09)
+            lecture seule — repris du cadre logique
           </span>
         </p>
         <Table>
@@ -52,8 +53,7 @@ export function LogframeSynthesisForm({ content, onChange, readOnly }: SectionFo
             {axes.map((axis, index) => (
               <TableRow key={axis.axisCode || index}>
                 <TableCell className="text-[13px] font-medium text-foreground/90">
-                  {axis.axisCode?.replace("AXE", "Axe ")}
-                  {axis.axisTitle ? ` — ${axis.axisTitle}` : ""}
+                  {directionAxisLabel(axis.axisCode, axis.axisTitle)}
                 </TableCell>
                 <TableCell className="whitespace-pre-wrap text-[13px] text-foreground/90">{axis.objective || "—"}</TableCell>
                 {LOGFRAME_LEVELS.map((level) => (
@@ -66,7 +66,7 @@ export function LogframeSynthesisForm({ content, onChange, readOnly }: SectionFo
             {axes.length === 0 && (
               <TableRow>
                 <TableCell colSpan={LOGFRAME_LEVELS.length + 2} className="py-8 text-center text-muted-foreground">
-                  Le cadre logique (S09) n&apos;est pas encore renseigné.
+                  Le cadre logique n&apos;est pas encore renseigné.
                 </TableCell>
               </TableRow>
             )}

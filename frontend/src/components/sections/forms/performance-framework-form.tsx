@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EditableCell } from "@/components/data-table/editable-cell";
 import { AddRowButton, RemoveRowButton } from "@/components/data-table/row-actions";
+import { directionAxisLabel } from "@/lib/utils";
 import { LOGFRAME_LABELS, PLAN_YEARS } from "@/types/sections";
 import type { PerformanceFrameworkContent, PerformanceGroup, PerformanceRow } from "@/types/sections";
 import type { SectionFormProps } from "./types";
@@ -46,7 +47,7 @@ export function PerformanceFrameworkForm({ content, onChange, readOnly }: Sectio
       <TabsList className="axis-tabs">
         {content.axes.map((axis) => (
           <TabsTrigger key={axis.axisCode} value={axis.axisCode}>
-            {axis.axisCode.replace("AXE", "Axe ")}
+            {directionAxisLabel(axis.axisCode, axis.axisTitle)}
           </TabsTrigger>
         ))}
       </TabsList>
@@ -58,7 +59,7 @@ export function PerformanceFrameworkForm({ content, onChange, readOnly }: Sectio
               <h3 className="mb-2">{LOGFRAME_LABELS[group.level] ?? group.level}</h3>
               {group.syncedEffects && group.syncedEffects.length > 0 && (
                 <div className="mb-2 flex flex-wrap gap-1.5">
-                  <span className="text-[12px] text-muted-foreground">Effets (OS) définis en Section 10 :</span>
+                  <span className="text-[12px] text-muted-foreground">Effets (OS) définis dans le plan d&apos;actions :</span>
                   {group.syncedEffects.map((e, i) => (
                     <span key={i} className="text-[12px] rounded-full bg-primary-50 text-primary-700 px-2 py-0.5">
                       {e.osCode}

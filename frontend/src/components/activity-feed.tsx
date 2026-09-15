@@ -2,14 +2,19 @@ import { Activity, CheckCircle2, RotateCcw, Send, LogIn, ShieldCheck, ShieldX, U
 import { timeAgo } from "@/lib/utils";
 import type { ActivityEntryDto } from "@/types/api";
 
+/** Designation d'une section par son intitule : les codes (S01, S09B...) restent internes. */
+function laSection(a: ActivityEntryDto): string {
+  return a.sectionTitle ? `la section « ${a.sectionTitle} »` : "une section";
+}
+
 const ACTION_CONFIG: Record<string, { label: (a: ActivityEntryDto) => string; icon: React.ElementType; color: string }> = {
   SAVE_DRAFT: {
-    label: (a) => `${a.groupName} a enregistré un brouillon sur ${a.sectionCode} — ${a.sectionTitle}`,
+    label: (a) => `${a.groupName} a enregistré un brouillon de ${laSection(a)}`,
     icon: Activity,
     color: "text-blue-500 dark:text-blue-400",
   },
   SUBMIT: {
-    label: (a) => `${a.groupName} a soumis la Section ${a.sectionCode?.replace("S", "")} — ${a.sectionTitle}`,
+    label: (a) => `${a.groupName} a soumis ${laSection(a)}`,
     icon: Send,
     color: "text-violet-500 dark:text-violet-400",
   },
@@ -19,42 +24,43 @@ const ACTION_CONFIG: Record<string, { label: (a: ActivityEntryDto) => string; ic
     color: "text-emerald-600 dark:text-emerald-400",
   },
   VALIDATE: {
-    label: (a) => `L'administrateur a validé ${a.sectionCode} pour ${a.groupName}`,
+    label: (a) => `L'administrateur a validé ${laSection(a)} pour ${a.groupName}`,
     icon: CheckCircle2,
     color: "text-emerald-600 dark:text-emerald-400",
   },
   DG_APPROVE: {
-    label: (a) => `La Direction Générale a approuvé ${a.sectionCode} pour ${a.groupName}`,
+    label: (a) => `La Direction Générale a approuvé ${laSection(a)} pour ${a.groupName}`,
     icon: ShieldCheck,
     color: "text-emerald-600 dark:text-emerald-400",
   },
   DG_REJECT: {
-    label: (a) => `La Direction Générale a refusé ${a.sectionCode} (${a.groupName}) — section renvoyée en révision`,
+    label: (a) => `La Direction Générale a refusé ${laSection(a)} (${a.groupName}) — section renvoyée en révision`,
     icon: ShieldX,
     color: "text-red-500 dark:text-red-400",
   },
   DG_APPROVAL_REVOKED: {
-    label: (a) => `${a.sectionCode} modifiée après approbation : l'accord de la Direction Générale est à redemander (${a.groupName})`,
+    label: (a) =>
+      `${a.sectionTitle ? `Section « ${a.sectionTitle} »` : "Section"} modifiée après approbation : l'accord de la Direction Générale est à redemander (${a.groupName})`,
     icon: ShieldX,
     color: "text-amber-500 dark:text-amber-400",
   },
   REQUEST_REVISION: {
-    label: (a) => `L'administrateur a renvoyé ${a.sectionCode} pour révision (${a.groupName})`,
+    label: (a) => `L'administrateur a renvoyé ${laSection(a)} pour révision (${a.groupName})`,
     icon: RotateCcw,
     color: "text-amber-500 dark:text-amber-400",
   },
   RETURN_TO_GROUP: {
-    label: (a) => `L'administrateur a redonné la main sur ${a.sectionCode} à ${a.groupName}`,
+    label: (a) => `L'administrateur a redonné la main sur ${laSection(a)} à ${a.groupName}`,
     icon: Undo2,
     color: "text-amber-500 dark:text-amber-400",
   },
   RESET: {
-    label: (a) => `L'administrateur a réinitialisé ${a.sectionCode} pour ${a.groupName}`,
+    label: (a) => `L'administrateur a réinitialisé ${laSection(a)} pour ${a.groupName}`,
     icon: Trash2,
     color: "text-red-500 dark:text-red-400",
   },
   ADMIN_EDIT: {
-    label: (a) => `L'administrateur a modifié ${a.sectionCode} pour ${a.groupName}`,
+    label: (a) => `L'administrateur a modifié ${laSection(a)} pour ${a.groupName}`,
     icon: Pencil,
     color: "text-blue-500 dark:text-blue-400",
   },

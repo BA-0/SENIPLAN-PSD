@@ -168,7 +168,6 @@ export default function LiveConsolidationPage() {
                         : "text-foreground/80 hover:bg-muted"
                     )}
                   >
-                    <span className="text-[11px] font-mono text-muted-foreground w-9 shrink-0">{code}</span>
                     <span className="truncate">{titleByCode.get(code) ?? "…"}</span>
                   </button>
                 ))}
@@ -178,14 +177,9 @@ export default function LiveConsolidationPage() {
         </nav>
 
         <div className="space-y-4 min-w-0">
-          <div className="flex items-baseline gap-2">
-            <span className="text-[11px] font-mono rounded-md bg-primary-50 dark:bg-primary-500/15 text-primary-700 dark:text-primary-300 px-2 py-0.5">
-              {activeCode}
-            </span>
-            <h2 className="text-[17px] font-semibold text-foreground">
-              {titleByCode.get(activeCode) ?? "Chargement…"}
-            </h2>
-          </div>
+          <h2 className="text-[17px] font-semibold text-foreground">
+            {titleByCode.get(activeCode) ?? "Chargement…"}
+          </h2>
 
           {(groupsLoading || (sectionFetching && !comparisons)) && (
             <div className="grid grid-cols-1 gap-4">

@@ -11,10 +11,10 @@ import type { SectionFormProps } from "./types";
 /**
  * S14B — plan d'evolution des effectifs (statut, hierarchie, genre), place juste avant
  * le plan de financement. Trois colonnes par annee : hommes, femmes, total (calcule).
- * Les lignes suivent le modele client : "Journalier" ferme le bloc hierarchie, "Fonctionnaire"
- * ouvre le bloc statut et "Expatrie" le ferme. Le serveur rajoute a sa place une ligne fixe
- * absente d'un plan saisi avant son ajout, et le TOTAUX suit la hierarchie : les deux blocs
- * ventilent les memes agents.
+ * Les lignes suivent le modele client : "Journalier" ferme le bloc hierarchie ; le bloc statut
+ * aligne CDI, Expatrie, CDD, Stagiaire et Journalier ("Fonctionnaire" retire a la revue du
+ * 15/09/2026). Le serveur rajoute a sa place une ligne fixe absente d'un plan saisi avant son
+ * ajout, et le TOTAUX suit la hierarchie : les deux blocs ventilent les memes agents.
  */
 export function StaffEvolutionForm({ content, onChange, readOnly }: SectionFormProps<StaffEvolutionContent>) {
   const rows = content.rows ?? [];

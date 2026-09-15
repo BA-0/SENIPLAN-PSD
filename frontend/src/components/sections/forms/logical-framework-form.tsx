@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EditableCell } from "@/components/data-table/editable-cell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { directionAxisLabel } from "@/lib/utils";
 import { LOGFRAME_LABELS } from "@/types/sections";
 import type { LogicalFrameworkContent } from "@/types/sections";
 import type { SectionFormProps } from "./types";
@@ -29,8 +30,7 @@ export function LogicalFrameworkForm({ content, onChange, readOnly }: SectionFor
       <TabsList className="axis-tabs">
         {content.axes.map((axis) => (
           <TabsTrigger key={axis.axisCode} value={axis.axisCode}>
-            {axis.axisCode.replace("AXE", "Axe ")}
-            {axis.axisTitle ? ` — ${axis.axisTitle}` : ""}
+            {directionAxisLabel(axis.axisCode, axis.axisTitle)}
           </TabsTrigger>
         ))}
       </TabsList>

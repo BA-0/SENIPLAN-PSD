@@ -73,7 +73,6 @@ export default function SectionFormPage() {
 
   return (
     <SectionShell
-      code={data.code}
       title={data.title}
       status={data.status}
       locked={data.locked}

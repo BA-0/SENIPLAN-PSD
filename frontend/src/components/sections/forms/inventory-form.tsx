@@ -32,7 +32,7 @@ export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<
 
       <Card>
         <CardHeader>
-          <CardTitle>Parties prenantes (Section 1)</CardTitle>
+          <CardTitle>Parties prenantes</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {stakeholders.length === 0 && <p className="text-[13px] text-muted-foreground italic">Aucune donnée</p>}
@@ -47,7 +47,7 @@ export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<
 
       <Card>
         <CardHeader>
-          <CardTitle>PESTEL (Section 3)</CardTitle>
+          <CardTitle>PESTEL</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {pestel.map((p, i) => (
@@ -62,7 +62,7 @@ export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<
 
       <Card>
         <CardHeader>
-          <CardTitle>SWOT (Section 4)</CardTitle>
+          <CardTitle>SWOT</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <SwotMini label="Forces" items={swot.strengths} variant="submitted" />
@@ -74,7 +74,7 @@ export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<
 
       <Card>
         <CardHeader>
-          <CardTitle>Analyse causale (Section 6)</CardTitle>
+          <CardTitle>Analyse causale</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {causalAnalysis.map((c, i) => (

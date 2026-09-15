@@ -18,6 +18,10 @@ import { AXES_CONSOLIDES_KEY, type NarrativeBlock } from "@/types/psd-narrative"
 
 /** Aide à la saisie des blocs dont la forme compte pour la mise en page des documents. */
 const HINTS: Record<string, string> = {
+  HISTORIQUE:
+    "Création de SENICO SA et grandes étapes de son développement. Ouvre la présentation de SENICO, avant ses missions.",
+  GOUVERNANCE:
+    "Instances de gouvernance et leur rôle, avant l'organisation. Une ligne terminée par « : » introduit la liste qui suit ; une ligne commençant par « - » est une puce.",
   VISION:
     "Une phrase : l'ambition de SENICO à l'horizon 2031. Elle remplace, dans les documents, les visions proposées par les directions.",
   MISSION:

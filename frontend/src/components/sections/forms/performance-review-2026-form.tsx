@@ -3,6 +3,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EditableCell, EditableNumberCell } from "@/components/data-table/editable-cell";
 import { AddRowButton, RemoveRowButton } from "@/components/data-table/row-actions";
+import { achieved2026Label } from "@/lib/utils";
 import type { PerformanceReview2026Content, PerformanceReview2026Row } from "@/types/sections";
 import type { SectionFormProps } from "./types";
 
@@ -38,7 +39,7 @@ export function PerformanceReview2026Form({ content, onChange, readOnly }: Secti
             <TableHead className="min-w-[180px]">Domaine / Activité</TableHead>
             <TableHead className="min-w-[200px]">Indicateur</TableHead>
             <TableHead className="text-right">Cible 2026</TableHead>
-            <TableHead className="text-right">Réalisé 2026</TableHead>
+            <TableHead className="text-right">{achieved2026Label()}</TableHead>
             <TableHead className="text-right">Taux</TableHead>
             <TableHead className="min-w-[220px]">Écart / Commentaire</TableHead>
             {!readOnly && <TableHead className="w-10" />}

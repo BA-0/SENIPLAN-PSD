@@ -31,6 +31,27 @@ export function formatDateTime(value: string | null | undefined): string {
   }).format(date);
 }
 
+/**
+ * Libelle de la colonne des performances 2026 : tant que l'annee 2026 n'est pas close a Dakar,
+ * les chiffres sont une estimation. Meme regle que les exports cote serveur.
+ */
+export function achieved2026Label(now: Date = new Date()): string {
+  const year = Number(new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Dakar", year: "numeric" }).format(now));
+  return year > 2026 ? "Réalisé 2026" : "Estimation 2026";
+}
+
+/**
+ * Libelle d'un axe de direction (AXE1..AXE4). Les axes de l'entreprise sont numerotes Axe 1..Axe 5 :
+ * afficher « Axe 1 » pour un axe de direction preterait a confusion. L'intitule seul suffit ; le numero
+ * ne sert de repli que tant que l'intitule n'est pas saisi.
+ */
+export function directionAxisLabel(axisCode: string | null | undefined, title: string | null | undefined): string {
+  const trimmed = title?.trim();
+  if (trimmed) return trimmed;
+  const number = axisCode?.match(/\d+/)?.[0];
+  return number ? `Axe ${number}` : "Axe";
+}
+
 export function timeAgo(value: string | null | undefined): string {
   if (!value) return "";
   const date = new Date(value);

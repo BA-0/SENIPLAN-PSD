@@ -38,7 +38,7 @@ const ACTION_CONFIG: Record<
   { label: (a: ActivityEntryDto) => string; icon: React.ElementType; color: string }
 > = {
   SUBMIT: {
-    label: (a) => `${a.groupName} a soumis la Section ${a.sectionCode?.replace("S", "")}`,
+    label: (a) => `${a.groupName} a soumis ${a.sectionTitle ? `« ${a.sectionTitle} »` : "une section"}`,
     icon: Send,
     color: "text-primary-300",
   },
@@ -48,12 +48,12 @@ const ACTION_CONFIG: Record<
     color: "text-emerald-300",
   },
   VALIDATE: {
-    label: (a) => `${a.sectionCode} validée pour ${a.groupName}`,
+    label: (a) => `${a.sectionTitle ? `« ${a.sectionTitle} »` : "Section"} validée pour ${a.groupName}`,
     icon: CheckCircle2,
     color: "text-emerald-300",
   },
   REQUEST_REVISION: {
-    label: (a) => `${a.sectionCode} renvoyée pour révision — ${a.groupName}`,
+    label: (a) => `${a.sectionTitle ? `« ${a.sectionTitle} »` : "Section"} renvoyée pour révision — ${a.groupName}`,
     icon: RotateCcw,
     color: "text-amber-300",
   },
@@ -318,7 +318,8 @@ function ProjectionPage() {
                 {sections.map((s, i) => (
                   <SectionBar
                     key={s.sectionId}
-                    code={s.code}
+                    label={String(i + 1)}
+                    title={s.title}
                     done={s.groupsSubmittedOrValidated}
                     total={s.totalGroups}
                     delay={i * 30}
@@ -520,14 +521,17 @@ function ActivityRow({ entry, isNewest }: { entry: ActivityEntryDto; isNewest: b
 }
 
 function SectionBar({
-  code,
+  label,
+  title,
   done,
   total,
   delay = 0,
   onClick,
   highlighted = false,
 }: {
-  code: string;
+  /** Rang de la section dans le canevas : les codes (S01...) ne sont pas montres. */
+  label: string;
+  title: string;
   done: number;
   total: number;
   delay?: number;
@@ -540,6 +544,7 @@ function SectionBar({
     <button
       type="button"
       onClick={onClick}
+      title={title}
       className={cn(
         "flex flex-col items-center gap-1.5 w-14 shrink-0 animate-fade-in-up cursor-pointer group/section focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded-md",
         highlighted && "animate-spotlight-pulse"
@@ -565,7 +570,7 @@ function SectionBar({
         </div>
       </div>
       <span className={cn("flex items-center gap-1 text-[10px] font-medium", highlighted ? "text-sky-300" : "text-white/60")}>
-        {code}
+        {label}
         {highlighted && <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />}
       </span>
       <span className="text-[10px] text-white/35 tabular-nums">
@@ -602,6 +607,7 @@ function DetailPanel({
   );
   const groupsBySubmitted = useMemo(() => [...data.groups].sort((a, b) => b.submitted - a.submitted), [data.groups]);
   const groupsByValidated = useMemo(() => [...data.groups].sort((a, b) => b.validated - a.validated), [data.groups]);
+  const titleByCode = useMemo(() => new Map(sections.map((s) => [s.code, s.title])), [sections]);
 
   let title = "";
   let subtitle = "";
@@ -687,9 +693,7 @@ function DetailPanel({
           <div className="space-y-2">
             {sections.map((s) => (
               <div key={s.sectionId} className="flex items-center justify-between text-[13px] gap-3">
-                <span className="text-white/80 truncate">
-                  {s.code} — {s.title}
-                </span>
+                <span className="text-white/80 truncate">{s.title}</span>
                 <span className="font-medium tabular-nums text-white/50 shrink-0">
                   {s.groupsSubmittedOrValidated}/{s.totalGroups}
                 </span>
@@ -727,7 +731,7 @@ function DetailPanel({
               {validatedCells.map((c) => (
                 <div key={`${c.groupId}-${c.sectionId}`} className="flex items-center justify-between text-[13px] gap-3">
                   <span className="text-white/80 truncate">
-                    {c.groupName} — {c.sectionCode}
+                    {c.groupName} — {titleByCode.get(c.sectionCode) ?? "Section"}
                   </span>
                   <SectionStatusPill status={c.status} />
                 </div>
@@ -753,7 +757,7 @@ function DetailPanel({
             className="flex items-center justify-between text-[13px] gap-3 rounded-xl bg-white/[0.04] border border-white/10 px-4 py-3"
           >
             <span className="text-white/80 truncate">
-              {c.groupName} — {c.sectionCode}
+              {c.groupName} — {titleByCode.get(c.sectionCode) ?? "Section"}
             </span>
             <SectionStatusPill status={c.status} />
           </div>
@@ -791,9 +795,7 @@ function DetailPanel({
                   key={cell.sectionId}
                   className="flex items-center justify-between text-[13px] gap-3 rounded-xl bg-white/[0.04] border border-white/10 px-4 py-2.5"
                 >
-                  <span className="text-white/80 truncate">
-                    {cell.sectionCode} — {section?.title ?? ""}
-                  </span>
+                  <span className="text-white/80 truncate">{section?.title ?? "Section"}</span>
                   <SectionStatusPill status={cell.status} />
                 </div>
               ))}
@@ -804,8 +806,8 @@ function DetailPanel({
     );
   } else if (detail.kind === "section") {
     const section = sections.find((s) => s.sectionId === detail.sectionId);
-    title = section ? `Section ${section.code}` : "Section";
-    subtitle = section ? `${section.title} · ${section.groupsSubmittedOrValidated}/${section.totalGroups} groupes` : "";
+    title = section ? section.title : "Section";
+    subtitle = section ? `${section.groupsSubmittedOrValidated}/${section.totalGroups} groupes` : "";
     const rows = (matrix ?? [])
       .filter((c) => c.sectionId === detail.sectionId)
       .sort((a, b) => a.groupName.localeCompare(b.groupName));

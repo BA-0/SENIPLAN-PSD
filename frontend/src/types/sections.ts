@@ -43,7 +43,7 @@ export interface PerformanceReview2026Row {
   indicator: string;
   target2026: number;
   achieved2026: number;
-  rate?: number | null; // calcule = realise / cible x 100, null si la cible vaut 0
+  rate?: number | null; // calcule : realise / cible x 100, ou cible / realise pour un delai, un nombre d'incidents, un ecart ou un cout ; null si la cible vaut 0
   comment: string;
 }
 export interface PerformanceReview2026Content {
@@ -377,10 +377,10 @@ export const STAFF_LABELS: Record<string, string> = {
   AGENTS_MAITRISE: "Agents de maîtrise",
   EMPLOYE: "Employé",
   JOURNALIER: "Journalier",
-  FONCTIONNAIRE: "Fonctionnaire",
   CDI: "CDI",
-  CDD: "CDD",
   EXPATRIE: "Expatrié",
+  CDD: "CDD",
+  STAGIAIRE: "Stagiaire",
 };
 export interface StaffCell {
   male: number;

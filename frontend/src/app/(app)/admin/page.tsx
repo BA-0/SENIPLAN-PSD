@@ -49,6 +49,11 @@ export default function AdminDashboardPage() {
     return map;
   }, [data]);
 
+  const titleByCode = useMemo(
+    () => new Map((data?.sectionAdvancement ?? []).map((s) => [s.code, s.title])),
+    [data]
+  );
+
   function pendingSectionCode(groupId: number): string {
     const cells = (matrix ?? []).filter((c) => c.groupId === groupId);
     const bySortOrder = (a: { sectionCode: string }, b: { sectionCode: string }) =>
@@ -157,7 +162,7 @@ export default function AdminDashboardPage() {
           {isMatrixError ? (
             <InlineError message="Impossible de charger l'avancement par section." />
           ) : (
-            <StatusHeatmap cells={matrix ?? []} />
+            <StatusHeatmap cells={matrix ?? []} titleByCode={titleByCode} />
           )}
         </CardContent>
       </Card>

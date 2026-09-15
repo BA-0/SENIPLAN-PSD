@@ -64,6 +64,11 @@ export function Sidebar() {
   });
 
   const sectionParts = useMemo(() => groupSectionsByPart(sections ?? []), [sections]);
+  // Menu replie : les codes de section restent internes, on affiche le rang dans le canevas.
+  const ordinalByCode = useMemo(
+    () => new Map(sectionParts.flatMap((p) => p.sections).map((s, i) => [s.code, i + 1])),
+    [sectionParts]
+  );
   const activeSectionCode = pathname.startsWith("/sections/") ? pathname.slice("/sections/".length) : null;
   const activePart = activeSectionCode ? findPartForCode(activeSectionCode) : null;
 
@@ -270,7 +275,7 @@ export function Sidebar() {
                       <Link
                         key={s.code}
                         href={`/sections/${s.code}`}
-                        title={`${s.code} — ${s.title}`}
+                        title={s.title}
                         className={cn(
                           "flex items-center gap-2 rounded-lg text-[13px] transition-colors duration-150",
                           showCollapsed ? "justify-center px-2 py-2" : "justify-between px-3 py-2",
@@ -280,13 +285,10 @@ export function Sidebar() {
                         )}
                       >
                         {showCollapsed ? (
-                          <span className="text-[11px] font-semibold">{s.code}</span>
+                          <span className="text-[11px] font-semibold">{ordinalByCode.get(s.code)}</span>
                         ) : (
                           <>
-                            <span className="truncate">
-                              <span className="text-white/40 mr-1.5">{s.code}</span>
-                              {s.title}
-                            </span>
+                            <span className="truncate">{s.title}</span>
                             <StatusDot status={s.status} />
                           </>
                         )}

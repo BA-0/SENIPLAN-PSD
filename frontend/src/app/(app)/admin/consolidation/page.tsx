@@ -12,12 +12,14 @@ import { listGroups } from "@/lib/api/groups";
 import { getAdminMatrix } from "@/lib/api/admin";
 import { downloadConsolidatedExcelFull, downloadConsolidatedPdf } from "@/lib/api/exports";
 import { extractErrorMessage } from "@/lib/api-client";
+import { useSectionTitles } from "@/hooks/use-section-titles";
 
 export default function AdminConsolidationPage() {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
 
   const { data: groups } = useQuery({ queryKey: ["admin", "groups"], queryFn: listGroups });
+  const sectionTitles = useSectionTitles();
   const { data: matrix, isError: isMatrixError } = useQuery({
     queryKey: ["admin", "matrix"],
     queryFn: getAdminMatrix,
@@ -110,7 +112,7 @@ export default function AdminConsolidationPage() {
               Impossible de charger l&apos;avancement par section.
             </p>
           ) : (
-            <StatusHeatmap cells={matrix ?? []} />
+            <StatusHeatmap cells={matrix ?? []} titleByCode={sectionTitles} />
           )}
         </CardContent>
       </Card>

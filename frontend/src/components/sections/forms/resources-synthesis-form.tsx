@@ -75,7 +75,7 @@ export function ResourcesSynthesisForm({ content, onChange, readOnly }: SectionF
 
       <div className="space-y-2">
         <p className="text-[13px] font-medium text-foreground/90">
-          Rappel de la matrice des ressources (S02)
+          Rappel de la matrice des ressources et compétences
           <span className="ml-2 font-normal text-[12px] text-muted-foreground">lecture seule</span>
         </p>
         <Table>
@@ -101,7 +101,7 @@ export function ResourcesSynthesisForm({ content, onChange, readOnly }: SectionF
             {resources.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                  La matrice des ressources (S02) n&apos;est pas encore renseignée.
+                  La matrice des ressources et compétences n&apos;est pas encore renseignée.
                 </TableCell>
               </TableRow>
             )}

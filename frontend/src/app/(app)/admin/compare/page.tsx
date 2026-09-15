@@ -12,6 +12,7 @@ import { listGroups } from "@/lib/api/groups";
 import { compareSection } from "@/lib/api/admin";
 import { formatDateTime } from "@/lib/utils";
 import { SECTION_PARTS, partCodes } from "@/lib/section-groups";
+import { useSectionTitles } from "@/hooks/use-section-titles";
 import type { SectionType } from "@/types/common";
 
 export default function ComparePage() {
@@ -19,6 +20,7 @@ export default function ComparePage() {
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
 
   const { data: groups } = useQuery({ queryKey: ["admin", "groups"], queryFn: listGroups });
+  const sectionTitles = useSectionTitles();
 
   const { data: comparisons, isFetching } = useQuery({
     queryKey: ["admin", "compare", sectionCode, selectedGroupIds],
@@ -48,7 +50,7 @@ export default function ComparePage() {
                 <optgroup key={part.id} label={`Partie ${part.numeral} — ${part.title}`}>
                   {partCodes(part).map((code) => (
                     <option key={code} value={code}>
-                      {code}
+                      {sectionTitles.get(code) ?? "Chargement…"}
                     </option>
                   ))}
                 </optgroup>

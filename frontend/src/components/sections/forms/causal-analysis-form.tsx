@@ -26,7 +26,7 @@ export function CausalAnalysisForm({ content, onChange, readOnly }: SectionFormP
       {towsEntries.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-[15px]">Actions (SWOT / matrice de confrontation — Section 5)</CardTitle>
+            <CardTitle className="text-[15px]">Actions (SWOT / matrice de confrontation)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {towsEntries.map((e) => (

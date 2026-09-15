@@ -242,7 +242,7 @@ export function ConsolidatedAxesEditor({
         {isLoading ? (
           <p className="text-[13px] text-muted-foreground">Chargement des axes des directions…</p>
         ) : directionAxes.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground">Aucune direction n&apos;a encore renseigné ses axes (section S08).</p>
+          <p className="text-[13px] text-muted-foreground">Aucune direction n&apos;a encore renseigné ses axes stratégiques.</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-[13px]">
@@ -268,10 +268,7 @@ export function ConsolidatedAxesEditor({
                           {axis.groupName}
                         </span>
                       </td>
-                      <td className="px-3 py-2 align-middle">
-                        <span className="text-muted-foreground">{axis.axisCode.replace("AXE", "Axe ")} — </span>
-                        {axis.title}
-                      </td>
+                      <td className="px-3 py-2 align-middle">{axis.title}</td>
                       <td className="min-w-[280px] px-3 py-2 align-middle">
                         <NativeSelect
                           value={String(current)}

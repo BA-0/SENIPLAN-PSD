@@ -73,7 +73,7 @@ export default function GroupDashboardPage() {
                 <MessageSquare className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-[13px] font-medium text-foreground">
-                    {s.code} — {s.title}
+                    {s.title}
                   </p>
                   <p className="text-[13px] text-muted-foreground mt-0.5">{s.adminComment}</p>
                 </div>
@@ -113,7 +113,6 @@ export default function GroupDashboardPage() {
                         className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-primary-50/60 dark:hover:bg-white/5 transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-[13px] text-muted-foreground w-8 shrink-0">{s.code}</span>
                           <span className="text-[13px] text-foreground truncate">{s.title}</span>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
@@ -134,7 +133,7 @@ export default function GroupDashboardPage() {
         <div className="flex justify-end">
           <Button asChild variant="primary">
             <Link href={`/sections/${data.nextSections[0].code}`}>
-              Continuer avec {data.nextSections[0].code} <ArrowRight className="h-4 w-4" />
+              Continuer avec « {data.nextSections[0].title} » <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
         </div>

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TagListEditor } from "@/components/data-table/tag-list-editor";
+import { directionAxisLabel } from "@/lib/utils";
 import type { StrategicAxesContent } from "@/types/sections";
 import type { SectionFormProps } from "./types";
 
@@ -19,7 +20,7 @@ export function StrategicAxesForm({ content, onChange, readOnly }: SectionFormPr
       {content.axes.map((axis, index) => (
         <Card key={axis.axisCode}>
           <CardHeader>
-            <CardTitle className="text-[15px]">{axis.axisCode.replace("AXE", "Axe ")}</CardTitle>
+            <CardTitle className="text-[15px]">{directionAxisLabel(axis.axisCode, axis.title)}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -126,7 +126,6 @@ export function CycleArchivePanel({
                     {partSections.map((s) => (
                       <div key={s.code} className="flex items-center justify-between py-3">
                         <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-[13px] text-muted-foreground w-10 shrink-0">{s.code}</span>
                           <span className="text-[13px] text-foreground truncate">{s.title}</span>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
@@ -149,7 +148,7 @@ export function CycleArchivePanel({
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>
-              {sectionContent ? `${sectionContent.title} — cycle ${sectionContent.cycleNumber}` : openSection}
+              {sectionContent ? `${sectionContent.title} — cycle ${sectionContent.cycleNumber}` : "Chargement…"}
             </DialogTitle>
           </DialogHeader>
           {isFetchingContent || !sectionContent ? (

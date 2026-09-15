@@ -145,7 +145,7 @@ export default function AdminSubmissionsPage() {
       setRecemmentApprouvees((precedent) => new Set(precedent).add(cleDe(s)));
     },
     onSuccess: (_result, s) => {
-      toast.success(`${s.sectionCode} — ${s.groupName} approuvée`);
+      toast.success(`« ${s.sectionTitle} » — ${s.groupName} approuvée`);
       queryClient.invalidateQueries({ queryKey: ["admin"] });
     },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'approbation")),
@@ -472,7 +472,7 @@ export default function AdminSubmissionsPage() {
                   <optgroup key={part.id} label={part.numeral ? `Partie ${part.numeral} — ${part.title}` : part.title}>
                     {partSections.map((s) => (
                       <option key={s.code} value={s.code}>
-                        {s.code} — {s.title}
+                        {s.title}
                       </option>
                     ))}
                   </optgroup>
@@ -707,7 +707,7 @@ function SubmissionRow({
               type="checkbox"
               checked={selected}
               onChange={onToggle}
-              aria-label={`Sélectionner ${s.sectionCode} — ${s.groupName}`}
+              aria-label={`Sélectionner ${s.sectionTitle} — ${s.groupName}`}
               className="h-4 w-4 rounded border-slate-300 text-primary-500 focus:ring-primary-500/40"
             />
           ) : null}
@@ -717,10 +717,7 @@ function SubmissionRow({
         <p className="font-medium text-foreground">{s.groupName}</p>
         {s.leaderFullName && <p className="text-[12px] text-muted-foreground">{s.leaderFullName}</p>}
       </TableCell>
-      <TableCell>
-        <span className="text-muted-foreground mr-1.5">{s.sectionCode}</span>
-        {s.sectionTitle}
-      </TableCell>
+      <TableCell>{s.sectionTitle}</TableCell>
       <TableCell>
         <StatusBadge status={s.status} />
       </TableCell>

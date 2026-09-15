@@ -13,7 +13,8 @@ import type { ActivityEntryDto } from "@/types/api";
  * complete la totalite des sections d'une direction, une seconde annonce plus marquante suit (SUBMIT_ALL).
  */
 const ADMIN_VOICE_MESSAGES: Partial<Record<string, (entry: ActivityEntryDto) => string>> = {
-  SUBMIT: (e) => `${e.groupName ?? "Une direction"} a soumis la section ${e.sectionTitle ?? e.sectionCode ?? ""}.`,
+  SUBMIT: (e) =>
+    `${e.groupName ?? "Une direction"} a soumis ${e.sectionTitle ? `la section ${e.sectionTitle}` : "une section"}.`,
   SUBMIT_ALL: (e) => `${e.groupName ?? "Une direction"} a soumis la totalité de ses sections.`,
 };
 

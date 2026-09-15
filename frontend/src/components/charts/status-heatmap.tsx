@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { sectionStatusLabel } from "@/components/status-badge";
 import type { MatrixCellDto } from "@/types/api";
 import type { SectionStatus } from "@/types/common";
 import { SECTION_CODES } from "@/types/common";
@@ -14,7 +15,17 @@ const CELL_COLOR: Record<SectionStatus, string> = {
   REVISION_REQUESTED: "bg-orange-300 dark:bg-orange-500/60",
 };
 
-export function StatusHeatmap({ cells }: { cells: MatrixCellDto[] }) {
+/**
+ * Les colonnes portent le rang de la section dans le canevas (1, 2, ...) et son intitule en
+ * infobulle : les codes (S01, S03B...) restent internes.
+ */
+export function StatusHeatmap({
+  cells,
+  titleByCode,
+}: {
+  cells: MatrixCellDto[];
+  titleByCode?: ReadonlyMap<string, string>;
+}) {
   const groupIds = Array.from(new Set(cells.map((c) => c.groupId)));
   const groupNames = new Map(cells.map((c) => [c.groupId, c.groupName]));
   const groupColors = new Map(cells.map((c) => [c.groupId, c.color]));
@@ -31,9 +42,13 @@ export function StatusHeatmap({ cells }: { cells: MatrixCellDto[] }) {
             <th className="sticky left-0 bg-card text-left text-[12px] font-semibold uppercase text-muted-foreground px-3 py-2 min-w-[160px]">
               Groupe
             </th>
-            {SECTION_CODES.map((code) => (
-              <th key={code} className="text-[11px] font-semibold text-muted-foreground px-1 py-2 w-9 text-center">
-                {code.replace("S", "")}
+            {SECTION_CODES.map((code, index) => (
+              <th
+                key={code}
+                title={titleByCode?.get(code)}
+                className="text-[11px] font-semibold text-muted-foreground px-1 py-2 w-9 text-center"
+              >
+                {index + 1}
               </th>
             ))}
           </tr>
@@ -50,13 +65,14 @@ export function StatusHeatmap({ cells }: { cells: MatrixCellDto[] }) {
                   {groupNames.get(groupId)}
                 </span>
               </td>
-              {SECTION_CODES.map((code) => {
+              {SECTION_CODES.map((code, index) => {
                 const status = statusFor(groupId, code);
+                const sectionName = titleByCode?.get(code) ?? `Section ${index + 1}`;
                 return (
                   <td key={code} className="p-1 border-t border-border">
                     <Link
                       href={`/admin/groups/${groupId}/sections/${code}`}
-                      title={`${code} — ${status}`}
+                      title={`${sectionName} — ${sectionStatusLabel(status)}`}
                       className={cn("block h-7 w-7 rounded-md mx-auto transition-transform hover:scale-110", CELL_COLOR[status])}
                     />
                   </td>

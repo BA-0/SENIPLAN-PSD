@@ -151,7 +151,7 @@ export default function AdminSectionReviewPage() {
         >
           {sections?.map((s) => (
             <option key={s.code} value={s.code}>
-              {s.code} — {s.title}
+              {s.title}
             </option>
           ))}
         </NativeSelect>
@@ -163,7 +163,6 @@ export default function AdminSectionReviewPage() {
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <span className="text-muted-foreground text-sm">{data.code}</span>
               <h1>{data.title}</h1>
               <StatusBadge status={data.status} />
             </div>

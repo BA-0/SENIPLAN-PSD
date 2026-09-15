@@ -20,7 +20,6 @@ import type { SaveStatus } from "@/hooks/use-section-autosave";
 import type { SectionStatus } from "@/types/common";
 
 interface SectionShellProps {
-  code: string;
   title: string;
   status: SectionStatus;
   locked: boolean;
@@ -37,7 +36,6 @@ interface SectionShellProps {
 }
 
 export function SectionShell({
-  code,
   title,
   status,
   locked,
@@ -57,9 +55,6 @@ export function SectionShell({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="rounded-md bg-primary-50 dark:bg-primary-500/15 px-2 py-0.5 text-[13px] font-semibold text-primary-700 dark:text-primary-300">
-              {code}
-            </span>
             <h1>{title}</h1>
             <StatusBadge status={status} />
           </div>
@@ -128,7 +123,7 @@ export function SectionShell({
         {prevSection ? (
           <Button asChild variant="secondary" size="sm" className="justify-start sm:justify-center">
             <Link href={`/sections/${prevSection.code}`} className="min-w-0">
-              <ChevronLeft className="h-4 w-4 shrink-0" /> <span className="truncate">{prevSection.code} — {prevSection.title}</span>
+              <ChevronLeft className="h-4 w-4 shrink-0" /> <span className="truncate">{prevSection.title}</span>
             </Link>
           </Button>
         ) : (
@@ -137,7 +132,7 @@ export function SectionShell({
         {nextSection ? (
           <Button asChild variant="secondary" size="sm" className="justify-end sm:justify-center">
             <Link href={`/sections/${nextSection.code}`} className="min-w-0">
-              <span className="truncate">{nextSection.code} — {nextSection.title}</span> <ChevronRight className="h-4 w-4 shrink-0" />
+              <span className="truncate">{nextSection.title}</span> <ChevronRight className="h-4 w-4 shrink-0" />
             </Link>
           </Button>
         ) : (

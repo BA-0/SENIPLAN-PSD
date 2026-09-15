@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { RemoveRowButton } from "@/components/data-table/row-actions";
+import { directionAxisLabel } from "@/lib/utils";
 import type { StrategicSummaryContent, SummaryAxis, SummaryOrientation } from "@/types/sections";
 import type { SectionFormProps } from "./types";
 
@@ -75,8 +76,7 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
         <TabsList className="axis-tabs">
           {content.axes.map((axis) => (
             <TabsTrigger key={axis.axisCode} value={axis.axisCode}>
-              {axis.axisCode.replace("AXE", "Axe ")}
-              {axis.axisTitle ? ` — ${axis.axisTitle}` : ""}
+              {directionAxisLabel(axis.axisCode, axis.axisTitle)}
             </TabsTrigger>
           ))}
         </TabsList>

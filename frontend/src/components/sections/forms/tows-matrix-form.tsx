@@ -12,7 +12,7 @@ function RefList({ label, items, tone }: { label: string; items: string[]; tone:
     <div>
       <p className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground mb-1.5">{label}</p>
       {items.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground italic">Aucun élément (voir Section 4 — SWOT)</p>
+        <p className="text-[13px] text-muted-foreground italic">Aucun élément (voir l&apos;analyse SWOT)</p>
       ) : (
         <ul className="space-y-1">
           {items.map((item, i) => (
@@ -68,7 +68,7 @@ export function TowsMatrixForm({ content, onChange, readOnly }: SectionFormProps
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Rappel — Analyse SWOT (Section 4)</CardTitle>
+          <CardTitle>Rappel — Analyse SWOT</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <RefList label="Forces" items={content.strengths} tone="bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-300" />

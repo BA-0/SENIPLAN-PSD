@@ -82,8 +82,9 @@ export default function SynthesisPage() {
         <h1>Note de synthèse</h1>
         <p className="text-[13px] text-muted-foreground mt-1">
           Le Plan Stratégique 2027-2031 présenté comme un plan stratégique publié — page de garde, sommaire
-          paginé, parties numérotées, graphiques — sans le détail des tableaux de chaque direction. Pour le Conseil
-          d&apos;Administration et le comité de pilotage.
+          paginé, parties numérotées, graphiques — avec tous les tableaux du canevas consolidés axe par axe (cadre
+          logique, plan d&apos;actions, budget, cadre de mesure de rendement…), chaque ligne à la couleur de sa
+          direction. Pour le Conseil d&apos;Administration et le comité de pilotage.
         </p>
       </div>
 

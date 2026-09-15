@@ -9,6 +9,10 @@ const STATUS_CONFIG: Record<SectionStatus, { label: string; variant: string }> =
   REVISION_REQUESTED: { label: "À réviser", variant: "revision" },
 };
 
+export function sectionStatusLabel(status: SectionStatus): string {
+  return (STATUS_CONFIG[status] ?? STATUS_CONFIG.NOT_STARTED).label;
+}
+
 export function StatusBadge({ status }: { status: SectionStatus }) {
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.NOT_STARTED;
   return <Badge variant={config.variant as never}>{config.label}</Badge>;

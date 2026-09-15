@@ -3,9 +3,11 @@ package com.senico.diagnostic.export;
 import com.senico.diagnostic.domain.WorkGroup;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Fusionne, pour une meme section, les rendus des differentes directions en un tableau unique
@@ -31,11 +33,16 @@ final class PsdSectionMerger {
     record GroupBlocks(WorkGroup group, List<ExportBlock> blocks, boolean included, String exclusionReason) {
     }
 
+    /** Bloc non fusionnable, avec les intertitres sous lesquels la direction l'a rendu. */
+    private record PendingBlock(WorkGroup group, List<String> headingPath, ExportBlock block) {
+    }
+
     static List<ExportBlock> merge(List<GroupBlocks> perGroup) {
         // Ordonne par premiere apparition : l'ordre du canevas est celui de la premiere
         // direction qui a rempli la section, les suivantes viennent s'y ranger.
         Map<String, Object> slots = new LinkedHashMap<>();
-        List<ExportBlock> trailing = new ArrayList<>();
+        Set<String> headingsWithTable = new HashSet<>();
+        List<PendingBlock> trailing = new ArrayList<>();
         List<String> excluded = new ArrayList<>();
 
         for (GroupBlocks entry : perGroup) {
@@ -43,18 +50,23 @@ final class PsdSectionMerger {
                 excluded.add(entry.group().getName() + " (" + entry.exclusionReason() + ")");
                 continue;
             }
-            mergeOneGroup(entry, slots, trailing);
+            mergeOneGroup(entry, slots, headingsWithTable, trailing);
         }
 
         List<ExportBlock> out = new ArrayList<>();
-        for (Object slot : slots.values()) {
-            if (slot instanceof ExportBlock.Heading heading) {
-                out.add(heading);
-            } else if (slot instanceof MergedTable table) {
+        for (Map.Entry<String, Object> slot : slots.entrySet()) {
+            if (slot.getValue() instanceof ExportBlock.Heading heading) {
+                // Un intertitre qui ne coiffe aucun tableau fusionne resterait seul en tete de rubrique,
+                // vide (« SWOT (rappel) » suivi aussitot de « Strategies de confrontation ») : il est
+                // repris plus bas, sous le nom de chaque direction, devant ce qu'il annonce.
+                if (headingsWithTable.contains(slot.getKey())) {
+                    out.add(heading);
+                }
+            } else if (slot.getValue() instanceof MergedTable table) {
                 out.add(table.toBlock());
             }
         }
-        out.addAll(trailing);
+        out.addAll(trailingBlocks(trailing, headingsWithTable));
 
         if (!excluded.isEmpty()) {
             out.add(new ExportBlock.Paragraph(
@@ -66,9 +78,9 @@ final class PsdSectionMerger {
         return out;
     }
 
-    private static void mergeOneGroup(GroupBlocks entry, Map<String, Object> slots, List<ExportBlock> trailing) {
+    private static void mergeOneGroup(GroupBlocks entry, Map<String, Object> slots, Set<String> headingsWithTable,
+                                      List<PendingBlock> trailing) {
         List<String> headingPath = new ArrayList<>();
-        boolean directionHeaderEmitted = false;
 
         for (ExportBlock block : entry.blocks()) {
             if (block instanceof ExportBlock.KeyValueList kv && kv.boxed()) {
@@ -76,19 +88,52 @@ final class PsdSectionMerger {
             }
             if (block instanceof ExportBlock.Heading heading) {
                 setHeadingPath(headingPath, heading);
-                slots.putIfAbsent("H:" + String.join(" > ", headingPath), heading);
+                slots.putIfAbsent(headingKey(headingPath), heading);
             } else if (block instanceof ExportBlock.Table table) {
                 String key = "T:" + String.join(" > ", headingPath) + "|" + String.join("~", table.columnHeaders());
                 MergedTable merged = (MergedTable) slots.computeIfAbsent(key, k -> new MergedTable(table));
                 merged.append(entry.group(), table);
-            } else {
-                if (!directionHeaderEmitted) {
-                    trailing.add(new ExportBlock.Heading(entry.group().getName(), 4));
-                    directionHeaderEmitted = true;
+                for (int depth = 1; depth <= headingPath.size(); depth++) {
+                    headingsWithTable.add(headingKey(headingPath.subList(0, depth)));
                 }
-                trailing.add(block);
+            } else {
+                trailing.add(new PendingBlock(entry.group(), List.copyOf(headingPath), block));
             }
         }
+    }
+
+    /**
+     * Blocs non fusionnables, direction par direction sous le nom de chacune. Les intertitres qui n'ont
+     * coiffe aucun tableau y reprennent leur place, en libelle : sans eux, la vision d'une direction ou
+     * ses strategies de confrontation se liraient sans dire ce qu'elles sont.
+     */
+    private static List<ExportBlock> trailingBlocks(List<PendingBlock> pending, Set<String> headingsWithTable) {
+        List<ExportBlock> out = new ArrayList<>();
+        WorkGroup current = null;
+        List<String> labelled = List.of();
+        for (PendingBlock item : pending) {
+            if (item.group() != current) {
+                out.add(new ExportBlock.Heading(item.group().getName(), 4));
+                current = item.group();
+                labelled = List.of();
+            }
+            List<String> path = item.headingPath();
+            for (int depth = 1; depth <= path.size(); depth++) {
+                String text = path.get(depth - 1);
+                boolean alreadyLabelled = labelled.size() >= depth && labelled.subList(0, depth).equals(path.subList(0, depth));
+                if (text.isEmpty() || alreadyLabelled || headingsWithTable.contains(headingKey(path.subList(0, depth)))) {
+                    continue;
+                }
+                out.add(new ExportBlock.Paragraph(text, false, true));
+            }
+            labelled = path;
+            out.add(item.block());
+        }
+        return out;
+    }
+
+    private static String headingKey(List<String> headingPath) {
+        return "H:" + String.join(" > ", headingPath);
     }
 
     /**

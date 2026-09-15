@@ -146,4 +146,43 @@ class PsdSectionMergerTest {
         assertThat(titres).containsExactly("Commerciale", "Technique");
         assertThat(merged).filteredOn(ExportBlock.BulletList.class::isInstance).hasSize(2);
     }
+
+    @Test
+    @DisplayName("Un intertitre qui ne coiffe aucun tableau ne reste pas seul en tete : il suit chaque direction")
+    void reprendSousChaqueDirectionLesIntertitresSansTableau() {
+        List<ExportBlock> blocs = List.of(
+                new ExportBlock.Heading("SWOT (rappel)", 3),
+                new ExportBlock.BulletList("Forces", List.of("Réseau national")),
+                new ExportBlock.Heading("Stratégies de confrontation", 3),
+                new ExportBlock.KeyValueList(null,
+                        List.of(new ExportBlock.KeyValue("Forces à maximiser", "Capter le e-commerce")), false));
+
+        List<ExportBlock> merged = PsdSectionMerger.merge(List.of(
+                included(group(1, "Commerciale"), blocs),
+                included(group(2, "Technique"), blocs)));
+
+        assertThat(merged).filteredOn(ExportBlock.Heading.class::isInstance)
+                .extracting(bloc -> ((ExportBlock.Heading) bloc).text())
+                .as("plus de « SWOT (rappel) » vide en tete de rubrique")
+                .containsExactly("Commerciale", "Technique");
+        assertThat(merged).filteredOn(ExportBlock.Paragraph.class::isInstance)
+                .extracting(bloc -> ((ExportBlock.Paragraph) bloc).text())
+                .as("chaque direction garde les libelles de ce qu'elle presente")
+                .containsExactly("SWOT (rappel)", "Stratégies de confrontation", "SWOT (rappel)", "Stratégies de confrontation");
+    }
+
+    @Test
+    @DisplayName("Un intertitre qui coiffe un tableau fusionne reste en tete, une seule fois")
+    void garderEnTeteLIntertitreDUnTableau() {
+        List<ExportBlock> blocs = List.of(new ExportBlock.Heading("Axe 1", 3), table(List.of("Extrant"), "E1"));
+
+        List<ExportBlock> merged = PsdSectionMerger.merge(List.of(
+                included(group(1, "Commerciale"), blocs),
+                included(group(2, "Technique"), blocs)));
+
+        assertThat(merged.get(0)).isInstanceOfSatisfying(ExportBlock.Heading.class,
+                heading -> assertThat(heading.text()).isEqualTo("Axe 1"));
+        assertThat(merged).filteredOn(ExportBlock.Heading.class::isInstance).hasSize(1);
+        assertThat(merged).noneMatch(ExportBlock.Paragraph.class::isInstance);
+    }
 }

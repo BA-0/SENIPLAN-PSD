@@ -16,7 +16,7 @@ import java.util.function.BiFunction;
  * l'appelant qui decide du perimetre (sections validees seulement, ou toutes les soumissions),
  * et le calcul reste testable sans base de donnees.</p>
  */
-record PsdKeyFigures(int directions, int sectionsCovered, int axes, int specificObjectives,
+record PsdKeyFigures(int directions, int contributingDirections, int sectionsCovered, int axes, int specificObjectives,
                      int actions, double budget, double financing,
                      int staffFirstYear, int staffLastYear) {
 
@@ -38,7 +38,13 @@ record PsdKeyFigures(int directions, int sectionsCovered, int axes, int specific
         String firstYear = SectionLabels.YEARS[0];
         String lastYear = SectionLabels.YEARS[SectionLabels.YEARS.length - 1];
 
+        int contributing = 0;
         for (WorkGroup group : groups) {
+            if (SECTION_CODES.stream().map(code -> contentLookup.apply(group, code))
+                    .anyMatch(content -> content != null && content.size() > 0)) {
+                contributing++;
+            }
+
             JsonNode strategicAxes = contentLookup.apply(group, "S08");
             for (JsonNode axis : JsonUtil.arr(strategicAxes, "axes")) {
                 if (!JsonUtil.text(axis, "title").isBlank()) {
@@ -64,8 +70,26 @@ record PsdKeyFigures(int directions, int sectionsCovered, int axes, int specific
             }
         }
 
-        return new PsdKeyFigures(groups.size(), sectionsCovered, axes, specificObjectives,
+        return new PsdKeyFigures(groups.size(), contributing, sectionsCovered, axes, specificObjectives,
                 actions, budget, financing, staffFirstYear, staffLastYear);
+    }
+
+    /** Sections du canevas : une direction contribue au plan des que l'une d'elles entre dans le perimetre retenu. */
+    private static final List<String> SECTION_CODES = List.of("S01", "S01B", "S02", "S03", "S03B", "S04", "S05", "S06",
+            "S06B", "S07", "S07B", "S08", "S09", "S09B", "S10", "S11", "S12", "S13", "S14", "S14B", "S15", "S17");
+
+    /**
+     * Vrai quand toutes les directions ont contribue, ou qu'aucune ne l'a encore fait (la note le signale alors a part).
+     * Les directions creees en cours de campagne n'ont encore rien fait approuver : « 12 directions contributrices »
+     * annoncait des contributions que le document ne contient pas.
+     */
+    boolean allContribute() {
+        return contributingDirections == 0 || contributingDirections >= directions;
+    }
+
+    /** « 12 », ou « 5 sur 12 » tant que toutes les directions n'ont pas de section retenue. */
+    String contributorsLabel() {
+        return allContribute() ? String.valueOf(directions) : contributingDirections + " sur " + directions;
     }
 
     /**

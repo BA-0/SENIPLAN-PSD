@@ -105,10 +105,10 @@ final class SectionLabels {
             "AGENTS_MAITRISE", "Agents de maîtrise",
             "EMPLOYE", "Employé",
             "JOURNALIER", "Journalier",
-            "FONCTIONNAIRE", "Fonctionnaire",
             "CDI", "CDI",
+            "EXPATRIE", "Expatrié",
             "CDD", "CDD",
-            "EXPATRIE", "Expatrié"
+            "STAGIAIRE", "Stagiaire"
     );
 
     static final String[] YEARS = toStrings(DefaultSectionContentFactory.YEARS);

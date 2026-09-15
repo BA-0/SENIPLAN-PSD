@@ -59,6 +59,8 @@ class PsdKeyFiguresTest {
                 (group, code) -> json((group == a ? pourA : pourB).getOrDefault(code, "{}")), 42);
 
         assertThat(figures.directions()).isEqualTo(2);
+        assertThat(figures.contributingDirections()).isEqualTo(2);
+        assertThat(figures.contributorsLabel()).isEqualTo("2");
         assertThat(figures.sectionsCovered()).isEqualTo(42);
         assertThat(figures.axes()).isEqualTo(2);
         assertThat(figures.specificObjectives()).isEqualTo(3);
@@ -67,6 +69,19 @@ class PsdKeyFiguresTest {
         assertThat(figures.financing()).isEqualTo(1000);
         assertThat(figures.staffFirstYear()).isEqualTo(15);
         assertThat(figures.staffLastYear()).isEqualTo(28);
+    }
+
+    @Test
+    @DisplayName("Une direction créée en cours de campagne, sans section retenue, n'est pas comptée comme contributrice")
+    void neCompteQueLesDirectionsContributrices() {
+        WorkGroup ancienne = group(1);
+        PsdKeyFigures figures = PsdKeyFigures.compute(List.of(ancienne, group(2)),
+                (g, code) -> json(g == ancienne && "S04".equals(code) ? "{\"strengths\":[\"Réseau\"]}" : "{}"), 1);
+
+        assertThat(figures.directions()).isEqualTo(2);
+        assertThat(figures.contributingDirections()).isEqualTo(1);
+        assertThat(figures.allContribute()).isFalse();
+        assertThat(figures.contributorsLabel()).isEqualTo("1 sur 2");
     }
 
     @Test

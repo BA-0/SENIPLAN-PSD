@@ -16,7 +16,11 @@ public enum NarrativeBlockKey {
     PREAMBULE("Préambule"),
     INTRODUCTION("Introduction"),
     APPROCHE_METHODOLOGIQUE("Approche méthodologique"),
+    /** Revue client du 15/09/2026 : l'historique ouvre la presentation de SENICO, avant ses missions. */
+    HISTORIQUE("Historique"),
     MISSIONS("Rappel des missions"),
+    /** Revue client du 15/09/2026 : la gouvernance precede l'organisation. */
+    GOUVERNANCE("Gouvernance"),
     ORGANISATION("Organisation"),
     RESSOURCES("Ressources"),
     /** SENICO n'a pas encore eu de plan strategique : le bilan porte sur les performances passees. */

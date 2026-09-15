@@ -107,7 +107,11 @@ class SynthesisNoteIT {
         // la note deroule quoi que ce soit. Une reprise direction par direction, elle, la
         // nommerait dans toutes les parties. Compter les occurrences confondait les deux, et ne
         // passait que parce que les listes etaient alors tronquees a huit elements.
-        int seuil = parties.size() / 2;
+        // Depuis la troisieme revue client, la note reprend aussi les syntheses propres a chaque
+        // direction (ressources, inventaire, cadre logique), chacune dans un tableau a colonne
+        // « Direction » : une direction s'y nomme donc legitimement dans quelques parties de plus.
+        // Une reprise direction par direction, elle, la nommerait toujours dans presque toutes.
+        int seuil = parties.size() * 2 / 3;
         for (String direction : directions) {
             long partiesCitantes = parties.stream().filter(partie -> partie.contains(direction)).count();
             assertThat(partiesCitantes)
@@ -136,22 +140,21 @@ class SynthesisNoteIT {
         return parties;
     }
 
+    /**
+     * Troisieme revue client : « les parties les plus importantes du PSD ne sont pas dedans ». La note
+     * n'a plus a etre courte — elle doit reprendre, axe par axe, le cadre logique, la planification,
+     * le budget et le cadre de mesure de rendement. Le Plan Strategique complet presentant desormais
+     * les memes tableaux, comparer la longueur des deux documents n'avait plus de sens.
+     */
     @Test
-    @DisplayName("La note reste plus courte que le document complet : c'est une synthese")
-    void resteCourte() throws Exception {
-        String contenu = note();
-        byte[] complet = wordExportService.exportPsdFinalDocument();
-        String texteComplet;
-        try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(complet));
-             XWPFWordExtractor extractor = new XWPFWordExtractor(document)) {
-            texteComplet = extractor.getText();
-        }
-        // La note suit desormais tout le plan d'un PSD publie : un seuil fixe de caracteres
-        // n'a plus de sens. Ce qui doit rester vrai, c'est qu'elle ne reprend pas le detail
-        // des tableaux par direction du Plan Strategique de SENICO.
-        assertThat(contenu.length())
-                .as("la note ne doit pas rejoindre le volume du document complet")
-                .isLessThan((int) (texteComplet.length() * 0.75));
+    @DisplayName("La note reprend les parties les plus importantes : cadre logique, planification, budget, rendement")
+    void reprendLesPartiesLesPlusImportantes() throws Exception {
+        assertThat(note()).contains(
+                "X.1 Cadre logique", "Indicateurs objectivement vérifiables (IOV)",
+                "X.2 Opérationnalisation : plan d'actions", "Activités pour atteindre les résultats",
+                "X.3 Budget du plan", "Budget détaillé — ",
+                "XI.2 Cadre de mesure de rendement", "Résultat / extrant",
+                "Tableau 5 : Cadre logique", "Tableau 6 : Planification", "Tableau 7 : Cadre de mesure de rendement");
     }
 
     @Test

@@ -365,7 +365,9 @@ public class DerivedFieldsService {
         return content;
     }
 
-    // ---- S01B : taux de realisation 2026 = realise / cible, en pourcentage ----
+    // ---- S01B : taux d'atteinte 2026, en pourcentage ----
+    // realise / cible pour un indicateur a faire monter ; cible / realise pour un delai, un nombre
+    // d'incidents, un ecart ou un cout : 17 incidents pour une cible de 10 s'affichaient « 170 % ».
     private ObjectNode applyPerformanceReviewRates(ObjectNode content) {
         JsonNode rows = content.get("rows");
         if (rows == null || !rows.isArray()) {
@@ -377,15 +379,33 @@ public class DerivedFieldsService {
             }
             double target = row.path("target2026").asDouble(0);
             double achieved = row.path("achieved2026").asDouble(0);
-            // Cible a zero : le taux n'a pas de sens, on laisse la case vide plutot
-            // que d'afficher 0 % (qui se lirait comme un echec) ou une division infinie.
-            if (target == 0) {
+            boolean lowerIsBetter = lowerIsBetter(row);
+            // Cible a zero (ou, pour un indicateur a faire baisser, realise a zero) : le taux n'a pas de
+            // sens, on laisse la case vide plutot que d'afficher 0 % ou une division infinie.
+            if (target == 0 || (lowerIsBetter && achieved == 0)) {
                 row.putNull("rate");
             } else {
-                row.put("rate", Math.round(achieved / target * 1000d) / 10d);
+                double ratio = lowerIsBetter ? target / achieved : achieved / target;
+                row.put("rate", Math.round(ratio * 1000d) / 10d);
             }
         }
         return content;
+    }
+
+    /** Intitules d'indicateurs dont la valeur doit baisser, sans accents ni majuscules. */
+    private static final List<String> DECREASING_INDICATORS = List.of("delai", "duree", "nombre d'incident", "ecart", "cout");
+
+    /**
+     * Sens de l'indicateur : celui que la ligne precise ({@code lowerIsBetter}), a defaut celui de son
+     * intitule. « Taux de satisfaction sur les delais » commence par « Taux » et se lit a la hausse.
+     */
+    private static boolean lowerIsBetter(JsonNode row) {
+        if (row.path("lowerIsBetter").isBoolean()) {
+            return row.path("lowerIsBetter").asBoolean();
+        }
+        String label = java.text.Normalizer.normalize(row.path("indicator").asText(""), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").replace('’', '\'').trim().toLowerCase(java.util.Locale.ROOT);
+        return DECREASING_INDICATORS.stream().anyMatch(label::startsWith);
     }
 
     // ---- S02 : lignes fixes de la matrice, dans l'ordre du modele client ----
@@ -485,9 +505,11 @@ public class DerivedFieldsService {
 
     // ---- S14B : lignes fixes du modele client, rajoutees a leur place ----
     /**
-     * Un plan saisi avant l'ajout d'une ligne au modele (« Fonctionnaire ») n'en a pas la ligne :
-     * elle est rajoutee, a zero, dans son bloc. Les lignes libres d'une direction restent en fin
-     * de leur bloc ; une ligne de bloc inconnu reste en fin de tableau.
+     * Un plan saisi avant l'ajout d'une ligne au modele (« Stagiaire ») n'en a pas la ligne : elle est
+     * rajoutee, a zero, dans son bloc. « Journalier » figure dans les deux blocs : une ligne fixe se
+     * reconnait a son bloc autant qu'a sa cle. Une ligne retiree du modele (« Fonctionnaire ») disparait.
+     * Les lignes libres d'une direction restent en fin de leur bloc ; une ligne de bloc inconnu reste en
+     * fin de tableau.
      */
     private ObjectNode normalizeStaffRows(ObjectNode content) {
         JsonNode stored = content.get("rows");
@@ -495,7 +517,11 @@ public class DerivedFieldsService {
             return content;
         }
         List<JsonNode> remaining = new ArrayList<>();
-        stored.forEach(remaining::add);
+        for (JsonNode row : stored) {
+            if (!DefaultSectionContentFactory.RETIRED_STAFF_KEYS.contains(row.path("staffKey").asText(""))) {
+                remaining.add(row);
+            }
+        }
         List<String> categories = new ArrayList<>();
         for (String[] fixed : DefaultSectionContentFactory.STAFF_ROWS) {
             if (!categories.contains(fixed[0])) {
@@ -511,7 +537,9 @@ public class DerivedFieldsService {
                 }
                 JsonNode match = null;
                 for (JsonNode row : remaining) {
-                    if (fixed[1].equals(row.path("staffKey").asText(""))) {
+                    String rowCategory = row.path("category").asText("");
+                    if (fixed[1].equals(row.path("staffKey").asText(""))
+                            && (rowCategory.isEmpty() || rowCategory.equals(category))) {
                         match = row;
                         break;
                     }

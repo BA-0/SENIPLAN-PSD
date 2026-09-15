@@ -9,8 +9,11 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBorder;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcBorders;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTVMerge;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
 import org.springframework.stereotype.Component;
 
@@ -205,31 +208,61 @@ public class WordBlockEmitter {
         doc.createParagraph().setSpacingAfter(80);
     }
 
-    /** Legende d'attribution : son titre, puis chaque direction precedee de sa pastille, a la suite (cf. PDF). */
+    /**
+     * Legende d'attribution en grille de deux colonnes sous un bandeau de titre, chaque direction marquee a gauche
+     * d'un filet de sa couleur (cf. PDF).
+     */
     private void colorLegend(XWPFDocument doc, ExportBlock.ColorLegend legend) {
-        if (legend.entries().isEmpty()) {
+        List<ExportBlock.Attribution> entries = legend.entries();
+        if (entries.isEmpty()) {
             return;
         }
-        XWPFParagraph p = doc.createParagraph();
-        p.setSpacingAfter(160);
-        if (legend.title() != null && !legend.title().isBlank()) {
-            XWPFRun title = p.createRun();
-            title.setText(legend.title() + " :   ");
-            title.setBold(true);
-            title.setFontSize(9);
-            title.setColor(DARK_HEX);
+        boolean titled = legend.title() != null && !legend.title().isBlank();
+        int offset = titled ? 1 : 0;
+        XWPFTable table = doc.createTable(offset + (entries.size() + 1) / 2, 2);
+        table.setWidth("100%");
+        table.setCellMargins(50, 140, 70, 100);
+        table.setTopBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, "FFFFFF");
+        table.setBottomBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, "FFFFFF");
+        table.setLeftBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, "FFFFFF");
+        table.setRightBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, "FFFFFF");
+        table.setInsideHBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, "FFFFFF");
+        table.setInsideVBorder(XWPFTable.XWPFBorderType.NONE, 0, 0, "FFFFFF");
+        if (titled) {
+            XWPFTableRow titleRow = table.getRow(0);
+            setCell(titleRow.getCell(0), legend.title(), true, ParagraphAlignment.LEFT, PRIMARY_DARK_HEX, CALLOUT_BG_HEX, 9);
+            span(titleRow.getCell(0), 2);
+            keepCells(titleRow, 1);
         }
-        for (int i = 0; i < legend.entries().size(); i++) {
-            ExportBlock.Attribution entry = legend.entries().get(i);
-            XWPFRun swatch = p.createRun();
-            swatch.setText("■ ");
-            swatch.setFontSize(11);
-            swatch.setColor(entry.colorHexes().isEmpty() ? SLATE_HEX : cleanHex(entry.colorHexes().get(0)));
-            XWPFRun name = p.createRun();
-            name.setText(entry.text() + (i < legend.entries().size() - 1 ? "     " : ""));
-            name.setFontSize(9);
-            name.setColor(DARK_HEX);
+        for (int i = 0; i < entries.size(); i++) {
+            ExportBlock.Attribution entry = entries.get(i);
+            XWPFTableCell cell = table.getRow(offset + i / 2).getCell(i % 2);
+            cell.setWidth("50%");
+            setCell(cell, entry.text(), false, ParagraphAlignment.LEFT, DARK_HEX, TILE_BG_HEX, 9);
+            legendBorders(cell, entry.colorHexes().isEmpty() ? SLATE_HEX : cleanHex(entry.colorHexes().get(0)));
         }
+        if (entries.size() % 2 == 1) {
+            table.getRow(offset + entries.size() / 2).getCell(1).setWidth("50%");
+        }
+        doc.createParagraph().setSpacingAfter(80);
+    }
+
+    /** Filet de la couleur de la direction a gauche de sa case, filets blancs ailleurs pour separer les cases. */
+    private void legendBorders(XWPFTableCell cell, String colorHex) {
+        CTTcPr properties = cell.getCTTc().isSetTcPr() ? cell.getCTTc().getTcPr() : cell.getCTTc().addNewTcPr();
+        CTTcBorders borders = properties.isSetTcBorders() ? properties.getTcBorders() : properties.addNewTcBorders();
+        border(borders.addNewLeft(), colorHex, 36);
+        border(borders.addNewTop(), "FFFFFF", 16);
+        border(borders.addNewBottom(), "FFFFFF", 16);
+        border(borders.addNewRight(), "FFFFFF", 24);
+    }
+
+    /** Filet d'une cellule Word ; son epaisseur s'exprime en huitiemes de point. */
+    private static void border(CTBorder border, String colorHex, int eighthsOfPoint) {
+        border.setVal(STBorder.SINGLE);
+        border.setSz(BigInteger.valueOf(eighthsOfPoint));
+        border.setSpace(BigInteger.ZERO);
+        border.setColor(colorHex);
     }
 
     /** Word veut une couleur sans dièse ; une valeur absente ou invalide retombe sur le gris du corps. */
@@ -299,8 +332,8 @@ public class WordBlockEmitter {
         boolean headed = t.showsHeaders();
         int offset = banded ? 1 : 0;
         int firstBodyRow = offset + (headed ? 1 : 0);
-        // Meme regle que le PDF : au-dela de dix colonnes, le tableau se resserre.
-        boolean dense = cols > 10;
+        // Meme regle que le PDF : a partir de huit colonnes, le tableau se resserre.
+        boolean dense = cols > 7;
         int headerFont = dense ? 7 : 8;
         int bodyFont = dense ? 7 : 9;
         XWPFTable table = doc.createTable(firstBodyRow + t.rows().size(), cols);

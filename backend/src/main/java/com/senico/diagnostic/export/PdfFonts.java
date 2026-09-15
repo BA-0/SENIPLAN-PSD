@@ -55,10 +55,20 @@ final class PdfFonts {
      * silencieusement du document.
      */
     static Phrase phrase(String text, Font font) {
-        Phrase phrase = SELECTOR.get().process(text == null ? "" : text, font);
+        Phrase phrase = SELECTOR.get().process(typography(text == null ? "" : text), font);
         phrase.setLeading(font.getSize() * 1.35f);
         return phrase;
     }
+
+    /**
+     * Espaces insecables de la typographie francaise : devant « ; : ! ? % » et le guillemet fermant,
+     * apres le guillemet ouvrant. Sans elles, un point-virgule ou un guillemet commencait seul une ligne.
+     */
+    static String typography(String text) {
+        return SPACE_BEFORE_PUNCTUATION.matcher(text).replaceAll("\u00A0$1").replace("« ", "«\u00A0");
+    }
+
+    private static final java.util.regex.Pattern SPACE_BEFORE_PUNCTUATION = java.util.regex.Pattern.compile(" ([;:!?%»])");
 
     /**
      * Un selecteur par thread, reutilise d'un texte a l'autre. Le constructeur d'OpenPDF relit et

@@ -16,10 +16,9 @@ import java.util.List;
  * (PdfExportService#exportGroupRecap), qui reprend, lui, l'integralite des sections du
  * canevas pour la seule direction concernee.</p>
  *
- * <p>Sections du canevas volontairement absentes de ce document (S06, S07) : l'analyse causale
- * et l'inventaire sont des etapes de travail dont seule la synthese est publiee (S06B, S07B).
- * Elles restent dans le plan sectoriel et le "Document de consolidation"
- * (PdfExportService#exportConsolidated / ExcelExportService).</p>
+ * <p>Chaque section du canevas y figure. L'analyse causale (S06) et l'inventaire (S07) en ont
+ * longtemps ete ecartes comme de simples etapes de travail ; le client veut pourtant retrouver dans
+ * le Plan tous les tableaux de son canevas, et la note de synthese les publiait deja.</p>
  *
  * <p>S02 (ressources et competences), S05 (confrontation SWOT/TOWS) et S14 (matrice des risques)
  * ont ete reintegrees : elles sont saisies par les directions et un PSD de reference les publie
@@ -63,7 +62,10 @@ public final class PsdDocumentStructure {
                 new SynthesisEntry("Synthèse du Plan Stratégique"),
 
                 new MajorHeading("Présentation de la structure"),
+                // Revue client du 15/09/2026 : l'historique precede les missions, la gouvernance l'organisation.
+                new NarrativeEntry("Historique", NarrativeBlockKey.HISTORIQUE),
                 new NarrativeEntry("Rappel des missions", NarrativeBlockKey.MISSIONS),
+                new NarrativeEntry("Gouvernance", NarrativeBlockKey.GOUVERNANCE),
                 new NarrativeEntry("Organisation", NarrativeBlockKey.ORGANISATION),
                 new NarrativeEntry("Ressources", NarrativeBlockKey.RESSOURCES),
                 new NarrativeEntry("Bilan des performances des années précédentes", NarrativeBlockKey.BILAN_PSD_PRECEDENT),
@@ -75,6 +77,10 @@ public final class PsdDocumentStructure {
                 new SectionEntry("Synthèse de l'analyse des ressources", "S03B"),
                 new SectionEntry("Contexte : SWOT / PESTEL", List.of("S04", "S03")),
                 new SectionEntry("Orientations stratégiques croisées (matrice SWOT / TOWS)", "S05"),
+                // Ordre du canevas : l'analyse causale suit la confrontation, et l'inventaire recapitule ce
+                // qui precede (parties prenantes, PESTEL, SWOT, analyse causale).
+                new SectionEntry("Analyse causale", "S06"),
+                new SectionEntry("Inventaire du diagnostic", "S07"),
                 new SectionEntry("Matrice d'analyse des risques", "S14"),
                 new SectionEntry("Synthèse des enjeux et des contraintes", "S06B"),
                 new NarrativeEntry("Défis à relever", NarrativeBlockKey.DEFIS_A_RELEVER),
@@ -93,8 +99,9 @@ public final class PsdDocumentStructure {
                 new MajorHeading("Cadre de mise en œuvre, de suivi et d'évaluation"),
                 new SectionEntry("Cadre logique", "S09"),
                 new SectionEntry("Synthèse du cadre logique", "S09B"),
-                new SectionEntry("Budget", "S11"),
+                // Ordre du canevas client, comme dans la note : l'operationnalisation precede le budget.
                 new SectionEntry("Opérationnalisation", "S10"),
+                new SectionEntry("Budget", "S11"),
                 new NarrativeEntry("Dispositif de pilotage et de suivi-évaluation", NarrativeBlockKey.DISPOSITIF_PILOTAGE),
                 new SectionEntry("Dispositif de suivi évaluation", "S13"),
                 new SectionEntry("Cadre de mesure de rendement", "S12"),

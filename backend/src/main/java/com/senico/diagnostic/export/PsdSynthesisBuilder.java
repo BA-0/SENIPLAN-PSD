@@ -33,20 +33,20 @@ class PsdSynthesisBuilder {
      * @param sectionsByCode  referentiel des sections, indexe par code
      * @param responsesByKey  reponses retenues, indexees "groupId:sectionId"
      * @param approvedCount   nombre de sections approuvees par le DG, tous groupes confondus
-     * @param totalCount      nombre total de sections attendues
+     * @param strategicAxes   axes strategiques de l'entreprise (cf. PsdBriefBuilder#strategicAxisCount)
      */
     List<ExportBlock> build(List<WorkGroup> groups, Map<String, SectionDef> sectionsByCode,
                             Map<String, SectionResponse> responsesByKey,
-                            int approvedCount, int totalCount) {
+                            int approvedCount, int strategicAxes) {
         List<ExportBlock> blocks = new ArrayList<>();
 
         blocks.add(new ExportBlock.Paragraph(
-                "Recap etabli automatiquement a partir des sections reprises dans ce document. "
-                        + "Les chiffres ci-dessous agregent les " + groups.size() + " directions.",
+                "Chiffres consolidés à partir des sections reprises dans ce document, pour l'ensemble des "
+                        + groups.size() + " directions.",
                 true, false));
 
         blocks.add(new ExportBlock.Heading("Chiffres clés", 3));
-        blocks.add(keyFiguresTable(groups, sectionsByCode, responsesByKey, approvedCount, totalCount));
+        blocks.add(keyFiguresTable(groups, sectionsByCode, responsesByKey, approvedCount, strategicAxes));
 
         List<String> challenges = collectChallenges(groups, sectionsByCode, responsesByKey);
         if (!challenges.isEmpty()) {
@@ -64,19 +64,31 @@ class PsdSynthesisBuilder {
 
     private ExportBlock.Table keyFiguresTable(List<WorkGroup> groups, Map<String, SectionDef> sectionsByCode,
                                               Map<String, SectionResponse> responsesByKey,
-                                              int approvedCount, int totalCount) {
+                                              int approvedCount, int strategicAxes) {
         PsdKeyFigures f = PsdKeyFigures.compute(groups,
                 (group, code) -> content(group, code, sectionsByCode, responsesByKey), approvedCount);
 
         List<ExportBlock.TableRow> rows = new ArrayList<>();
-        rows.add(figure("Directions couvertes", String.valueOf(f.directions())));
-        rows.add(figure("Sections approuvées par la DG", approvedCount + " / " + totalCount));
-        rows.add(figure("Axes stratégiques", String.valueOf(f.axes())));
+        rows.add(figure("Directions couvertes", f.contributorsLabel()));
+        // Pas de « sections approuvees par la DG, 110 / 110 » : un compteur de l'application, sans
+        // objet dans un plan remis au Conseil d'Administration.
+        // Les axes de l'entreprise, que le cadre strategique numerote : compter ici ceux des directions
+        // annoncait 20 axes la ou le plan en presente 5.
+        rows.add(figure("Axes stratégiques", String.valueOf(strategicAxes)));
+        if (f.axes() != strategicAxes) {
+            rows.add(figure("Axes d'intervention des directions", String.valueOf(f.axes())));
+        }
         rows.add(figure("Objectifs spécifiques", String.valueOf(f.specificObjectives())));
         rows.add(figure("Actions programmées " + SectionLabels.YEARS[0]
                 + "-" + SectionLabels.YEARS[SectionLabels.YEARS.length - 1], String.valueOf(f.actions())));
         rows.add(figure("Budget global", JsonUtil.formatCurrency(f.budget())));
-        rows.add(figure("Financement mobilisé", JsonUtil.formatCurrency(f.financing())));
+        // « Identifie », pas « mobilise » : le plan de financement prevoit, rien n'est encore obtenu.
+        rows.add(figure("Financement identifié", JsonUtil.formatCurrency(f.financing())));
+        if (f.budget() > 0 && f.financing() < f.budget()) {
+            double gap = f.budget() - f.financing();
+            rows.add(figure("Financement restant à mobiliser", JsonUtil.formatCurrency(gap)
+                    + " (" + JsonUtil.formatPercent(gap / f.budget() * 100) + " du budget)"));
+        }
         rows.add(figure("Évolution des effectifs", f.staffEvolutionLabel()));
         return new ExportBlock.Table(List.of("Indicateur", "Valeur"), rows);
     }

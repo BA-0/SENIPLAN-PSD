@@ -6,7 +6,9 @@ import com.senico.diagnostic.domain.SectionStatus;
 import com.senico.diagnostic.validation.DefaultSectionContentFactory;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +23,7 @@ import java.util.Map;
 public class SectionExportRenderer {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final ZoneId DAKAR = ZoneId.of("Africa/Dakar");
     private static final Map<String, String> STATUS_LABELS = Map.of(
             "NOT_STARTED", "Non commencé",
             "IN_PROGRESS", "En cours",
@@ -260,10 +263,14 @@ public class SectionExportRenderer {
         return blocks;
     }
 
+    /**
+     * Intitule d'un axe de direction. Son code (AXE1 a AXE4) numerote les axes a l'interieur de la
+     * direction : a cote des axes de l'entreprise, numerotes de 1 a 5, il semait la confusion (l'« AXE1 »
+     * de la Direction Logistique releve de l'Axe 2 de l'entreprise). Il ne sert plus que faute d'intitule.
+     */
     private String axisTitle(JsonNode axis) {
-        String code = JsonUtil.text(axis, "axisCode");
-        String title = JsonUtil.text(axis, "axisTitle");
-        return title.isBlank() ? code : code + " — " + title;
+        String title = JsonUtil.text(axis, "axisTitle").trim();
+        return title.isEmpty() ? JsonUtil.text(axis, "axisCode").replaceFirst("^AXE\\s*", "Axe ") : title;
     }
 
     private String effectTitle(JsonNode effect) {
@@ -322,11 +329,14 @@ public class SectionExportRenderer {
 
     // ---- S01B ----
     private List<JsonUtil.Column> performanceReview2026Columns() {
+        // Meme regle que la note de synthese : tant que 2026 n'est pas clos, ses chiffres sont estimes a
+        // date. Et une decimale : un delai de 3,8 jours arrondi a 4 contredisait le taux affiche a cote.
+        String achieved = LocalDate.now(DAKAR).getYear() > 2026 ? "Réalisé 2026" : "Estimation 2026";
         return List.of(
                 new JsonUtil.Column("Domaine / Activité", n -> JsonUtil.text(n, "domain")),
                 new JsonUtil.Column("Indicateur", n -> JsonUtil.text(n, "indicator")),
-                new JsonUtil.Column("Cible 2026", n -> JsonUtil.formatNumber(JsonUtil.num(n, "target2026"))),
-                new JsonUtil.Column("Réalisé 2026", n -> JsonUtil.formatNumber(JsonUtil.num(n, "achieved2026"))),
+                new JsonUtil.Column("Cible 2026", n -> JsonUtil.formatDecimal(JsonUtil.num(n, "target2026"))),
+                new JsonUtil.Column(achieved, n -> JsonUtil.formatDecimal(JsonUtil.num(n, "achieved2026"))),
                 new JsonUtil.Column("Taux", n -> {
                     JsonNode rate = n.get("rate");
                     return rate == null || rate.isNull() ? "—" : JsonUtil.formatRate(rate.asDouble());
@@ -345,17 +355,9 @@ public class SectionExportRenderer {
         blocks.add(new ExportBlock.BulletList("Forces majeures", JsonUtil.strList(content, "majorStrengths")));
         blocks.add(new ExportBlock.BulletList("Faiblesses majeures", JsonUtil.strList(content, "majorWeaknesses")));
         blocks.add(new ExportBlock.BulletList("Défis prioritaires", JsonUtil.strList(content, "priorityChallenges")));
-
-        List<JsonNode> resources = JsonUtil.arr(content, "resources");
-        if (!resources.isEmpty()) {
-            blocks.add(new ExportBlock.Heading("Rappel de la matrice des ressources", 3));
-            blocks.add(RowsTableRenderer.render(resources, List.of(
-                    new JsonUtil.Column("Domaine", n -> SectionLabels.resource(JsonUtil.text(n, "resourceKey"))),
-                    new JsonUtil.Column("Forces", n -> JsonUtil.text(n, "strengths")),
-                    new JsonUtil.Column("Faiblesses", n -> JsonUtil.text(n, "weaknesses")),
-                    new JsonUtil.Column("Défis", n -> JsonUtil.text(n, "challenges"))
-            )));
-        }
+        // Pas de « rappel de la matrice des ressources » : le formulaire l'affiche en lecture seule,
+        // mais chaque document qui publie cette synthese publie deja la matrice (S02) juste avant.
+        // La reprendre ici doublait cinq pages dans le Plan Strategique.
         return blocks;
     }
 
@@ -516,11 +518,12 @@ public class SectionExportRenderer {
     // ---- S13 ----
     private List<ExportBlock> renderIndicatorSheet(JsonNode content) {
         List<JsonUtil.Column> columns = List.of(
-                new JsonUtil.Column("Titre indicateur", n -> JsonUtil.text(n, "indicatorTitle")),
-                new JsonUtil.Column("Méthode de calcul", n -> JsonUtil.text(n, "calculationMethod")),
+                // Intitules de colonnes du canevas client (fiche d'indicateurs).
+                new JsonUtil.Column("Intitulé de l'indicateur", n -> JsonUtil.text(n, "indicatorTitle")),
+                new JsonUtil.Column("Mode de calcul", n -> JsonUtil.text(n, "calculationMethod")),
                 new JsonUtil.Column("Périodicité", n -> JsonUtil.text(n, "periodicity")),
-                new JsonUtil.Column("Source de collecte", n -> JsonUtil.text(n, "collectionSource")),
-                new JsonUtil.Column("Source de vérification", n -> JsonUtil.text(n, "verificationSource")),
+                new JsonUtil.Column("Sources et moyens de collecte", n -> JsonUtil.text(n, "collectionSource")),
+                new JsonUtil.Column("Sources de vérification", n -> JsonUtil.text(n, "verificationSource")),
                 new JsonUtil.Column("Structure responsable", n -> JsonUtil.text(n, "responsibleStructure"))
         );
         return List.of(RowsTableRenderer.render(JsonUtil.arr(content, "rows"), columns));
@@ -539,7 +542,10 @@ public class SectionExportRenderer {
                         n -> SectionLabels.criticalityBackground(JsonUtil.text(n, "criticalityLabel"))),
                 new JsonUtil.Column("Actions d'atténuation", n -> JsonUtil.text(n, "mitigationActions"))
         );
-        return List.of(RowsTableRenderer.render(JsonUtil.arr(content, "rows"), columns));
+        // Largeurs a la mesure des contenus : a parts egales, la coche et les cotes a un chiffre prenaient
+        // autant de place que le detail du risque, ou « d'approvisionnement » se coupait en deux.
+        ExportBlock.Table table = RowsTableRenderer.render(JsonUtil.arr(content, "rows"), columns);
+        return List.of(new ExportBlock.Table(table.columnHeaders(), table.rows(), List.of(15, 9, 20, 8, 15, 10, 11, 22)));
     }
 
     // ---- S15 ----
@@ -554,7 +560,9 @@ public class SectionExportRenderer {
         );
         ExportBlock.TableRow totals = RowsTableRenderer.totalsRow(List.of(
                 "Total", JsonUtil.formatCurrency(JsonUtil.num(content, "total")), "100 %", "", "", ""));
-        return List.of(RowsTableRenderer.render(JsonUtil.arr(content, "rows"), columns, List.of(totals)));
+        // « Autofinancement » se coupait dans des colonnes a parts egales : les modalites prennent la place du %.
+        ExportBlock.Table table = RowsTableRenderer.render(JsonUtil.arr(content, "rows"), columns, List.of(totals));
+        return List.of(new ExportBlock.Table(table.columnHeaders(), table.rows(), List.of(14, 15, 7, 21, 12, 17)));
     }
 
     // ---- S17 ----

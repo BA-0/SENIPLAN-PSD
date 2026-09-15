@@ -128,40 +128,57 @@ public class PdfExportService {
         }
     }
 
+    /**
+     * Plan Strategique de SENICO. Genere en deux passes, comme la note de synthese : la premiere releve
+     * la page ou commence chaque rubrique, la seconde produit le meme document, sommaire numerote. Le
+     * sommaire garde le meme nombre de lignes d'une passe a l'autre : les numeros ne bougent pas.
+     */
     public byte[] exportPsdFinalDocument() {
+        List<WorkGroup> groups = workGroupRepository.findAll();
+        List<Entry> entries = PsdDocumentStructure.entries();
+
+        Map<String, SectionResponse> responsesByKey = sectionResponseRepository.findAll().stream()
+                .collect(Collectors.toMap(r -> key(r.getGroup().getId(), r.getSection().getId()), r -> r));
+        Map<String, GroupSectionStatus> statusesByKey = groupSectionStatusRepository.findAllWithGroupAndSection().stream()
+                .collect(Collectors.toMap(s -> key(s.getGroup().getId(), s.getSection().getId()), s -> s));
+        Map<NarrativeBlockKey, PsdNarrativeBlock> narrativeByKey = psdNarrativeBlockRepository.findAll().stream()
+                .collect(Collectors.toMap(PsdNarrativeBlock::getKey, b -> b));
+        Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
+                .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
+
+        // La consolidation ne reprend que ce que le DG a approuve (cf. PsdApprovedContent).
+        Map<String, SectionResponse> approved = PsdApprovedContent.approvedOnly(responsesByKey, statusesByKey);
+
+        Map<String, Integer> pages = renderPsdFinalDocument(groups, entries, sectionsByCode, approved, statusesByKey,
+                narrativeByKey, Map.of()).pages();
+        return renderPsdFinalDocument(groups, entries, sectionsByCode, approved, statusesByKey, narrativeByKey, pages).pdf();
+    }
+
+    private RenderedNote renderPsdFinalDocument(List<WorkGroup> groups, List<Entry> entries,
+                                                Map<String, SectionDef> sectionsByCode,
+                                                Map<String, SectionResponse> responsesByKey,
+                                                Map<String, GroupSectionStatus> statusesByKey,
+                                                Map<NarrativeBlockKey, PsdNarrativeBlock> narrativeByKey,
+                                                Map<String, Integer> pages) {
         try {
             Document document = new Document(PageSize.A4, 40, 40, 60, 50);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             PdfWriter writer = PdfWriter.getInstance(document, baos);
-            writer.setPageEvent(new DocumentFooter("Plan Stratégique de SENICO 2027-2031"));
+            DocumentFooter footer = new DocumentFooter("Plan Stratégique de SENICO 2027-2031");
+            writer.setPageEvent(footer);
             document.open();
-
-            List<WorkGroup> groups = workGroupRepository.findAll();
-            List<Entry> entries = PsdDocumentStructure.entries();
-
-            Map<String, SectionResponse> responsesByKey = sectionResponseRepository.findAll().stream()
-                    .collect(Collectors.toMap(r -> key(r.getGroup().getId(), r.getSection().getId()), r -> r));
-            Map<String, GroupSectionStatus> statusesByKey = groupSectionStatusRepository.findAllWithGroupAndSection().stream()
-                    .collect(Collectors.toMap(s -> key(s.getGroup().getId(), s.getSection().getId()), s -> s));
-            Map<NarrativeBlockKey, PsdNarrativeBlock> narrativeByKey = psdNarrativeBlockRepository.findAll().stream()
-                    .collect(Collectors.toMap(PsdNarrativeBlock::getKey, b -> b));
-
-            // La consolidation ne reprend que ce que le DG a approuve (cf. PsdApprovedContent).
-            responsesByKey = PsdApprovedContent.approvedOnly(responsesByKey, statusesByKey);
 
             addPsdFinalCoverPage(document);
             document.newPage();
-            addPsdFinalSommairePage(document, entries, groups);
+            addPsdFinalSommairePage(document, entries, groups, pages);
 
-            Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
-                    .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
             for (Entry entry : entries) {
                 document.newPage();
                 if (entry instanceof MajorHeading heading) {
                     addPsdMajorHeadingPage(document, heading);
                 } else if (entry instanceof NarrativeEntry narrative && narrative.key() == NarrativeBlockKey.AXES_CONSOLIDES) {
                     // Contenu structure (JSON) : il se lit en axes, rattachements et budget, pas en texte.
-                    Paragraph header = new Paragraph(PdfFonts.phrase(narrative.label(), PdfFonts.font(16, Font.BOLD, PRIMARY)));
+                    Paragraph header = tocTitle(narrative.label(), PdfFonts.font(16, Font.BOLD, PRIMARY));
                     header.setSpacingAfter(4);
                     document.add(header);
                     LineSeparator separator = new LineSeparator();
@@ -171,16 +188,16 @@ public class PdfExportService {
                     pdfBlockEmitter.emit(document, writer, psdBriefBuilder.strategicAxes(groups, sectionsByCode,
                             responsesByKey, statusesByKey, narratives()));
                 } else if (entry instanceof NarrativeEntry narrative) {
-                    addPsdNarrativePage(document, narrative, narrativeByKey.get(narrative.key()));
+                    addPsdNarrativePage(document, writer, narrative, narrativeByKey.get(narrative.key()));
                 } else if (entry instanceof SynthesisEntry synthesis) {
-                    addPsdSynthesisPage(document, synthesis, groups, responsesByKey, statusesByKey);
+                    addPsdSynthesisPage(document, writer, synthesis, groups, responsesByKey, statusesByKey);
                 } else if (entry instanceof SectionEntry sectionEntry) {
-                    addPsdSectionEntryPage(document, sectionEntry, groups, responsesByKey, statusesByKey);
+                    addPsdSectionEntryPage(document, writer, sectionEntry, groups, sectionsByCode, responsesByKey, statusesByKey);
                 }
             }
 
             document.close();
-            return baos.toByteArray();
+            return new RenderedNote(baos.toByteArray(), footer.tagPages());
         } catch (DocumentException e) {
             throw new IllegalStateException("Erreur de generation du document final PSD", e);
         }
@@ -323,10 +340,8 @@ public class PdfExportService {
         place.setSpacingBefore(60);
         document.add(place);
 
-        Paragraph meta = new Paragraph(
-                "Export généré le " + java.time.LocalDateTime.now().format(DATE_FORMAT)
-                        + " — document interne, confidentiel",
-                PdfFonts.font(9, Font.ITALIC, SLATE));
+        // Sans l'heure de l'export : « Export genere le 14/09/2026 10:21 » signait un document sorti d'un logiciel.
+        Paragraph meta = new Paragraph("Document interne, confidentiel", PdfFonts.font(9, Font.ITALIC, SLATE));
         meta.setAlignment(Element.ALIGN_CENTER);
         meta.setSpacingBefore(8);
         document.add(meta);
@@ -355,7 +370,7 @@ public class PdfExportService {
         Color ink = new Color(0x1F, 0x29, 0x37);
         for (ExportBlock.Heading heading : toc) {
             boolean part = heading.level() == 1;
-            Font font = part ? PdfFonts.font(10.5f, Font.BOLD, ink) : PdfFonts.font(9.5f, Font.NORMAL, ink);
+            Font font = part ? PdfFonts.font(10, Font.BOLD, ink) : PdfFonts.font(9, Font.NORMAL, ink);
             Paragraph line = new Paragraph();
             line.add(PdfFonts.phrase(heading.text(), font));
             com.lowagie.text.pdf.draw.DottedLineSeparator leader = new com.lowagie.text.pdf.draw.DottedLineSeparator();
@@ -369,8 +384,8 @@ public class PdfExportService {
             line.setIndentationLeft(part ? 0 : 18);
             // Serre juste assez pour que le sommaire tienne sur une page : sa derniere ligne
             // debordait seule sur une page blanche.
-            line.setSpacingBefore(part ? 3f : 0.5f);
-            line.setLeading(part ? 13f : 11f);
+            line.setSpacingBefore(part ? 2.5f : 0f);
+            line.setLeading(part ? 12.5f : 10.5f);
             document.add(line);
         }
     }
@@ -404,15 +419,16 @@ public class PdfExportService {
         docTitle.setSpacingBefore(40);
         document.add(docTitle);
 
-        Paragraph meta = new Paragraph(
-                "Export généré le " + java.time.LocalDateTime.now().format(DATE_FORMAT),
-                metaFont);
-        meta.setAlignment(Element.ALIGN_CENTER);
-        meta.setSpacingBefore(10);
-        document.add(meta);
+        // Un lieu et une date, comme la note de synthese : « Export genere le … 09:52 » trahissait un
+        // document sorti d'un logiciel, pas un plan remis au Conseil d'Administration.
+        Paragraph place = new Paragraph("Dakar, le " + java.time.LocalDate.now().format(LONG_DATE), metaFont);
+        place.setAlignment(Element.ALIGN_CENTER);
+        place.setSpacingBefore(10);
+        document.add(place);
     }
 
-    private void addPsdFinalSommairePage(Document document, List<Entry> entries, List<WorkGroup> groups) throws DocumentException {
+    private void addPsdFinalSommairePage(Document document, List<Entry> entries, List<WorkGroup> groups,
+                                         Map<String, Integer> pages) throws DocumentException {
         Font headerFont = PdfFonts.font(16, Font.BOLD, PRIMARY);
         Paragraph header = new Paragraph("Sommaire", headerFont);
         header.setSpacingAfter(4);
@@ -433,29 +449,35 @@ public class PdfExportService {
             // compilera desormais plus tant que le sommaire ne le traite pas.
             Paragraph p = switch (entry) {
                 case MajorHeading heading -> {
-                    Paragraph major = new Paragraph(heading.title(), majorFont);
+                    Paragraph major = sommaireLine(heading.title(), heading.title(), majorFont, pages);
                     major.setSpacingBefore(8);
                     yield major;
                 }
-                case NarrativeEntry narrative -> sommaireItem(narrative.label(), itemFont);
-                case SynthesisEntry synthesis -> sommaireItem(synthesis.label(), itemFont);
-                case SectionEntry sectionEntry -> sommaireItem(sectionEntry.label(), itemFont);
+                case NarrativeEntry narrative -> sommaireItem(narrative.label(), itemFont, pages);
+                case SynthesisEntry synthesis -> sommaireItem(synthesis.label(), itemFont, pages);
+                case SectionEntry sectionEntry -> sommaireItem(sectionEntry.label(), itemFont, pages);
             };
             document.add(p);
         }
 
-        Paragraph legendTitle = new Paragraph("Légende des directions", PdfFonts.font(13, Font.BOLD, PRIMARY));
-        legendTitle.setSpacingBefore(20);
-        legendTitle.setSpacingAfter(6);
-        document.add(legendTitle);
-
+        // Le titre est la premiere ligne du tableau, pose d'un seul tenant : quand le sommaire remplit
+        // sa page, la legende passe entiere a la suivante au lieu d'y laisser son titre seul.
         PdfPTable legend = new PdfPTable(2);
         legend.setWidthPercentage(100);
         legend.setWidths(new float[]{30, 70});
+        legend.setSpacingBefore(14);
+        legend.setKeepTogether(true);
+        PdfPCell legendTitle = new PdfPCell(new Paragraph("Légende des directions", PdfFonts.font(13, Font.BOLD, PRIMARY)));
+        legendTitle.setColspan(2);
+        legendTitle.setBorder(Rectangle.NO_BORDER);
+        legendTitle.setPaddingLeft(0);
+        legendTitle.setPaddingBottom(8);
+        legend.addCell(legendTitle);
         addTableHeaderRow(legend, "Couleur", "Direction");
         for (WorkGroup group : groups) {
             PdfPCell colorCell = new PdfPCell(new Paragraph(" "));
-            colorCell.setBackgroundColor(hexToColor(group.getColor()));
+            // Meme couleur que dans les tableaux : une direction sans couleur choisie recoit celle de repli.
+            colorCell.setBackgroundColor(hexToColor(PsdBriefBuilder.colorOf(group, groups)));
             colorCell.setFixedHeight(20);
             colorCell.setBorderColor(BORDER);
             legend.addCell(colorCell);
@@ -465,16 +487,48 @@ public class PdfExportService {
     }
 
     /** Ligne de sommaire : meme forme pour toutes les entrees hors intertitres. */
-    private Paragraph sommaireItem(String label, Font itemFont) {
-        Paragraph item = new Paragraph("• " + label, itemFont);
+    private Paragraph sommaireItem(String label, Font itemFont, Map<String, Integer> pages) {
+        Paragraph item = sommaireLine("• " + label, label, itemFont, pages);
         item.setIndentationLeft(15);
         return item;
     }
 
-    private void addPsdSynthesisPage(Document document, SynthesisEntry synthesis, List<WorkGroup> groups,
+    /**
+     * Intitule, points de conduite et page ou commence la rubrique (cf. tocTitle), releves a la premiere
+     * passe : le numero reste vide tant que la pagination n'est pas connue.
+     */
+    private Paragraph sommaireLine(String text, String label, Font font, Map<String, Integer> pages) {
+        Paragraph line = new Paragraph(new Phrase(text, font));
+        // Interligne resserre : le sommaire tient sur sa page, sans renvoyer sa derniere ligne seule a la suivante.
+        line.setLeading(font.getSize() * 1.35f);
+        com.lowagie.text.pdf.draw.DottedLineSeparator leader = new com.lowagie.text.pdf.draw.DottedLineSeparator();
+        leader.setGap(2.5f);
+        leader.setLineWidth(0.8f);
+        leader.setLineColor(BORDER_DARK);
+        leader.setOffset(-2);
+        line.add(new Chunk(leader));
+        Integer page = pages.get(PLAN_TAG + label);
+        // La page de garde n'est pas numerotee : le pied de page compte a partir du sommaire.
+        line.add(new Chunk(page == null ? "" : " " + (page - 1), font));
+        return line;
+    }
+
+    /** Marqueur pose sur le titre de chaque rubrique du Plan, releve a la pagination pour le sommaire. */
+    private static final String PLAN_TAG = "plan:";
+
+    /** Titre de rubrique du Plan, marque pour que le sommaire retrouve sa page. */
+    private static Paragraph tocTitle(String text, Font font) {
+        Phrase phrase = PdfFonts.phrase(text, font);
+        for (Object element : phrase.getChunks()) {
+            ((Chunk) element).setGenericTag(PLAN_TAG + text);
+        }
+        return new Paragraph(phrase);
+    }
+
+    private void addPsdSynthesisPage(Document document, PdfWriter writer, SynthesisEntry synthesis, List<WorkGroup> groups,
                                       Map<String, SectionResponse> responsesByKey,
                                       Map<String, GroupSectionStatus> statusesByKey) throws DocumentException {
-        Paragraph header = new Paragraph(synthesis.label(), PdfFonts.font(16, Font.BOLD, PRIMARY));
+        Paragraph header = tocTitle(synthesis.label(), PdfFonts.font(16, Font.BOLD, PRIMARY));
         header.setSpacingAfter(4);
         document.add(header);
 
@@ -483,7 +537,7 @@ public class PdfExportService {
         document.add(new Chunk(separator));
         document.add(new Paragraph(" "));
 
-        pdfBlockEmitter.emit(document, buildSynthesisBlocks(groups, responsesByKey, statusesByKey));
+        pdfBlockEmitter.emit(document, writer, buildSynthesisBlocks(groups, responsesByKey, statusesByKey));
     }
 
     private List<ExportBlock> buildSynthesisBlocks(List<WorkGroup> groups,
@@ -492,8 +546,8 @@ public class PdfExportService {
         Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
                 .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
         long approved = statusesByKey.values().stream().filter(PsdApprovedContent::isApproved).count();
-        return psdSynthesisBuilder.build(groups, sectionsByCode, responsesByKey,
-                (int) approved, statusesByKey.size());
+        return psdSynthesisBuilder.build(groups, sectionsByCode, responsesByKey, (int) approved,
+                psdBriefBuilder.strategicAxisCount(groups, sectionsByCode, responsesByKey, statusesByKey, narratives()));
     }
 
     private void addPsdMajorHeadingPage(Document document, MajorHeading heading) throws DocumentException {
@@ -501,14 +555,14 @@ public class PdfExportService {
         spacer.setSpacingAfter(150);
         document.add(spacer);
 
-        Paragraph title = new Paragraph(heading.title(), PdfFonts.font(24, Font.BOLD, PRIMARY));
+        Paragraph title = tocTitle(heading.title(), PdfFonts.font(24, Font.BOLD, PRIMARY));
         title.setAlignment(Element.ALIGN_CENTER);
         document.add(title);
     }
 
-    private void addPsdNarrativePage(Document document, NarrativeEntry narrative, PsdNarrativeBlock block) throws DocumentException {
+    private void addPsdNarrativePage(Document document, PdfWriter writer, NarrativeEntry narrative, PsdNarrativeBlock block) throws DocumentException {
         Font headerFont = PdfFonts.font(16, Font.BOLD, PRIMARY);
-        Paragraph header = new Paragraph(narrative.label(), headerFont);
+        Paragraph header = tocTitle(narrative.label(), headerFont);
         header.setSpacingAfter(4);
         document.add(header);
 
@@ -523,18 +577,20 @@ public class PdfExportService {
             return;
         }
         // Puces et intertitres rediges dans la zone de texte (cf. PsdNarrativeText).
-        pdfBlockEmitter.emit(document, PsdNarrativeText.blocks(content));
+        // Avec le writer : un intertitre (« Défis prioritaires ») ne reste pas seul en bas de page.
+        pdfBlockEmitter.emit(document, writer, PsdNarrativeText.blocks(content));
     }
 
     private static final String[] PESTEL_AXES = {
             "POLITIQUE", "ECONOMIQUE", "SOCIAL_CULTUREL", "TECHNOLOGIQUE", "ENVIRONNEMENTAL", "LEGAL"
     };
 
-    private void addPsdSectionEntryPage(Document document, SectionEntry sectionEntry, List<WorkGroup> groups,
+    private void addPsdSectionEntryPage(Document document, PdfWriter writer, SectionEntry sectionEntry, List<WorkGroup> groups,
+                                         Map<String, SectionDef> sectionsByCode,
                                          Map<String, SectionResponse> responsesByKey,
                                          Map<String, GroupSectionStatus> statusesByKey) throws DocumentException {
         Font headerFont = PdfFonts.font(16, Font.BOLD, PRIMARY);
-        Paragraph header = new Paragraph(sectionEntry.label(), headerFont);
+        Paragraph header = tocTitle(sectionEntry.label(), headerFont);
         header.setSpacingAfter(4);
         document.add(header);
 
@@ -547,8 +603,18 @@ public class PdfExportService {
             SectionDef section = sectionDefRepository.findByCode(code)
                     .orElseThrow(() -> new IllegalStateException("Section introuvable : " + code));
 
+            // Rubriques qui se lisent par axe de l'entreprise : memes tableaux que la note de synthese.
+            java.util.Optional<List<ExportBlock>> byAxis = psdBriefBuilder.planSection(code, groups, sectionsByCode,
+                    responsesByKey, statusesByKey, narratives());
+            if (byAxis.isPresent()) {
+                // Avec le writer : un intertitre « Axe 3 » ou un bandeau « EFFET » ne reste pas seul en bas de page.
+                pdfBlockEmitter.emit(document, writer, byAxis.get());
+                continue;
+            }
+
             if (sectionEntry.sectionCodes().size() > 1) {
-                Paragraph subHeader = new Paragraph(section.getCode() + " — " + section.getTitle(),
+                // Le titre seul : le code de la section (S03, S04...) est interne au canevas.
+                Paragraph subHeader = new Paragraph(section.getTitle(),
                         PdfFonts.font(13, Font.BOLD, SLATE));
                 subHeader.setSpacingBefore(10);
                 subHeader.setSpacingAfter(6);
@@ -559,7 +625,7 @@ public class PdfExportService {
                 case "S01" -> addPsdMergedStakeholders(document, section, groups, responsesByKey);
                 case "S04" -> addPsdMergedSwot(document, section, groups, responsesByKey);
                 case "S03" -> addPsdMergedPestel(document, section, groups, responsesByKey);
-                default -> addPsdPerGroupSection(document, section, groups, responsesByKey, statusesByKey);
+                default -> addPsdPerGroupSection(document, writer, section, groups, responsesByKey, statusesByKey);
             }
         }
     }
@@ -569,10 +635,10 @@ public class PdfExportService {
      * colonne "Direction" (cf. {@link PsdSectionMerger}). Remplace la repetition d'un bloc
      * complet par direction, qui obligeait a parcourir cinq fois la meme rubrique.
      */
-    private void addPsdPerGroupSection(Document document, SectionDef section, List<WorkGroup> groups,
+    private void addPsdPerGroupSection(Document document, PdfWriter writer, SectionDef section, List<WorkGroup> groups,
                                         Map<String, SectionResponse> responsesByKey,
                                         Map<String, GroupSectionStatus> statusesByKey) throws DocumentException {
-        pdfBlockEmitter.emit(document, mergedSectionBlocks(section, groups, responsesByKey, statusesByKey));
+        pdfBlockEmitter.emit(document, writer, mergedSectionBlocks(section, groups, responsesByKey, statusesByKey));
     }
 
     private List<ExportBlock> mergedSectionBlocks(SectionDef section, List<WorkGroup> groups,
@@ -611,7 +677,12 @@ public class PdfExportService {
     private void addPsdMergedStakeholders(Document document, SectionDef section, List<WorkGroup> groups,
                                            Map<String, SectionResponse> responsesByKey) throws DocumentException {
         String[] headers = {"Catégorie", "Portée", "Rôles", "Attentes", "Stratégie d'adaptation", "Importance", "Influence", "Actions", "Directions"};
-        float[] widths = {9, 7, 13, 13, 13, 7, 7, 14, 17};
+        // Corps en 7,5 points, comme les autres tableaux de plus de sept colonnes, et largeurs a la mesure
+        // des contenus : en 9 points, « Catégorie », « Externe », « MOYEN » ou « Contractualisation » se
+        // coupaient au milieu du mot, pendant que la colonne des pastilles occupait un sixieme du tableau.
+        // La categorie porte aussi le nom de l'acteur quand la saisie le donne : elle s'elargit sur la place des
+        // cotations (FORT, MOYEN, FAIBLE), sans rogner les colonnes de texte ou « recommandations » se coupait.
+        float[] widths = {13, 7.5f, 13.5f, 13, 14.5f, 9.5f, 8.5f, 14, 9.5f};
 
         Map<String, String[]> rowValuesByKey = new LinkedHashMap<>();
         Map<String, List<WorkGroup>> contributorsByKey = new LinkedHashMap<>();
@@ -620,9 +691,9 @@ public class PdfExportService {
             JsonNode content = contentFor(group, section, responsesByKey);
             for (JsonNode row : JsonUtil.arr(content, "rows")) {
                 String[] values = {
-                        SectionLabels.stakeholderCategory(JsonUtil.text(row, "category")),
+                        PsdBriefBuilder.stakeholderLabel(row),
                         SectionLabels.stakeholderScope(JsonUtil.text(row, "scope")),
-                        JsonUtil.text(row, "roles"),
+                        PsdBriefBuilder.rolesOf(row),
                         JsonUtil.text(row, "expectations"),
                         JsonUtil.text(row, "adaptationStrategy"),
                         JsonUtil.text(row, "importance"),
@@ -651,17 +722,20 @@ public class PdfExportService {
         table.setWidths(widths);
         table.setSpacingBefore(4);
         table.setSpacingAfter(4);
-        addTableHeaderRow(table, headers);
+        table.setHeaderRows(1);
+        for (String header : headers) {
+            table.addCell(compactCell(header, PdfFonts.font(7.5f, Font.BOLD, Color.WHITE), PRIMARY));
+        }
 
         for (Map.Entry<String, String[]> entry : rowValuesByKey.entrySet()) {
             for (String value : entry.getValue()) {
-                table.addCell(bodyCell(value, Element.ALIGN_LEFT, Color.WHITE));
+                table.addCell(compactCell(value, PdfFonts.font(7.5f, Font.NORMAL, Color.DARK_GRAY), Color.WHITE));
             }
             Paragraph dots = new Paragraph();
-            appendContributorDots(dots, contributorsByKey.get(entry.getKey()));
+            appendContributorDots(dots, contributorsByKey.get(entry.getKey()), groups);
             PdfPCell dotsCell = new PdfPCell(dots);
             dotsCell.setBorderColor(BORDER);
-            dotsCell.setPadding(5);
+            dotsCell.setPadding(4);
             table.addCell(dotsCell);
         }
         document.add(table);
@@ -703,7 +777,7 @@ public class PdfExportService {
             } else {
                 for (PsdCrossGroupMerge.MergedItem item : merged) {
                     cellContent.add(new Chunk("•  " + item.text(), PdfFonts.font(9, Font.NORMAL, Color.DARK_GRAY)));
-                    appendContributorDots(cellContent, item.contributors());
+                    appendContributorDots(cellContent, item.contributors(), groups);
                     cellContent.add(Chunk.NEWLINE);
                 }
             }
@@ -757,7 +831,7 @@ public class PdfExportService {
                 } else {
                     for (PsdCrossGroupMerge.MergedItem item : merged) {
                         cellContent.add(new Chunk("•  " + item.text(), PdfFonts.font(9, Font.NORMAL, Color.DARK_GRAY)));
-                        appendContributorDots(cellContent, item.contributors());
+                        appendContributorDots(cellContent, item.contributors(), groups);
                         cellContent.add(Chunk.NEWLINE);
                     }
                 }
@@ -772,17 +846,18 @@ public class PdfExportService {
     }
 
     /** Pastilles dessinees plutot que glyphe « ■ », absent de la police des documents (cf. PdfFonts). */
-    private void appendContributorDots(Paragraph content, List<WorkGroup> contributors) {
+    private void appendContributorDots(Paragraph content, List<WorkGroup> contributors, List<WorkGroup> groups) {
         for (WorkGroup group : contributors) {
             content.add(new Chunk(" ", PdfFonts.font(8, Font.NORMAL, SLATE)));
-            content.add(PdfBlockEmitter.swatch(group.getColor(), 9));
+            content.add(PdfBlockEmitter.swatch(PsdBriefBuilder.colorOf(group, groups), 9));
         }
     }
 
     private void addMergeCaption(Document document) throws DocumentException {
         Paragraph caption = new Paragraph();
         caption.add(PdfBlockEmitter.swatch("#64748B", 8));
-        caption.add(new Chunk(" = direction(s) ayant mentionné cet élément (voir légende des directions au sommaire).",
+        // La legende suit le sommaire, sur sa propre page : « au sommaire » envoyait le lecteur au mauvais endroit.
+        caption.add(new Chunk(" = direction(s) ayant mentionné cet élément (voir la légende des directions en début de document).",
                 PdfFonts.font(8, Font.ITALIC, SLATE)));
         caption.setSpacingAfter(10);
         document.add(caption);
@@ -916,7 +991,8 @@ public class PdfExportService {
         addTableHeaderRow(legend, "Couleur", "Direction");
         for (WorkGroup group : groups) {
             PdfPCell colorCell = new PdfPCell(new Paragraph(" "));
-            colorCell.setBackgroundColor(hexToColor(group.getColor()));
+            // Meme couleur que dans les tableaux : une direction sans couleur choisie recoit celle de repli.
+            colorCell.setBackgroundColor(hexToColor(PsdBriefBuilder.colorOf(group, groups)));
             colorCell.setFixedHeight(20);
             colorCell.setBorderColor(BORDER);
             legend.addCell(colorCell);
@@ -940,7 +1016,7 @@ public class PdfExportService {
         document.add(new Paragraph(" "));
 
         for (WorkGroup group : groups) {
-            document.add(groupBanner(group));
+            document.add(groupBanner(group, groups));
 
             ExportSectionData data = loadPsdExportData(group, section, responsesByKey, statusesByKey);
             List<ExportBlock> blocks = sectionExportRenderer.render(data);
@@ -952,13 +1028,13 @@ public class PdfExportService {
         }
     }
 
-    private PdfPTable groupBanner(WorkGroup group) throws DocumentException {
+    private PdfPTable groupBanner(WorkGroup group, List<WorkGroup> groups) throws DocumentException {
         PdfPTable banner = new PdfPTable(1);
         banner.setWidthPercentage(100);
         banner.setSpacingBefore(6);
         banner.setSpacingAfter(6);
         PdfPCell cell = new PdfPCell(new Paragraph(group.getName(), PdfFonts.font(11, Font.BOLD, Color.WHITE)));
-        cell.setBackgroundColor(hexToColor(group.getColor()));
+        cell.setBackgroundColor(hexToColor(PsdBriefBuilder.colorOf(group, groups)));
         cell.setPadding(6);
         cell.setBorder(Rectangle.NO_BORDER);
         banner.addCell(cell);
@@ -973,6 +1049,15 @@ public class PdfExportService {
             cell.setBorderColor(BORDER);
             table.addCell(cell);
         }
+    }
+
+    /** Cellule serree des tableaux a neuf colonnes, ou chaque point de largeur compte. */
+    private PdfPCell compactCell(String text, Font font, Color bg) {
+        PdfPCell cell = new PdfPCell(new Paragraph(PdfFonts.phrase(text == null ? "" : text, font)));
+        cell.setPadding(4);
+        cell.setBorderColor(bg == PRIMARY ? PRIMARY : BORDER);
+        cell.setBackgroundColor(bg);
+        return cell;
     }
 
     private PdfPCell bodyCell(String text, int align, Color bg) {
@@ -1053,9 +1138,8 @@ public class PdfExportService {
         groupName.setSpacingBefore(8);
         document.add(groupName);
 
-        Paragraph meta = new Paragraph(
-                "Export généré le " + java.time.LocalDateTime.now().format(DATE_FORMAT),
-                metaFont);
+        // Un lieu et une date, comme le Plan Strategique de SENICO, plutot que l'horodatage de l'export.
+        Paragraph meta = new Paragraph("Dakar, le " + java.time.LocalDate.now().format(LONG_DATE), metaFont);
         meta.setAlignment(Element.ALIGN_CENTER);
         meta.setSpacingBefore(10);
         document.add(meta);

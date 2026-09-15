@@ -49,14 +49,21 @@ class DerivedFieldsServiceTest {
     }
 
     @Test
-    @DisplayName("Effectifs : la ligne « Fonctionnaire » apparaît dans un plan saisi avant son ajout")
+    @DisplayName("Effectifs : les lignes du modèle client sont rajoutées dans son ordre, « Fonctionnaire » retiré")
     void rajouteLesLignesDuModele() throws Exception {
         ObjectNode content = apply(SectionType.STAFF_EVOLUTION, """
                 {"rows":[{"category":"STATUT","staffKey":"CDI","years":{}},
-                         {"category":"HIERARCHIE","staffKey":"","label":"Stagiaire","years":{}}]}""");
+                         {"category":"STATUT","staffKey":"FONCTIONNAIRE","years":{}},
+                         {"category":"HIERARCHIE","staffKey":"JOURNALIER","years":{"2027":{"male":3,"female":1}}},
+                         {"category":"HIERARCHIE","staffKey":"","label":"Intérimaire","years":{}}]}""");
 
         assertThat(rowIds(content, "staffKey")).containsExactly(
-                "CADRE", "AGENTS_MAITRISE", "EMPLOYE", "JOURNALIER", "Stagiaire", "FONCTIONNAIRE", "CDI", "CDD", "EXPATRIE");
+                "CADRE", "AGENTS_MAITRISE", "EMPLOYE", "JOURNALIER", "Intérimaire",
+                "CDI", "EXPATRIE", "CDD", "STAGIAIRE", "JOURNALIER");
+        assertThat(content.at("/rows/3/years/2027/male").asInt())
+                .as("les journaliers saisis dans la hiérarchie y restent, sans se confondre avec la ligne du statut")
+                .isEqualTo(3);
+        assertThat(content.at("/rows/9/years/2027/male").asInt()).isZero();
     }
 
     @Test
@@ -67,5 +74,22 @@ class DerivedFieldsServiceTest {
 
         assertThat(rowIds(content, "resourceKey")).containsExactly(DefaultSectionContentFactory.RESOURCE_KEYS);
         assertThat(content.at("/rows/4/strengths").asText()).isEqualTo("Equipes experimentees");
+    }
+
+    @Test
+    @DisplayName("Performances 2026 : un délai ou un nombre d'incidents au-dessus de la cible donne un taux sous 100 %")
+    void leTauxSuitLeSensDeLIndicateur() throws Exception {
+        ObjectNode content = apply(SectionType.PERFORMANCE_REVIEW_2026, """
+                {"rows":[{"indicator":"Chiffre d'affaires commercial annuel","target2026":4200,"achieved2026":3980},
+                         {"indicator":"Délai moyen d'acheminement (jours)","target2026":3,"achieved2026":3.8},
+                         {"indicator":"Nombre d'incidents techniques majeurs","target2026":10,"achieved2026":17},
+                         {"indicator":"Taux de satisfaction sur les délais de livraison (%)","target2026":80,"achieved2026":65},
+                         {"indicator":"Pannes du parc","lowerIsBetter":true,"target2026":4,"achieved2026":5}]}""");
+
+        assertThat(content.at("/rows/0/rate").asDouble()).isEqualTo(94.8);
+        assertThat(content.at("/rows/1/rate").asDouble()).isEqualTo(78.9);
+        assertThat(content.at("/rows/2/rate").asDouble()).isEqualTo(58.8);
+        assertThat(content.at("/rows/3/rate").asDouble()).as("un taux de satisfaction se lit à la hausse").isEqualTo(81.3);
+        assertThat(content.at("/rows/4/rate").asDouble()).as("le sens précisé par la ligne l'emporte").isEqualTo(80);
     }
 }

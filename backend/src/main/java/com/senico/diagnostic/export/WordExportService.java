@@ -41,7 +41,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class WordExportService {
 
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     /** Date en toutes lettres de la page de garde, comme sur un PSD publie : « Dakar, le 4 septembre 2026 ». */
     private static final DateTimeFormatter LONG_DATE = DateTimeFormatter.ofPattern("d MMMM yyyy", java.util.Locale.FRENCH);
     private static final String PRIMARY_HEX = "2D7A45";
@@ -117,7 +116,7 @@ public class WordExportService {
                 } else if (entry instanceof SynthesisEntry synthesis) {
                     addPsdSynthesis(doc, synthesis, groups, responsesByKey, statusesByKey);
                 } else if (entry instanceof SectionEntry sectionEntry) {
-                    addPsdSectionEntry(doc, sectionEntry, groups, responsesByKey, statusesByKey);
+                    addPsdSectionEntry(doc, sectionEntry, groups, sectionsByCode, responsesByKey, statusesByKey);
                 }
             }
 
@@ -212,8 +211,7 @@ public class WordExportService {
                         + "budget et pilotage — pour le Conseil d'Administration et le comité de pilotage.",
                 11, "64748B");
         addCenteredTitle(doc, "Dakar, le " + java.time.LocalDate.now().format(LONG_DATE), 12, PRIMARY_HEX);
-        addCenteredTitle(doc, "Export généré le " + java.time.LocalDateTime.now().format(DATE_FORMAT)
-                + " — document interne, confidentiel", 9, "64748B");
+        addCenteredTitle(doc, "Document interne, confidentiel", 9, "64748B");
     }
 
     /**
@@ -303,7 +301,8 @@ public class WordExportService {
         XWPFParagraph meta = doc.createParagraph();
         meta.setAlignment(ParagraphAlignment.CENTER);
         XWPFRun metaRun = meta.createRun();
-        metaRun.setText("Export généré le " + java.time.LocalDateTime.now().format(DATE_FORMAT));
+        // Un lieu et une date, comme la note de synthese, plutot que l'horodatage de l'export.
+        metaRun.setText("Dakar, le " + java.time.LocalDate.now().format(LONG_DATE));
         metaRun.setFontSize(11);
         metaRun.setColor("64748B");
     }
@@ -354,7 +353,8 @@ public class WordExportService {
             XWPFParagraph p = doc.createParagraph();
             XWPFRun swatch = p.createRun();
             swatch.setText("■ ");
-            swatch.setColor(hexToWordColor(group.getColor()));
+            // Meme couleur que dans les tableaux : une direction sans couleur choisie recoit celle de repli.
+            swatch.setColor(hexToWordColor(PsdBriefBuilder.colorOf(group, groups)));
             XWPFRun label = p.createRun();
             label.setText(group.getName());
             label.setColor(DARK_HEX);
@@ -392,8 +392,8 @@ public class WordExportService {
         Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
                 .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
         long approved = statusesByKey.values().stream().filter(PsdApprovedContent::isApproved).count();
-        wordBlockEmitter.emit(doc, psdSynthesisBuilder.build(groups, sectionsByCode, responsesByKey,
-                (int) approved, statusesByKey.size()));
+        wordBlockEmitter.emit(doc, psdSynthesisBuilder.build(groups, sectionsByCode, responsesByKey, (int) approved,
+                psdBriefBuilder.strategicAxisCount(groups, sectionsByCode, responsesByKey, statusesByKey, narratives())));
     }
 
     private void addPsdNarrative(XWPFDocument doc, NarrativeEntry narrative, PsdNarrativeBlock block) {
@@ -417,6 +417,7 @@ public class WordExportService {
     };
 
     private void addPsdSectionEntry(XWPFDocument doc, SectionEntry sectionEntry, List<WorkGroup> groups,
+                                     Map<String, SectionDef> sectionsByCode,
                                      Map<String, SectionResponse> responsesByKey,
                                      Map<String, GroupSectionStatus> statusesByKey) {
         addWordSectionHeader(doc, sectionEntry.label());
@@ -425,11 +426,20 @@ public class WordExportService {
             SectionDef section = sectionDefRepository.findByCode(code)
                     .orElseThrow(() -> new IllegalStateException("Section introuvable : " + code));
 
+            // Rubriques qui se lisent par axe de l'entreprise : memes tableaux que la note de synthese.
+            java.util.Optional<List<ExportBlock>> byAxis = psdBriefBuilder.planSection(code, groups, sectionsByCode,
+                    responsesByKey, statusesByKey, narratives());
+            if (byAxis.isPresent()) {
+                wordBlockEmitter.emit(doc, byAxis.get());
+                continue;
+            }
+
             if (sectionEntry.sectionCodes().size() > 1) {
                 XWPFParagraph subHeader = doc.createParagraph();
                 subHeader.setSpacingBefore(160);
                 XWPFRun run = subHeader.createRun();
-                run.setText(section.getCode() + " — " + section.getTitle());
+                // Le titre seul : le code de la section (S03, S04...) est interne au canevas.
+                run.setText(section.getTitle());
                 run.setBold(true);
                 run.setFontSize(13);
                 run.setColor("64748B");
@@ -488,9 +498,9 @@ public class WordExportService {
             JsonNode content = contentFor(group, section, responsesByKey);
             for (JsonNode row : JsonUtil.arr(content, "rows")) {
                 String[] values = {
-                        SectionLabels.stakeholderCategory(JsonUtil.text(row, "category")),
+                        PsdBriefBuilder.stakeholderLabel(row),
                         SectionLabels.stakeholderScope(JsonUtil.text(row, "scope")),
-                        JsonUtil.text(row, "roles"),
+                        PsdBriefBuilder.rolesOf(row),
                         JsonUtil.text(row, "expectations"),
                         JsonUtil.text(row, "adaptationStrategy"),
                         JsonUtil.text(row, "importance"),
@@ -530,7 +540,7 @@ public class WordExportService {
             for (int c = 0; c < values.length; c++) {
                 setCell(row.getCell(c), values[c], false, ParagraphAlignment.LEFT, DARK_HEX, null, 9);
             }
-            setDotsCell(row.getCell(headers.length - 1), contributorsByKey.get(entry.getKey()));
+            setDotsCell(row.getCell(headers.length - 1), contributorsByKey.get(entry.getKey()), groups);
         }
         doc.createParagraph().setSpacingAfter(80);
         addMergeCaption(doc);
@@ -580,7 +590,7 @@ public class WordExportService {
                     run.setText("•  " + item.text());
                     run.setFontSize(9);
                     run.setColor(DARK_HEX);
-                    appendContributorDots(p, item.contributors());
+                    appendContributorDots(p, item.contributors(), groups);
                 }
             }
         }
@@ -638,7 +648,7 @@ public class WordExportService {
                         run.setText("•  " + item.text());
                         run.setFontSize(9);
                         run.setColor(DARK_HEX);
-                        appendContributorDots(p, item.contributors());
+                        appendContributorDots(p, item.contributors(), groups);
                     }
                 }
             }
@@ -660,24 +670,24 @@ public class WordExportService {
         run.setColor(colorHex);
     }
 
-    private void appendContributorDots(XWPFParagraph p, List<WorkGroup> contributors) {
+    private void appendContributorDots(XWPFParagraph p, List<WorkGroup> contributors, List<WorkGroup> groups) {
         for (WorkGroup group : contributors) {
             XWPFRun dot = p.createRun();
             dot.setText(" ■");
-            dot.setColor(hexToWordColor(group.getColor()));
+            dot.setColor(hexToWordColor(PsdBriefBuilder.colorOf(group, groups)));
         }
     }
 
-    private void setDotsCell(XWPFTableCell cell, List<WorkGroup> contributors) {
+    private void setDotsCell(XWPFTableCell cell, List<WorkGroup> contributors, List<WorkGroup> groups) {
         XWPFParagraph p = cell.getParagraphs().isEmpty() ? cell.addParagraph() : cell.getParagraphs().get(0);
-        appendContributorDots(p, contributors);
+        appendContributorDots(p, contributors, groups);
     }
 
     private void addMergeCaption(XWPFDocument doc) {
         XWPFParagraph p = doc.createParagraph();
         p.setSpacingAfter(160);
         XWPFRun run = p.createRun();
-        run.setText("■ = direction(s) ayant mentionné cet élément (voir légende des directions au sommaire).");
+        run.setText("■ = direction(s) ayant mentionné cet élément (voir la légende des directions en début de document).");
         run.setItalic(true);
         run.setFontSize(8);
         run.setColor("64748B");
@@ -735,7 +745,7 @@ public class WordExportService {
         XWPFParagraph meta = doc.createParagraph();
         meta.setAlignment(ParagraphAlignment.CENTER);
         XWPFRun metaRun = meta.createRun();
-        metaRun.setText("Export généré le " + java.time.LocalDateTime.now().format(DATE_FORMAT));
+        metaRun.setText("Dakar, le " + java.time.LocalDate.now().format(LONG_DATE));
         metaRun.setFontSize(11);
         metaRun.setColor("64748B");
     }

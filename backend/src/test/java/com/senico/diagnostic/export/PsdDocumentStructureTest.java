@@ -37,11 +37,13 @@ class PsdDocumentStructureTest {
     }
 
     @Test
-    @DisplayName("Les sections du diagnostic saisies par les directions sont toutes publiees")
-    void publieLesSectionsDuDiagnostic() {
+    @DisplayName("Chaque section du canevas est publiee : le client y retrouve tous ses tableaux")
+    void publieToutesLesSectionsDuCanevas() {
         assertThat(codesPublies())
-                .as("S02, S05 et S14 sont saisies par les directions : les ecarter perdait leur travail")
-                .contains("S02", "S05", "S14");
+                .as("S02, S05, S14, puis S06 et S07 ont ete ecartees tour a tour sans que rien ne le signale")
+                .containsExactlyInAnyOrder(
+                        "S01", "S01B", "S02", "S03", "S03B", "S04", "S05", "S06", "S06B", "S07", "S07B",
+                        "S08", "S09", "S09B", "S10", "S11", "S12", "S13", "S14", "S14B", "S15", "S17");
     }
 
     @Test

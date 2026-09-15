@@ -47,19 +47,23 @@ public class DefaultSectionContentFactory {
     /**
      * Lignes du plan d'evolution des effectifs (S14B), issues du modele client
      * "PLAN D'EVOLUTION DES EFFECTIFS (STATUT, HIERARCHIE, GENRE)" : "Journalier" ferme le bloc
-     * hierarchie, "Fonctionnaire" — retiree en premiere revue, redemandee par le client avec son
-     * modele de tableau — ouvre le bloc statut, "Expatrie" le ferme.
+     * hierarchie. Revue client du 15/09/2026 : le bloc statut aligne CDI, Expatrie, CDD, Stagiaire et
+     * Journalier, dans cet ordre, et "Fonctionnaire" en est retire.
      */
     public static final String[][] STAFF_ROWS = {
             {"HIERARCHIE", "CADRE"},
             {"HIERARCHIE", "AGENTS_MAITRISE"},
             {"HIERARCHIE", "EMPLOYE"},
             {"HIERARCHIE", "JOURNALIER"},
-            {"STATUT", "FONCTIONNAIRE"},
             {"STATUT", "CDI"},
-            {"STATUT", "CDD"},
             {"STATUT", "EXPATRIE"},
+            {"STATUT", "CDD"},
+            {"STATUT", "STAGIAIRE"},
+            {"STATUT", "JOURNALIER"},
     };
+
+    /** Lignes retirees du modele : un plan saisi avant leur retrait les perd a la lecture. */
+    public static final java.util.List<String> RETIRED_STAFF_KEYS = java.util.List.of("FONCTIONNAIRE");
 
     /**
      * Domaines d'activites pre-remplis de la synthese des enjeux et contraintes (S06B),

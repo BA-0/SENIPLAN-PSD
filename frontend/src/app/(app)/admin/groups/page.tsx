@@ -45,6 +45,14 @@ import { extractErrorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
 import { CycleArchivePanel } from "@/components/cycles/cycle-archive-panel";
 import type { CreateWorkGroupPayload, UpdateWorkGroupPayload } from "@/lib/api/groups";
+
+// Teintes bien distinctes les unes des autres, dans l'ordre ou elles sont proposees aux nouvelles directions :
+// une direction creee recoit la premiere encore libre, pour ne pas se confondre avec une autre dans les documents.
+const DIRECTION_PALETTE = [
+  "#1F4FD8", "#2E8B2E", "#E36A00", "#7B2CBF", "#D62828", "#E0409A",
+  "#0E9AA7", "#7F4A1E", "#C9A000", "#1B2A41", "#6B7280", "#800020",
+  "#00A86B", "#4B0082", "#FF8C69", "#556B2F",
+];
 import type { WorkGroupDto } from "@/types/api";
 
 const schema = z.object({
@@ -123,6 +131,8 @@ export default function AdminGroupsPage() {
   }
 
   const { data: groups, isLoading } = useQuery({ queryKey: ["admin", "groups"], queryFn: listGroups });
+  const usedColors = new Set((groups ?? []).map((g) => g.color?.toUpperCase()));
+  const nextColor = DIRECTION_PALETTE.find((c) => !usedColors.has(c)) ?? DIRECTION_PALETTE[0];
 
   const {
     register,
@@ -353,7 +363,7 @@ export default function AdminGroupsPage() {
                 <input
                   {...register("color")}
                   type="color"
-                  defaultValue="#2563EB"
+                  defaultValue={nextColor}
                   className="h-10 w-16 rounded-lg border border-border bg-card p-1"
                 />
               </div>

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.senico.diagnostic.domain.SectionType;
 import com.senico.diagnostic.repository.SectionResponseRepository;
-import com.senico.diagnostic.validation.DefaultSectionContentFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -49,31 +48,30 @@ class DerivedFieldsServiceTest {
     }
 
     @Test
-    @DisplayName("Effectifs : les lignes du modèle client sont rajoutées dans son ordre, « Fonctionnaire » retiré")
-    void rajouteLesLignesDuModele() throws Exception {
+    @DisplayName("Effectifs : les lignes saisies sont remises dans l'ordre du modèle, sans rajouter les manquantes, « Fonctionnaire » retiré")
+    void ordonneLesLignesDuModele() throws Exception {
         ObjectNode content = apply(SectionType.STAFF_EVOLUTION, """
                 {"rows":[{"category":"STATUT","staffKey":"CDI","years":{}},
                          {"category":"STATUT","staffKey":"FONCTIONNAIRE","years":{}},
                          {"category":"HIERARCHIE","staffKey":"JOURNALIER","years":{"2027":{"male":3,"female":1}}},
-                         {"category":"HIERARCHIE","staffKey":"","label":"Intérimaire","years":{}}]}""");
+                         {"category":"HIERARCHIE","staffKey":"","label":"Intérimaire","years":{}},
+                         {"category":"HIERARCHIE","staffKey":"CADRE","years":{}}]}""");
 
-        assertThat(rowIds(content, "staffKey")).containsExactly(
-                "CADRE", "AGENTS_MAITRISE", "EMPLOYE", "JOURNALIER", "Intérimaire",
-                "CDI", "EXPATRIE", "CDD", "STAGIAIRE", "JOURNALIER");
-        assertThat(content.at("/rows/3/years/2027/male").asInt())
-                .as("les journaliers saisis dans la hiérarchie y restent, sans se confondre avec la ligne du statut")
+        assertThat(rowIds(content, "staffKey")).containsExactly("CADRE", "JOURNALIER", "Intérimaire", "CDI");
+        assertThat(content.at("/rows/1/years/2027/male").asInt())
+                .as("les journaliers saisis dans la hiérarchie y restent")
                 .isEqualTo(3);
-        assertThat(content.at("/rows/9/years/2027/male").asInt()).isZero();
     }
 
     @Test
-    @DisplayName("Ressources : les lignes du modèle client sont rajoutées dans son ordre, sans perdre la saisie")
-    void completeLaMatriceDesRessources() throws Exception {
+    @DisplayName("Ressources : seules les lignes saisies restent, dans l'ordre du modèle client")
+    void ordonneLaMatriceDesRessources() throws Exception {
         ObjectNode content = apply(SectionType.RESOURCES_MATRIX, """
-                {"rows":[{"resourceKey":"COMPETENCES","strengths":"Equipes experimentees","weaknesses":"","challenges":""}]}""");
+                {"rows":[{"resourceKey":"COMPETENCES","strengths":"Equipes experimentees","weaknesses":"","challenges":""},
+                         {"resourceKey":"CADRE_JURIDIQUE_INSTITUTIONNEL","strengths":"","weaknesses":"","challenges":""}]}""");
 
-        assertThat(rowIds(content, "resourceKey")).containsExactly(DefaultSectionContentFactory.RESOURCE_KEYS);
-        assertThat(content.at("/rows/4/strengths").asText()).isEqualTo("Equipes experimentees");
+        assertThat(rowIds(content, "resourceKey")).containsExactly("CADRE_JURIDIQUE_INSTITUTIONNEL", "COMPETENCES");
+        assertThat(content.at("/rows/1/strengths").asText()).isEqualTo("Equipes experimentees");
     }
 
     @Test

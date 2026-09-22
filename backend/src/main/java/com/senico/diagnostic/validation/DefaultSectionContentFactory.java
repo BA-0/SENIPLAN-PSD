@@ -7,8 +7,10 @@ import com.senico.diagnostic.domain.SectionType;
 import org.springframework.stereotype.Component;
 
 /**
- * Construit le contenu JSON par defaut (squelette) d'une section neuve, avec les
- * lignes fixes predefinies par le canevas (ressources, PESTEL, causale, axes, financement...).
+ * Construit le contenu JSON par defaut (squelette) d'une section neuve. Aucune ligne n'est
+ * pre-remplie : les tableaux demarrent vides et chaque direction ajoute elle-meme les lignes
+ * du modele (ressources, axes PESTEL, niveaux, sources de financement...) qu'elle renseigne.
+ * Seuls les quatre axes strategiques et leurs cadres (effets, niveaux) structurent le plan.
  */
 @Component
 public class DefaultSectionContentFactory {
@@ -65,43 +67,29 @@ public class DefaultSectionContentFactory {
     /** Lignes retirees du modele : un plan saisi avant leur retrait les perd a la lecture. */
     public static final java.util.List<String> RETIRED_STAFF_KEYS = java.util.List.of("FONCTIONNAIRE");
 
-    /**
-     * Domaines d'activites pre-remplis de la synthese des enjeux et contraintes (S06B),
-     * repris du "TABLEAU 3" transmis par le client. Champ libre : chaque direction
-     * renomme, ajoute ou supprime les lignes selon son perimetre.
-     */
-    public static final String[] CONSTRAINT_DOMAINS = {
-            "Transport de passagers", "Transport de fret", "Activites offshore",
-            "Manutention", "Agence maritime"
-    };
-
     public static final int[] YEARS = {2027, 2028, 2029, 2030, 2031};
     public static final String[] AXIS_CODES = {"AXE1", "AXE2", "AXE3", "AXE4"};
 
     public ObjectNode buildDefault(SectionType type) {
         return switch (type) {
-            case STAKEHOLDERS, INDICATOR_SHEET, RISK_MATRIX, PERFORMANCE_REVIEW_2026 -> objectWithEmptyArray("rows");
-            case RESOURCES_MATRIX -> resourcesMatrix();
-            case PESTEL -> pestel();
+            // Tableaux a lignes : ils demarrent vides, chaque direction ajoute les lignes qu'elle renseigne.
+            case STAKEHOLDERS, INDICATOR_SHEET, RISK_MATRIX, PERFORMANCE_REVIEW_2026, RESOURCES_MATRIX, PESTEL,
+                 CAUSAL_ANALYSIS, CONSTRAINTS_SYNTHESIS, STAFF_EVOLUTION, FINANCING_PLAN -> objectWithEmptyArray("rows");
             case SWOT -> swot();
             case TOWS_MATRIX -> towsMatrix();
-            case CAUSAL_ANALYSIS -> causalAnalysis();
             case INVENTORY -> {
                 ObjectNode n = F.objectNode();
                 n.put("synthesisNote", "");
                 yield n;
             }
             case RESOURCES_SYNTHESIS -> resourcesSynthesis();
-            case CONSTRAINTS_SYNTHESIS -> constraintsSynthesis();
             case LOGFRAME_SYNTHESIS -> logframeSynthesis();
-            case STAFF_EVOLUTION -> staffEvolution();
             case STRATEGIC_FRAMEWORK -> strategicFramework();
             case STRATEGIC_AXES -> strategicAxes();
             case LOGICAL_FRAMEWORK -> logicalFramework();
             case ACTION_PLAN -> actionPlanOrBudget(false);
             case BUDGET -> actionPlanOrBudget(true);
             case PERFORMANCE_FRAMEWORK -> performanceFramework();
-            case FINANCING_PLAN -> financingPlan();
             case STRATEGIC_SUMMARY -> strategicSummary();
         };
     }
@@ -109,36 +97,6 @@ public class DefaultSectionContentFactory {
     private ObjectNode objectWithEmptyArray(String field) {
         ObjectNode n = F.objectNode();
         n.set(field, F.arrayNode());
-        return n;
-    }
-
-    private ObjectNode resourcesMatrix() {
-        ObjectNode n = F.objectNode();
-        ArrayNode rows = F.arrayNode();
-        for (String key : RESOURCE_KEYS) {
-            ObjectNode row = F.objectNode();
-            row.put("resourceKey", key);
-            row.put("strengths", "");
-            row.put("weaknesses", "");
-            row.put("challenges", "");
-            rows.add(row);
-        }
-        n.set("rows", rows);
-        return n;
-    }
-
-    private ObjectNode pestel() {
-        ObjectNode n = F.objectNode();
-        ArrayNode rows = F.arrayNode();
-        for (String axis : PESTEL_AXES) {
-            ObjectNode row = F.objectNode();
-            row.put("axis", axis);
-            row.put("threats", "");
-            row.put("opportunities", "");
-            row.put("actions", "");
-            rows.add(row);
-        }
-        n.set("rows", rows);
         return n;
     }
 
@@ -160,19 +118,6 @@ public class DefaultSectionContentFactory {
                 "opportunitiesMinimizeThreats"}) {
             n.put(field, "");
         }
-        return n;
-    }
-
-    private ObjectNode causalAnalysis() {
-        ObjectNode n = F.objectNode();
-        ArrayNode rows = F.arrayNode();
-        for (String source : CAUSAL_SOURCES) {
-            ObjectNode row = F.objectNode();
-            row.put("source", source);
-            row.set("items", F.arrayNode());
-            rows.add(row);
-        }
-        n.set("rows", rows);
         return n;
     }
 
@@ -200,46 +145,10 @@ public class DefaultSectionContentFactory {
         return n;
     }
 
-    private ObjectNode constraintsSynthesis() {
-        ObjectNode n = F.objectNode();
-        ArrayNode rows = F.arrayNode();
-        for (String domain : CONSTRAINT_DOMAINS) {
-            ObjectNode row = F.objectNode();
-            row.put("domain", domain);
-            row.set("constraints", F.arrayNode());
-            row.set("challenges", F.arrayNode());
-            rows.add(row);
-        }
-        n.set("rows", rows);
-        return n;
-    }
-
     /** S09B : les axes sont reconstruits a la lecture depuis S09 par DerivedFieldsService. */
     private ObjectNode logframeSynthesis() {
         ObjectNode n = F.objectNode();
         n.put("synthesisNote", "");
-        return n;
-    }
-
-    private ObjectNode staffEvolution() {
-        ObjectNode n = F.objectNode();
-        ArrayNode rows = F.arrayNode();
-        for (String[] staffRow : STAFF_ROWS) {
-            ObjectNode row = F.objectNode();
-            row.put("category", staffRow[0]);
-            row.put("staffKey", staffRow[1]);
-            row.put("label", "");
-            ObjectNode years = F.objectNode();
-            for (int y : YEARS) {
-                ObjectNode cell = F.objectNode();
-                cell.put("male", 0);
-                cell.put("female", 0);
-                years.set(String.valueOf(y), cell);
-            }
-            row.set("years", years);
-            rows.add(row);
-        }
-        n.set("rows", rows);
         return n;
     }
 
@@ -273,17 +182,7 @@ public class DefaultSectionContentFactory {
             ObjectNode axis = F.objectNode();
             axis.put("axisCode", code);
             axis.put("objective", "");
-            ArrayNode rows = F.arrayNode();
-            for (String level : LOGFRAME_LEVELS) {
-                ObjectNode row = F.objectNode();
-                row.put("level", level);
-                row.put("interventionLogic", "");
-                row.put("iov", "");
-                row.put("verificationMeans", "");
-                row.put("assumptions", "");
-                rows.add(row);
-            }
-            axis.set("rows", rows);
+            axis.set("rows", F.arrayNode());
             axes.add(axis);
         }
         n.set("axes", axes);
@@ -330,22 +229,6 @@ public class DefaultSectionContentFactory {
             axes.add(axis);
         }
         n.set("axes", axes);
-        return n;
-    }
-
-    private ObjectNode financingPlan() {
-        ObjectNode n = F.objectNode();
-        ArrayNode rows = F.arrayNode();
-        for (String source : FINANCING_SOURCES) {
-            ObjectNode row = F.objectNode();
-            row.put("source", source);
-            row.put("amount", 0);
-            row.put("modalities", "");
-            row.put("period", "");
-            row.put("responsible", "");
-            rows.add(row);
-        }
-        n.set("rows", rows);
         return n;
     }
 

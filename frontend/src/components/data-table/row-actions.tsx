@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,4 +47,63 @@ export function RemoveRowButton({ onConfirm, disabled }: { onConfirm: () => void
       </AlertDialogContent>
     </AlertDialog>
   );
+}
+
+/**
+ * Ajout d'une ligne choisie dans la liste du modele (axe PESTEL, ressource, source de financement…) :
+ * les tableaux demarrent vides et la direction n'ajoute que les lignes qu'elle renseigne. Seules les
+ * lignes pas encore presentes sont proposees ; le controle disparait quand il n'en reste aucune.
+ */
+export function KeyedRowAdder({
+  options,
+  onAdd,
+  label = "Ajouter",
+  placeholder = "Choisir une ligne…",
+}: {
+  options: { value: string; label: string }[];
+  onAdd: (value: string) => void;
+  label?: string;
+  placeholder?: string;
+}) {
+  const [selected, setSelected] = useState("");
+  if (options.length === 0) return null;
+  const current = options.some((o) => o.value === selected) ? selected : "";
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="w-full max-w-md">
+        <NativeSelect value={current} onChange={(e) => setSelected(e.target.value)}>
+          <option value="">{placeholder}</option>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </NativeSelect>
+      </div>
+      <AddRowButton
+        label={label}
+        disabled={!current}
+        onAdd={() => {
+          onAdd(current);
+          setSelected("");
+        }}
+      />
+    </div>
+  );
+}
+
+/** Insere une ligne a sa place dans l'ordre du modele ; les lignes hors modele restent en fin de tableau. */
+export function insertInModelOrder<R>(rows: R[], row: R, keyOf: (r: R) => string, order: readonly string[]): R[] {
+  const rank = (r: R) => {
+    const i = order.indexOf(keyOf(r));
+    return i < 0 ? order.length : i;
+  };
+  const at = rows.findIndex((r) => rank(r) > rank(row));
+  return at < 0 ? [...rows, row] : [...rows.slice(0, at), row, ...rows.slice(at)];
+}
+
+/** Options du modele pas encore utilisees par une ligne du tableau. */
+export function remainingOptions(order: readonly string[], labels: Record<string, string>, used: string[]) {
+  return order.filter((k) => !used.includes(k)).map((k) => ({ value: k, label: labels[k] ?? k }));
 }

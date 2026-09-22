@@ -16,7 +16,7 @@ const EMPTY_ROW: ConstraintsSynthesisRow = {
 /**
  * S06B — reprise du "TABLEAU 3" du client : une ligne par domaine d'activites, avec
  * ses contraintes prioritaires d'un cote et ses defis/enjeux prioritaires de l'autre.
- * Les domaines sont pre-remplis mais librement modifiables : chaque direction a les siens.
+ * Aucun domaine n'est pre-rempli : chaque direction saisit les siens.
  */
 export function ConstraintsSynthesisForm({ content, onChange, readOnly }: SectionFormProps<ConstraintsSynthesisContent>) {
   function updateRow(index: number, patch: Partial<ConstraintsSynthesisRow>) {

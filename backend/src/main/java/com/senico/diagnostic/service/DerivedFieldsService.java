@@ -410,9 +410,9 @@ public class DerivedFieldsService {
 
     // ---- S02 : lignes fixes de la matrice, dans l'ordre du modele client ----
     /**
-     * Une matrice saisie avant l'ajout d'une ressource au modele n'en a pas la ligne : elle est
-     * rajoutee, vide, a sa place, pour que la direction la renseigne et que les documents
-     * l'affichent. Une ligne a cle inconnue est conservee, en fin de matrice.
+     * La matrice demarre vide et la direction n'ajoute que les ressources qu'elle renseigne : les
+     * lignes presentes sont remises dans l'ordre du modele, sans rajouter celles qui manquent.
+     * Une ligne a cle inconnue est conservee, en fin de matrice.
      */
     private ObjectNode normalizeResourceRows(ObjectNode content) {
         Map<String, JsonNode> byKey = new LinkedHashMap<>();
@@ -428,15 +428,9 @@ public class DerivedFieldsService {
         ArrayNode rows = F.arrayNode();
         for (String key : DefaultSectionContentFactory.RESOURCE_KEYS) {
             JsonNode row = byKey.remove(key);
-            if (row == null) {
-                ObjectNode empty = F.objectNode();
-                empty.put("resourceKey", key);
-                empty.put("strengths", "");
-                empty.put("weaknesses", "");
-                empty.put("challenges", "");
-                row = empty;
+            if (row != null) {
+                rows.add(row);
             }
-            rows.add(row);
         }
         byKey.values().forEach(rows::add);
         others.forEach(rows::add);
@@ -503,13 +497,13 @@ public class DerivedFieldsService {
         return joined.toString();
     }
 
-    // ---- S14B : lignes fixes du modele client, rajoutees a leur place ----
+    // ---- S14B : lignes du modele client, remises dans leur ordre ----
     /**
-     * Un plan saisi avant l'ajout d'une ligne au modele (« Stagiaire ») n'en a pas la ligne : elle est
-     * rajoutee, a zero, dans son bloc. « Journalier » figure dans les deux blocs : une ligne fixe se
-     * reconnait a son bloc autant qu'a sa cle. Une ligne retiree du modele (« Fonctionnaire ») disparait.
-     * Les lignes libres d'une direction restent en fin de leur bloc ; une ligne de bloc inconnu reste en
-     * fin de tableau.
+     * Le plan demarre vide et la direction n'ajoute que les lignes qu'elle renseigne : celles du modele
+     * sont remises a leur place dans leur bloc, sans rajouter les manquantes. « Journalier » figure dans
+     * les deux blocs : une ligne du modele se reconnait a son bloc autant qu'a sa cle. Une ligne retiree
+     * du modele (« Fonctionnaire ») disparait. Les lignes libres d'une direction restent en fin de leur
+     * bloc ; une ligne de bloc inconnu reste en fin de tableau.
      */
     private ObjectNode normalizeStaffRows(ObjectNode content) {
         JsonNode stored = content.get("rows");
@@ -547,8 +541,6 @@ public class DerivedFieldsService {
                 if (match != null) {
                     remaining.remove(match);
                     rows.add(match);
-                } else {
-                    rows.add(emptyStaffRow(fixed[0], fixed[1]));
                 }
             }
             for (Iterator<JsonNode> it = remaining.iterator(); it.hasNext(); ) {
@@ -562,22 +554,6 @@ public class DerivedFieldsService {
         remaining.forEach(rows::add);
         content.set("rows", rows);
         return content;
-    }
-
-    private ObjectNode emptyStaffRow(String category, String staffKey) {
-        ObjectNode row = F.objectNode();
-        row.put("category", category);
-        row.put("staffKey", staffKey);
-        row.put("label", "");
-        ObjectNode years = F.objectNode();
-        for (int year : YEARS) {
-            ObjectNode cell = F.objectNode();
-            cell.put("male", 0);
-            cell.put("female", 0);
-            years.set(String.valueOf(year), cell);
-        }
-        row.set("years", years);
-        return row;
     }
 
     // ---- S14B : total H+F par ligne et par annee, plus la ligne TOTAUX ----

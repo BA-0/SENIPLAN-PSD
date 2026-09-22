@@ -3,18 +3,31 @@
 import { Fragment } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EditableCell, EditableNumberCell } from "@/components/data-table/editable-cell";
-import { AddRowButton, RemoveRowButton } from "@/components/data-table/row-actions";
+import { KeyedRowAdder, RemoveRowButton } from "@/components/data-table/row-actions";
 import { PLAN_YEARS, STAFF_CATEGORY_LABELS, STAFF_LABELS } from "@/types/sections";
 import type { StaffCategory, StaffCell, StaffEvolutionContent, StaffEvolutionRow } from "@/types/sections";
 import type { SectionFormProps } from "./types";
+
+/** Lignes du modele client, bloc par bloc (DefaultSectionContentFactory.STAFF_ROWS). */
+const STAFF_MODEL_ROWS: { category: StaffCategory; keys: string[] }[] = [
+  {
+    category: "HIERARCHIE",
+    keys: ["CADRE", "AGENTS_MAITRISE", "EMPLOYE", "JOURNALIER"],
+  },
+  {
+    category: "STATUT",
+    keys: ["CDI", "EXPATRIE", "CDD", "STAGIAIRE", "JOURNALIER"],
+  },
+];
+const CATEGORY_ORDER: string[] = STAFF_MODEL_ROWS.map((b) => b.category);
 
 /**
  * S14B — plan d'evolution des effectifs (statut, hierarchie, genre), place juste avant
  * le plan de financement. Trois colonnes par annee : hommes, femmes, total (calcule).
  * Les lignes suivent le modele client : "Journalier" ferme le bloc hierarchie ; le bloc statut
  * aligne CDI, Expatrie, CDD, Stagiaire et Journalier ("Fonctionnaire" retire a la revue du
- * 15/09/2026). Le serveur rajoute a sa place une ligne fixe absente d'un plan saisi avant son
- * ajout, et le TOTAUX suit la hierarchie : les deux blocs ventilent les memes agents.
+ * 15/09/2026). Le tableau demarre vide : la direction ajoute les lignes du modele qu'elle renseigne,
+ * ou une ligne libre, et le TOTAUX suit la hierarchie : les deux blocs ventilent les memes agents.
  */
 export function StaffEvolutionForm({ content, onChange, readOnly }: SectionFormProps<StaffEvolutionContent>) {
   const rows = content.rows ?? [];
@@ -24,36 +37,69 @@ export function StaffEvolutionForm({ content, onChange, readOnly }: SectionFormP
       ...prev,
       rows: prev.rows.map((r, i) =>
         i === rowIndex
-          ? { ...r, years: { ...r.years, [year]: { ...(r.years?.[year] ?? { male: 0, female: 0 }), ...patch } } }
+          ? {
+              ...r,
+              years: {
+                ...r.years,
+                [year]: {
+                  ...(r.years?.[year] ?? { male: 0, female: 0 }),
+                  ...patch,
+                },
+              },
+            }
           : r
       ),
     }));
   }
 
   function updateRow(rowIndex: number, patch: Partial<StaffEvolutionRow>) {
-    onChange((prev) => ({ ...prev, rows: prev.rows.map((r, i) => (i === rowIndex ? { ...r, ...patch } : r)) }));
+    onChange((prev) => ({
+      ...prev,
+      rows: prev.rows.map((r, i) => (i === rowIndex ? { ...r, ...patch } : r)),
+    }));
   }
 
-  function addRow(category: StaffCategory) {
-    // La ligne est inseree a la fin de son propre bloc, pour ne pas casser le
-    // regroupement hierarchie / statut affiche par les intertitres.
+  function addRow(choice: string) {
+    const [category, staffKey] = choice.split(":");
+    // Les blocs restent dans l'ordre hierarchie puis statut, et chaque ligne du modele a sa place
+    // dans son bloc ; une ligne libre ferme son bloc.
     onChange((prev) => {
-      const next = [...prev.rows];
-      const lastOfCategory = next.map((r) => r.category).lastIndexOf(category);
-      const insertAt = lastOfCategory >= 0 ? lastOfCategory + 1 : next.length;
+      const block = STAFF_MODEL_ROWS.find((b) => b.category === category)?.keys ?? [];
+      const rank = (r: StaffEvolutionRow) => {
+        const c = CATEGORY_ORDER.indexOf(String(r.category));
+        const k = r.staffKey ? block.indexOf(r.staffKey) : -1;
+        return (c < 0 ? CATEGORY_ORDER.length : c) * 100 + (r.category === category && k >= 0 ? k : 99);
+      };
       const newRow: StaffEvolutionRow = {
         category,
-        staffKey: "",
+        staffKey,
         label: "",
         years: Object.fromEntries(PLAN_YEARS.map((y) => [String(y), { male: 0, female: 0 }])),
       };
-      next.splice(insertAt, 0, newRow);
+      const at = prev.rows.findIndex((r) => rank(r) > rank(newRow));
+      const next = at < 0 ? [...prev.rows, newRow] : [...prev.rows.slice(0, at), newRow, ...prev.rows.slice(at)];
       return { ...prev, rows: next };
     });
   }
 
+  const addOptions = STAFF_MODEL_ROWS.flatMap(({ category, keys }) => [
+    ...keys
+      .filter((k) => !rows.some((r) => r.category === category && r.staffKey === k))
+      .map((k) => ({
+        value: `${category}:${k}`,
+        label: `${STAFF_CATEGORY_LABELS[category]} — ${STAFF_LABELS[k] ?? k}`,
+      })),
+    {
+      value: `${category}:`,
+      label: `${STAFF_CATEGORY_LABELS[category]} — autre ligne (intitulé libre)`,
+    },
+  ]);
+
   function removeRow(rowIndex: number) {
-    onChange((prev) => ({ ...prev, rows: prev.rows.filter((_, i) => i !== rowIndex) }));
+    onChange((prev) => ({
+      ...prev,
+      rows: prev.rows.filter((_, i) => i !== rowIndex),
+    }));
   }
 
   const columnCount = 1 + PLAN_YEARS.length * 3 + (readOnly ? 0 : 1);
@@ -101,7 +147,7 @@ export function StaffEvolutionForm({ content, onChange, readOnly }: SectionFormP
                 <TableRow>
                   <TableCell className="text-[13px] font-medium text-foreground/90">
                     {row.staffKey ? (
-                      STAFF_LABELS[row.staffKey] ?? row.staffKey
+                      (STAFF_LABELS[row.staffKey] ?? row.staffKey)
                     ) : (
                       <EditableCell
                         value={row.label ?? ""}
@@ -112,7 +158,10 @@ export function StaffEvolutionForm({ content, onChange, readOnly }: SectionFormP
                     )}
                   </TableCell>
                   {PLAN_YEARS.map((y) => {
-                    const cell = row.years?.[String(y)] ?? { male: 0, female: 0 };
+                    const cell = row.years?.[String(y)] ?? {
+                      male: 0,
+                      female: 0,
+                    };
                     return (
                       <Fragment key={y}>
                         <TableCell className="border-l border-border">
@@ -145,6 +194,14 @@ export function StaffEvolutionForm({ content, onChange, readOnly }: SectionFormP
             );
           })}
 
+          {rows.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={columnCount} className="py-8 text-center text-muted-foreground">
+                Aucune ligne d&apos;effectifs renseignée
+              </TableCell>
+            </TableRow>
+          )}
+
           <TableRow total>
             <TableCell>TOTAUX</TableCell>
             {PLAN_YEARS.map((y) => {
@@ -163,10 +220,7 @@ export function StaffEvolutionForm({ content, onChange, readOnly }: SectionFormP
       </Table>
 
       {!readOnly && (
-        <div className="flex flex-wrap gap-2">
-          <AddRowButton onAdd={() => addRow("HIERARCHIE")} label="Ajouter une ligne — hiérarchie" />
-          <AddRowButton onAdd={() => addRow("STATUT")} label="Ajouter une ligne — statut" />
-        </div>
+        <KeyedRowAdder options={addOptions} onAdd={addRow} label="Ajouter la ligne" placeholder="Choisir une ligne d'effectifs…" />
       )}
     </div>
   );

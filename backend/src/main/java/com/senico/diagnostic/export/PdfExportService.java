@@ -204,12 +204,9 @@ public class PdfExportService {
     }
 
     /**
-     * Note de synthese : le Plan Strategique de Developpement sur le plan d'un PSD publie
-     * (cf. {@link PsdBriefBuilder}).
-     *
-     * <p>Generee en deux passes. La premiere ne sert qu'a relever la page ou tombe chaque titre ;
-     * la seconde produit le meme document, sommaire numerote. Les numeros ne changent pas d'une
-     * passe a l'autre : le sommaire garde le meme nombre de lignes, seul le numero s'y ajoute.</p>
+     * Note de synthese : le Plan Strategique sur le plan d'un PSD publie (cf. {@link PsdBriefBuilder}),
+     * rendue en une passe. Sa page de sommaire a ete retiree a la revue de l'auditeur du 22/09/2026 :
+     * la page de garde ouvre directement sur le corps.
      */
     public byte[] exportSynthesisNote() {
         List<WorkGroup> groups = workGroupRepository.findByEnabledTrueOrderByIdAsc();
@@ -225,20 +222,14 @@ public class PdfExportService {
         responsesByKey = PsdApprovedContent.approvedOnly(responsesByKey, statusesByKey);
 
         List<ExportBlock> blocks = psdBriefBuilder.build(groups, sectionsByCode, responsesByKey, statusesByKey, narratives());
-        List<ExportBlock.Heading> toc = blocks.stream()
-                .filter(block -> block instanceof ExportBlock.Heading heading && heading.level() <= 2)
-                .map(ExportBlock.Heading.class::cast)
-                .toList();
-
-        Map<String, Integer> pages = renderSynthesisNote(blocks, toc, Map.of()).pages();
-        return renderSynthesisNote(blocks, toc, pages).pdf();
+        return renderSynthesisNote(blocks);
     }
 
     private record RenderedNote(byte[] pdf, Map<String, Integer> pages) {
     }
 
-    private RenderedNote renderSynthesisNote(List<ExportBlock> blocks, List<ExportBlock.Heading> toc,
-                                             Map<String, Integer> pages) {
+    /** Revue de l'auditeur (22/09/2026) : la note n'a plus de page de sommaire ; la page de garde ouvre sur le corps. */
+    private byte[] renderSynthesisNote(List<ExportBlock> blocks) {
         try {
             Document document = new Document(PageSize.A4, 48, 48, 56, 64);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -251,12 +242,10 @@ public class PdfExportService {
             document.open();
 
             addSynthesisNoteCoverPage(document);
-            document.newPage();
-            addSynthesisNoteSommairePage(document, toc, pages);
             pdfBlockEmitter.emit(document, writer, blocks);
 
             document.close();
-            return new RenderedNote(baos.toByteArray(), footer.tagPages());
+            return baos.toByteArray();
         } catch (DocumentException e) {
             throw new IllegalStateException("Erreur de generation de la note de synthese", e);
         }
@@ -345,49 +334,6 @@ public class PdfExportService {
         meta.setAlignment(Element.ALIGN_CENTER);
         meta.setSpacingBefore(8);
         document.add(meta);
-    }
-
-    /**
-     * Sommaire de la note, comme dans un PSD publie : les parties en gras, leurs sous-parties en
-     * retrait, et pour chacune la page, reliee au titre par des points de conduite. Les numeros
-     * viennent de la premiere passe de generation ; absents, la ligne reste sans numero.
-     */
-    private void addSynthesisNoteSommairePage(Document document, List<ExportBlock.Heading> toc,
-                                              Map<String, Integer> pages) throws DocumentException {
-        Paragraph header = new Paragraph(PdfFonts.phrase("SOMMAIRE", PdfFonts.font(18, Font.BOLD, PRIMARY)));
-        header.setSpacingAfter(4);
-        document.add(header);
-
-        LineSeparator separator = new LineSeparator();
-        separator.setLineColor(PRIMARY);
-        separator.setLineWidth(1.2f);
-        document.add(new Chunk(separator));
-
-        Paragraph spacer = new Paragraph(" ", PdfFonts.font(8, Font.NORMAL, SLATE));
-        spacer.setSpacingAfter(4);
-        document.add(spacer);
-
-        Color ink = new Color(0x1F, 0x29, 0x37);
-        for (ExportBlock.Heading heading : toc) {
-            boolean part = heading.level() == 1;
-            Font font = part ? PdfFonts.font(10, Font.BOLD, ink) : PdfFonts.font(9, Font.NORMAL, ink);
-            Paragraph line = new Paragraph();
-            line.add(PdfFonts.phrase(heading.text(), font));
-            com.lowagie.text.pdf.draw.DottedLineSeparator leader = new com.lowagie.text.pdf.draw.DottedLineSeparator();
-            leader.setGap(2.5f);
-            leader.setLineWidth(0.8f);
-            leader.setLineColor(BORDER_DARK);
-            leader.setOffset(-2);
-            line.add(new Chunk(leader));
-            Integer page = pages.get(PdfBlockEmitter.TOC_TAG + heading.text());
-            line.add(new Chunk(page == null ? "" : " " + (page - 1), font));
-            line.setIndentationLeft(part ? 0 : 18);
-            // Serre juste assez pour que le sommaire tienne sur une page : sa derniere ligne
-            // debordait seule sur une page blanche.
-            line.setSpacingBefore(part ? 2.5f : 0f);
-            line.setLeading(part ? 12.5f : 10.5f);
-            document.add(line);
-        }
     }
 
     private void addPsdFinalCoverPage(Document document) throws DocumentException {
@@ -1163,8 +1109,8 @@ public class PdfExportService {
 
     /**
      * Pied de page commun aux documents exportes : intitule du document a gauche, pagination a
-     * droite. La page de garde n'en porte pas et n'est pas comptee, comme dans un PSD publie ou
-     * la numerotation commence au sommaire.
+     * droite. La page de garde n'en porte pas et n'est pas comptee, comme dans un PSD publie : la
+     * numerotation commence a la page suivante (le sommaire du Plan, les sigles de la note).
      *
      * <p>Le total est reserve dans un gabarit puis rempli a la fermeture, quand le nombre de
      * pages est enfin connu : c'est le seul moyen d'imprimer « Page 3 / 12 » en une seule passe
@@ -1225,7 +1171,7 @@ public class PdfExportService {
                     new Phrase(String.valueOf(lastNumberedPage), font), 0, 0, 0);
         }
 
-        /** Page ou tombe chaque intertitre marque (cf. PdfBlockEmitter#TOC_TAG), pour le sommaire. */
+        /** Page ou tombe chaque titre de rubrique marque (cf. PLAN_TAG), pour le sommaire du Plan. */
         @Override
         public void onGenericTag(PdfWriter writer, Document document, Rectangle rect, String text) {
             tagPages.putIfAbsent(text, writer.getPageNumber());

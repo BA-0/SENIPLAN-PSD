@@ -363,7 +363,7 @@ class PsdBriefBuilderTest {
         assertThat(lignes.get(5).cells().get(4).isCovered()).isTrue();
 
         String note = texte(blocs);
-        assertThat(note).contains("2 orientations stratégiques (OS)", "Budget (M FCFA)", "Objectif")
+        assertThat(note).contains("Orientations stratégiques (OS) : 2", "Budget (M FCFA)", "Objectif")
                 .doesNotContain("Récapitulatif des axes");
     }
 
@@ -535,11 +535,13 @@ class PsdBriefBuilderTest {
                 .filter(heading -> heading.level() <= 2).map(ExportBlock.Heading::text).toList();
 
         assertThat(titres).containsSubsequence("III.1 Historique", "III.2 Missions", "III.3 Gouvernance", "III.4 Organisation",
-                PsdBriefBuilder.BILAN, "V.1 Performances de l'exercice 2026", PsdBriefBuilder.DIAGNOSTIC,
-                "X.3 Budget du plan", "XII.1 Tableau de synthèse du cadre stratégique", PsdBriefBuilder.ANNEXES,
+                PsdBriefBuilder.BILAN, "V.1 Performances des années passées", "V.2 Performances de l'année 2026 et tendances",
+                PsdBriefBuilder.DIAGNOSTIC, "X.3 Budget du plan", "XI.2 Cadre de mesure de rendement",
+                "XII.1 Tableau de synthèse du cadre stratégique", PsdBriefBuilder.ANNEXES,
                 "Tableau 1 : Matrice d'analyse des risques", "Tableau 2 : Cadre logique", "Tableau 3 : Planification",
-                "Tableau 4 : Budget du plan", "Tableau 5 : Cadre de mesure de rendement",
-                "Tableau 6 : Fiche des indicateurs objectivement vérifiables");
+                "Tableau 4 : Budget du plan", "Tableau 5 : Cadre de mesure de rendement");
+        assertThat(titres).as("revue du 22/09/2026 : plus de XI.3 ni de tableau 6, la fiche des indicateurs ouvre le tableau 5")
+                .noneMatch(titre -> titre.startsWith("XI.3") || titre.startsWith("Tableau 6"));
         assertThat(titres).as("inventaire du diagnostic et récapitulatif des axes retirés")
                 .noneMatch(titre -> titre.contains("Inventaire") || titre.contains("Récapitulatif"));
         assertThat(titres).as("revue de l'auditeur : la synthèse des contraintes du canevas ouvre la partie VII")
@@ -558,6 +560,20 @@ class PsdBriefBuilderTest {
                 .contains("Un impact unique : une position commerciale consolidée", "(Tableau 2 : Cadre logique)");
         assertThat(blocs.subList(annexes, blocs.size())).as("le cadre logique par axe est en annexe")
                 .anyMatch(bloc -> bloc instanceof ExportBlock.Table table && table.columnHeaders().contains("Logique d'intervention"));
+
+        List<ExportBlock> annexe = blocs.subList(annexes, blocs.size());
+        int tableau5 = annexe.indexOf(annexe.stream().filter(bloc -> bloc instanceof ExportBlock.Heading heading
+                && heading.text().equals(PsdBriefBuilder.ANNEXE_RENDEMENT)).findFirst().orElseThrow());
+        int fiche = annexe.indexOf(annexe.stream().filter(bloc -> bloc instanceof ExportBlock.Heading heading
+                && heading.text().equals(PsdBriefBuilder.FICHE_INDICATEURS)).findFirst().orElseThrow());
+        int ficheTable = annexe.indexOf(annexe.stream().filter(bloc -> bloc instanceof ExportBlock.Table table
+                && table.columnHeaders().contains("Sources et moyens de collecte")).findFirst().orElseThrow());
+        int rendement = annexe.indexOf(annexe.stream().filter(bloc -> bloc instanceof ExportBlock.Table table
+                && table.columnHeaders().contains("Réf. 2026")).findFirst().orElseThrow());
+        assertThat(tableau5).as("la fiche des indicateurs ouvre le tableau 5, devant les tableaux par axe du rendement")
+                .isLessThan(fiche);
+        assertThat(fiche).isLessThan(ficheTable);
+        assertThat(ficheTable).isLessThan(rendement);
     }
 
     @Test
@@ -620,32 +636,64 @@ class PsdBriefBuilderTest {
     }
 
     @Test
-    @DisplayName("Tant que 2026 n'est pas clos, ses réalisations sont présentées comme des estimations")
-    void presenteLesRealisations2026CommeDesEstimationsAvantLaCloture() {
+    @DisplayName("Tant que 2026 n'est pas clos, ses résultats attendus en décembre sont présentés comme des projections")
+    void presenteLesResultats2026CommeDesProjectionsAvantLaCloture() {
         WorkGroup commerciale = group(1, "Direction commerciale");
         saisie(commerciale, "S01B", """
-                {"rows":[{"domain":"Ventes","indicator":"Chiffre d'affaires","target2026":4200,"achieved2026":3980}]}""");
+                {"rows":[{"year":2026,"objective":"Ventes","indicator":"Chiffre d'affaires","expectedResult":"4 200",
+                          "gap":"-220","trend":"DEFAVORABLE"}]}""");
 
-        assertThat(texte(build(LocalDate.of(2026, 9, 12), commerciale)))
-                .contains("Estimation 2026", "n'étant pas clos")
-                .doesNotContain("Réalisé 2026");
+        assertThat(texte(build(LocalDate.of(2026, 9, 22), commerciale)))
+                .contains("sont des projections à date")
+                .doesNotContain("se lisent comme des réalisations");
         assertThat(texte(build(LocalDate.of(2027, 3, 1), commerciale)))
-                .contains("Réalisé 2026")
-                .doesNotContain("Estimation 2026");
+                .contains("se lisent comme des réalisations")
+                .doesNotContain("sont des projections à date");
     }
 
     @Test
-    @DisplayName("Le taux 2026 se lit dans le même sens pour tous les indicateurs, plafonds compris")
-    void expliqueLeTauxDesIndicateursAPlafond() {
+    @DisplayName("Le bilan : les cinq exercices écoulés dans un seul tableau, 2026 dans le sien avec ses tendances")
+    void regroupeLesExercicesEcoulesEtIsoleLExerciceEnCours() {
         WorkGroup technique = group(2, "Direction Technique");
         saisie(technique, "S01B", """
-                {"rows":[{"domain":"Acheminement","indicator":"Délai moyen d'acheminement (jours)",
+                {"rows":[{"year":2024,"objective":"Fiabiliser l'acheminement","indicator":"Délai moyen d'acheminement (jours)",
+                          "expectedResult":"3","gap":"+0,5","cause":"Pannes","rootCause":"Parc vieillissant","action":"Renouvellement"},
+                         {"domain":"Acheminement","indicator":"Délai moyen d'acheminement (jours)",
                           "target2026":3,"achieved2026":3.8,"comment":"Pannes"}]}""");
 
-        assertThat(texte(build(technique)))
-                .contains("un taux inférieur à 100 % signale une cible non atteinte")
-                .as("un délai de 3,8 jours pour 3 visés s'affiche à 78,9 % : l'encadré ne peut pas y voir une réussite")
-                .doesNotContain("supérieur à 100 % traduit une contre-performance");
+        List<ExportBlock> blocs = build(technique);
+        ExportBlock.Table passees = tableauApres(blocs, "V.1 " + PerformanceReviewTables.PAST_TITLE);
+        ExportBlock.Table courante = tableauApres(blocs, "V.2 " + PerformanceReviewTables.CURRENT_TITLE);
+
+        assertThat(passees.columnHeaders()).containsExactly("Objectif", "Indicateur", "Résultat attendu en décembre", "Écart",
+                "Cause", "Cause profonde", "Action entreprise");
+        assertThat(courante.columnHeaders()).isEqualTo(passees.columnHeaders());
+        assertThat(passees.rows().stream().filter(ExportBlock.TableRow::band).map(row -> row.cells().get(0).text()))
+                .as("un bandeau par exercice écoulé, du plus ancien au plus récent")
+                .containsExactly("Exercice 2021", "Exercice 2022", "Exercice 2023", "Exercice 2024", "Exercice 2025");
+        assertThat(passees.rows()).anyMatch(row -> contientTexte(row, "Fiabiliser l'acheminement"))
+                .noneMatch(row -> contientTexte(row, "Acheminement"));
+
+        // La ligne saisie avec l'ancien tableau 2026 est convertie : cible -> résultat attendu, écart signé, tendance
+        // déduite du sens de l'indicateur (un délai au-dessus de sa cible est défavorable).
+        assertThat(courante.rows()).hasSize(1);
+        List<ExportBlock.Cell> cellules = courante.rows().get(0).cells();
+        assertThat(cellules).hasSize(7);
+        assertThat(cellules.get(0).text()).isEqualTo("Acheminement");
+        assertThat(cellules.get(2).text()).isEqualTo("3");
+        assertThat(cellules.get(3).text()).isEqualTo("+0,8 (tendance défavorable)");
+        assertThat(cellules.get(3).background()).isEqualTo(ExportBlock.Background.ORANGE);
+        assertThat(cellules.get(4).text()).isEqualTo("Pannes");
+        assertThat(texte(blocs)).contains("tendances 2026", "1 à tendance défavorable");
+    }
+
+    /** Le premier tableau qui suit l'intertitre donne. */
+    private static ExportBlock.Table tableauApres(List<ExportBlock> blocs, String titre) {
+        int debut = blocs.indexOf(blocs.stream().filter(bloc -> bloc instanceof ExportBlock.Heading heading
+                && heading.text().equals(titre)).findFirst().orElseThrow());
+        return blocs.subList(debut, blocs.size()).stream()
+                .filter(ExportBlock.Table.class::isInstance).map(ExportBlock.Table.class::cast)
+                .findFirst().orElseThrow();
     }
 
     @Test
@@ -767,12 +815,88 @@ class PsdBriefBuilderTest {
     }
 
     @Test
-    @DisplayName("Sans aucune saisie, la note tient debout et le dit")
+    @DisplayName("Sans aucune saisie, la note tient debout : chaque tableau du canevas garde sa structure, vide")
     void supporteUneBaseVide() {
-        String note = texte(build(group(1, "Direction commerciale")));
+        // Date fixee : apres la cloture de 2026, l'en-tete devient « Réalisé 2026 ».
+        List<ExportBlock> blocs = build(LocalDate.of(2026, 9, 22), group(1, "Direction commerciale"));
+        String note = texte(blocs);
 
         assertThat(note).contains(PsdBriefBuilder.partTitles());
-        assertThat(note).contains("Le budget consolidé n'est pas encore renseigné");
+        assertThat(note).as("revue de l'auditeur : plus de phrase « Aucun ... n'est encore approuvé » à la place d'un tableau")
+                .doesNotContain("n'est encore approuvé", "n'est pas encore renseigné");
+
+        List<List<String>> entetes = blocs.stream()
+                .filter(ExportBlock.Table.class::isInstance).map(ExportBlock.Table.class::cast)
+                .map(ExportBlock.Table::columnHeaders).toList();
+        assertThat(entetes).as("les tableaux du canevas, vides, sont tous là")
+                .anySatisfy(h -> assertThat(h).contains("Acteur (PP)"))                              // parties prenantes
+                .anySatisfy(h -> assertThat(h).contains("Résultat attendu en décembre"))             // bilan des performances
+                .anySatisfy(h -> assertThat(h).contains("Défis à relever"))                          // ressources et compétences
+                .anySatisfy(h -> assertThat(h).contains("Forces majeures"))                          // synthèse des ressources
+                .anySatisfy(h -> assertThat(h).contains("Menaces", "Opportunités"))                  // PESTEL
+                .anySatisfy(h -> assertThat(h).contains("Approche externe"))                         // mise en relation
+                .anySatisfy(h -> assertThat(h).contains("Sources", "Analyse"))                       // analyse causale
+                .anySatisfy(h -> assertThat(h).contains("Actions d'atténuation"))                    // risques élevés
+                .anySatisfy(h -> assertThat(h).contains("Contraintes prioritaires"))                 // contraintes / défis
+                .anySatisfy(h -> assertThat(h).contains("Total (M FCFA)"))                           // budget par axe
+                .anySatisfy(h -> assertThat(h).contains("Sources de financement"))                   // plan de financement
+                .anySatisfy(h -> assertThat(h).contains("Effectifs"))                                // effectifs
+                .anySatisfy(h -> assertThat(h).contains("Présence (Oui/Non)"))                       // annexe 1 : matrice des risques
+                .anySatisfy(h -> assertThat(h).contains("Logique d'intervention"))                   // annexe 2 : cadre logique
+                .anySatisfy(h -> {                                                                   // annexe 3 : planification
+                    assertThat(h.get(0)).isEqualTo("Extrants");
+                    assertThat(h).contains("Responsables");
+                })
+                .anySatisfy(h -> assertThat(h).contains("Totaux", "Responsable"))                    // annexe 4 : budget détaillé
+                .anySatisfy(h -> assertThat(h).contains("Sources et moyens de collecte"))            // annexe 5 : fiche des indicateurs
+                .anySatisfy(h -> assertThat(h).contains("Réf. 2026"));                               // annexe 5 : cadre de rendement par axe
+        assertThat(tableau(blocs, "SYNTHÈSE DU CADRE STRATÉGIQUE").rows())
+                .as("la synthèse du cadre stratégique, vide, garde ses intitulés de colonnes")
+                .anyMatch(row -> row.cells().get(0).text().equals("Orientation stratégique (OS)"));
+        assertThat(note).as("le plan des effectifs vide garde les lignes du modèle client, sans zéro trompeur")
+                .contains("Agents de maîtrise", "Employé", "Journalier", "CDI", "Expatrié", "Stagiaire", "TOTAUX");
+        assertThat(note).as("IX.4 : sans axe consolidé, un tableau vide plutôt que des listes vides")
+                .contains("Axe d'intervention proposé")
+                .doesNotContain("Axes proposés par les directions");
+    }
+
+    @Test
+    @DisplayName("Une seule direction a saisi : les tableaux gardent la structure entière du plan et du modèle")
+    void gardeLaStructureQuandUneSeuleDirectionASaisi() {
+        WorkGroup commerciale = group(1, "Direction commerciale");
+        WorkGroup technique = group(2, "Direction technique");
+        saisie(commerciale, "S08", """
+                {"axes":[{"axisCode":"AXE1","title":"Croissance commerciale"}]}""");
+        saisie(technique, "S08", """
+                {"axes":[{"axisCode":"AXE1","title":"Fiabilité du réseau"}]}""");
+        saisie(commerciale, "S11", """
+                {"axes":[{"axisCode":"AXE1","effects":[{"effectLabel":"Gagner des parts de marché","rows":[
+                   {"extrant":"Offre grands comptes","activities":"Lancer l'offre grands comptes","years":{"2027":100}}]}]}]}""");
+        saisie(commerciale, "S15", """
+                {"rows":[{"source":"RESSOURCES_PROPRES","amount":100},
+                         {"source":"EMPRUNTS","amount":0,"modalities":"Négociation d'une ligne BOAD"}]}""");
+        saisie(commerciale, "S14B", """
+                {"rows":[{"category":"HIERARCHIE","staffKey":"CADRE","years":{"2027":{"male":8,"female":4}}}],
+                 "totals":{"2027":{"male":8,"female":4}}}""");
+        narratives.put(NarrativeBlockKey.AXES_CONSOLIDES, """
+                {"axes":[{"title":"Axe commercial","links":[{"groupId":1,"axisCode":"AXE1"}]},
+                         {"title":"Axe technique","links":[{"groupId":2,"axisCode":"AXE1"}]}]}""");
+
+        List<ExportBlock> blocs = build(commerciale, technique);
+        ExportBlock.Table synthese = tableau(blocs, "SYNTHÈSE DU CADRE STRATÉGIQUE");
+        assertThat(synthese.rows().stream().filter(ExportBlock.TableRow::band).map(row -> row.cells().get(0).text()))
+                .as("l'axe sans OS garde son bandeau dans la synthèse du cadre stratégique")
+                .containsExactly("AXE 1 : Axe commercial", "AXE 2 : Axe technique");
+
+        String note = texte(blocs);
+        assertThat(note).as("une source de financement sans montant garde sa ligne et ses modalités")
+                .contains("Emprunts", "Négociation d'une ligne BOAD");
+        assertThat(note).as("les lignes du modèle des effectifs restent toutes, même non renseignées")
+                .contains("Stagiaire", "Expatrié");
+        assertThat(blocs.stream().filter(ExportBlock.Heading.class::isInstance).map(ExportBlock.Heading.class::cast)
+                .map(ExportBlock.Heading::text))
+                .as("chaque axe de l'entreprise garde son tableau dans les annexes par axe")
+                .contains("Budget détaillé — Axe 1 : Axe commercial", "Budget détaillé — Axe 2 : Axe technique");
     }
 
     @Test

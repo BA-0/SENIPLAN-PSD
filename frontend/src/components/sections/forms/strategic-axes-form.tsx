@@ -1,50 +1,70 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EditableCell } from "@/components/data-table/editable-cell";
 import { TagListEditor } from "@/components/data-table/tag-list-editor";
 import { directionAxisLabel } from "@/lib/utils";
 import type { StrategicAxesContent } from "@/types/sections";
 import type { SectionFormProps } from "./types";
 
+/**
+ * S08 — axes strategiques et orientations, sur le modele du canevas : un axe par ligne, avec son
+ * orientation strategique (l'intitule repris par toutes les sections suivantes), son objectif et
+ * ses objectifs specifiques.
+ */
 export function StrategicAxesForm({ content, onChange, readOnly }: SectionFormProps<StrategicAxesContent>) {
   function updateAxis(index: number, patch: Partial<StrategicAxesContent["axes"][number]>) {
-    onChange((prev) => ({
-      axes: prev.axes.map((a, i) => (i === index ? { ...a, ...patch } : a)),
-    }));
+    onChange((prev) => ({ axes: prev.axes.map((a, i) => (i === index ? { ...a, ...patch } : a)) }));
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {content.axes.map((axis, index) => (
-        <Card key={axis.axisCode}>
-          <CardHeader>
-            <CardTitle className="text-[15px]">{directionAxisLabel(axis.axisCode, axis.title)}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label required>Orientation stratégique</Label>
-                <Input value={axis.title} onChange={(e) => updateAxis(index, { title: e.target.value })} readOnly={readOnly} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Objectif de l&apos;axe</Label>
-                <Input value={axis.objective ?? ""} onChange={(e) => updateAxis(index, { objective: e.target.value })} readOnly={readOnly} />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Objectif spécifique</Label>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[110px]">Axe</TableHead>
+          <TableHead className="min-w-[240px]">
+            Orientation stratégique
+            <span className="ml-0.5 text-accent-500" aria-hidden>
+              *
+            </span>
+          </TableHead>
+          <TableHead className="min-w-[240px]">Objectif de l&apos;axe</TableHead>
+          <TableHead className="min-w-[280px]">Objectifs spécifiques</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {content.axes.map((axis, index) => (
+          <TableRow key={axis.axisCode} className="hover:bg-transparent">
+            <TableCell label>{directionAxisLabel(axis.axisCode, "")}</TableCell>
+            <TableCell className="py-3 align-top">
+              <EditableCell
+                value={axis.title}
+                onChange={(v) => updateAxis(index, { title: v })}
+                readOnly={readOnly}
+                placeholder="Intitulé de l'orientation stratégique…"
+                multiline
+              />
+            </TableCell>
+            <TableCell className="py-3 align-top">
+              <EditableCell
+                value={axis.objective ?? ""}
+                onChange={(v) => updateAxis(index, { objective: v })}
+                readOnly={readOnly}
+                placeholder="Objectif de l'axe…"
+                multiline
+              />
+            </TableCell>
+            <TableCell className="py-3 align-top">
               <TagListEditor
                 items={axis.specificObjectives}
                 onChange={(items) => updateAxis(index, { specificObjectives: items })}
                 readOnly={readOnly}
                 placeholder="Saisir un objectif spécifique…"
               />
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }

@@ -71,7 +71,8 @@ public final class PsdDocumentStructure {
                 new NarrativeEntry("Bilan des performances des années précédentes", NarrativeBlockKey.BILAN_PSD_PRECEDENT),
 
                 new MajorHeading("Diagnostic stratégique"),
-                new SectionEntry("Analyse des performances de l'année 2026", "S01B"),
+                // Les cinq exercices ecoules dans un tableau, l'exercice 2026 et ses tendances dans le sien.
+                new SectionEntry("Performances des années passées et de l'année 2026", "S01B"),
                 new SectionEntry("Analyse des parties prenantes", "S01"),
                 new SectionEntry("Matrice d'analyse des ressources et des compétences", "S02"),
                 new SectionEntry("Synthèse de l'analyse des ressources", "S03B"),

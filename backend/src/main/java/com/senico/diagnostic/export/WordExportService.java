@@ -146,9 +146,8 @@ public class WordExportService {
 
             addFooter(doc, "Plan Stratégique 2027-2031 — Note de synthèse");
             addSynthesisNoteCoverPage(doc);
-            doc.createParagraph().setPageBreak(true);
-            addSynthesisNoteSommaire(doc, blocks);
-            // Pas de saut de page ici : chaque partie de la note ouvre deja la sienne.
+            // Revue de l'auditeur (22/09/2026) : plus de sommaire. Pas de saut de page non plus : chaque partie
+            // de la note ouvre deja la sienne.
             wordBlockEmitter.emit(doc, blocks);
 
             doc.write(baos);
@@ -212,29 +211,6 @@ public class WordExportService {
                 11, "64748B");
         addCenteredTitle(doc, "Dakar, le " + java.time.LocalDate.now().format(LONG_DATE), 12, PRIMARY_HEX);
         addCenteredTitle(doc, "Document interne, confidentiel", 9, "64748B");
-    }
-
-    /**
-     * Sommaire de la note : les parties en gras et leurs sous-parties en retrait, dans l'ordre ou
-     * {@link PsdBriefBuilder} les compose. Sans numeros de page : Word repagine le document a
-     * l'ouverture selon sa propre mise en page, un numero calcule ici serait faux.
-     */
-    private void addSynthesisNoteSommaire(XWPFDocument doc, List<ExportBlock> blocks) {
-        addWordSectionHeader(doc, "SOMMAIRE");
-        for (ExportBlock block : blocks) {
-            if (!(block instanceof ExportBlock.Heading heading) || heading.level() > 2) {
-                continue;
-            }
-            boolean part = heading.level() == 1;
-            XWPFParagraph item = doc.createParagraph();
-            item.setSpacingBefore(part ? 120 : 0);
-            item.setIndentationLeft(part ? 0 : 400);
-            XWPFRun run = item.createRun();
-            run.setText(heading.text());
-            run.setBold(part);
-            run.setFontSize(part ? 11 : 10);
-            run.setColor(DARK_HEX);
-        }
     }
 
     /**

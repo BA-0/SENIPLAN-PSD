@@ -9,7 +9,7 @@ Monorepo à deux applications :
 ```
 /backend    Spring Boot 3 / Java 21 — API REST + WebSocket (STOMP), MySQL 8, Flyway
 /frontend   Next.js 14 (App Router) / TypeScript — Tailwind CSS, shadcn/ui, TanStack Query
-/deploy     Configurations Nginx, systemd, PM2 (voir DEPLOYMENT.md)
+/deploy     Configurations Nginx, systemd, PM2 (voir DEPLOYMENT.md) ; Windows Server dans deploy/windows (voir DEPLOYMENT-WINDOWS.md)
 ```
 
 ### Backend
@@ -30,7 +30,7 @@ Monorepo à deux applications :
   - Section 16 (Business plan) : résultat d'exploitation, résultat net, variation et trésorerie cumulée
 - **Temps réel** : WebSocket STOMP/SockJS (`/ws`) pousse au dashboard admin les changements de statut, soumissions et activité ; le frontend bascule sur du polling (15s) si la connexion est indisponible.
 - **Exports** : PDF (OpenPDF) et Word (Apache POI) par groupe, Excel consolidé (une feuille par section, toutes les réponses de tous les groupes).
-- **Note de synthèse** (`PsdBriefBuilder`) : le Plan Stratégique sur le plan d'un plan stratégique publié — sigles, mot du DG, l'essentiel du plan, contexte, méthode, présentation, parties prenantes, diagnostic (performances 2026 — estimées tant que l'exercice n'est pas clos —, ressources et compétences et leur synthèse, PESTEL, SWOT, mise en relation du diagnostic, analyse causale, inventaire, risques et leur impact), bilan des performances des années précédentes, principaux enjeux et défis (avec la synthèse des contraintes par domaine d'activités), facteurs clés, cadre stratégique (dont le tableau des axes), mise en œuvre (cadre logique par axe et sa synthèse, plan d'actions par axe, budget par axe avec graphiques et budget détaillé par axe, financement avec modalités, période et responsables, effectifs par hiérarchie, statut et genre), pilotage (dispositif, cadre de mesure de rendement par axe, indicateurs), synthèse du cadre stratégique (tableau OS / actions / contraintes du modèle client, OS fusionnées sur leurs actions, puis récapitulatif unique OS, actions, indicateur, cible 2031 et coût), conclusion et annexes (parties prenantes, matrice des risques avec présence et méthodologie, fiche des indicateurs). Tous les tableaux du canevas y figurent, sauf le business plan retiré à la demande du client, avec les colonnes du canevas ; ceux qui se lisent par axe regroupent les axes des directions sous chaque axe de l'entreprise, et chaque ligne garde la couleur de sa direction. PDF en deux passes pour un sommaire paginé ; police Roboto embarquée (`resources/fonts`, licence Apache 2.0).
+- **Note de synthèse** (`PsdBriefBuilder`) : le Plan Stratégique sur le plan d'un plan stratégique publié — sigles, mot du DG, l'essentiel du plan, contexte, méthode, présentation, parties prenantes (tableau du canevas), bilan des performances des années précédentes (les cinq exercices écoulés dans un seul tableau, puis 2026 et ses tendances, dans les sept colonnes du modèle client : objectif, indicateur, résultat attendu en décembre, écart, cause, cause profonde, action entreprise), diagnostic (ressources et compétences et leur synthèse, PESTEL, SWOT, mise en relation du diagnostic, analyse causale, risques de criticité élevée), principaux enjeux et défis (synthèse des contraintes par domaine d'activités, puis enjeux et défis), facteurs clés, cadre stratégique (vision, mission, valeurs, tableau des axes avec objectif, objectifs spécifiques et axes des directions regroupés), mise en œuvre (synthèse du cadre logique, budget par axe et par exercice avec graphique, financement avec modalités, période et responsables, effectifs par hiérarchie, statut et genre), pilotage (dispositif, renvoi au cadre de mesure de rendement), synthèse du cadre stratégique (tableau OS / actions / budget / objectif / contraintes du modèle client, OS fusionnées sur leurs actions), conclusion et cinq annexes par axe (matrice des risques avec présence et méthodologie, cadre logique, planification, budget détaillé, fiche des indicateurs suivie du cadre de mesure de rendement). Tous les tableaux du canevas y figurent — même vides, avec leurs en-têtes et lignes du modèle (revue de l'auditeur du 22/09/2026) —, sauf le business plan et l'inventaire retirés à la demande du client ; ceux qui se lisent par axe regroupent les axes des directions sous chaque axe de l'entreprise, et chaque ligne garde la couleur de sa direction. Le texte généré se limite à des renvois d'une ligne et à quelques encadrés « Analyse » ; pas de page de sommaire. Police Roboto embarquée (`resources/fonts`, licence Apache 2.0).
 - **Cadre stratégique de l'entreprise** : vision, mission, valeurs, dispositif de pilotage et axes stratégiques sont arrêtés par la Direction Générale (blocs narratifs, écran « Plan Stratégique de SENICO ») et remplacent dans les documents les propositions de chaque direction. Les axes (`AXES_CONSOLIDES`, format lu par `PsdConsolidatedAxes`) regroupent les axes des directions : objectifs, budget et actions s'additionnent sous l'axe de l'entreprise ; un axe de direction non rattaché est signalé.
 
 ### Frontend
@@ -76,10 +76,11 @@ Le frontend démarre sur `http://localhost:3000`.
 
 ```bash
 cd frontend
-npm run prod   # build de production, puis serveur sur http://localhost:3000
+npm run prod             # build de production dans .next-prod, puis serveur sur http://localhost:3000
+PORT=3001 npm run prod   # même chose sur un autre port (pour garder `npm run dev` ouvert sur le 3000)
 ```
 
-Arrêter d'abord `npm run dev` : les deux partagent le dossier `.next` et le port 3000. Relancer `npm run prod` après toute modification du frontend.
+Le build de production a son propre dossier (`.next-prod`) : `npm run dev` peut rester ouvert à côté, sur un autre port, sans le corrompre. Relancer `npm run prod` après toute modification du frontend ; il ne recharge pas à chaud.
 
 ## Comptes de démonstration
 

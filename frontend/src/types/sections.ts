@@ -37,17 +37,32 @@ export interface StakeholdersContent {
   rows: StakeholderRow[];
 }
 
-// ---- S01B : Analyse des performances de l'annee 2026 ----
-export interface PerformanceReview2026Row {
-  domain: string;
+// ---- S01B : Bilan des performances des annees passees et de l'annee en cours ----
+/** Exercice en cours du bilan : ses resultats attendus en decembre sont des projections, lues avec leur tendance. */
+export const PERFORMANCE_REVIEW_YEAR = 2026;
+/** Les cinq exercices ecoules, regroupes dans un seul tableau (un bandeau par exercice). */
+export const PAST_PERFORMANCE_YEARS = [2021, 2022, 2023, 2024, 2025] as const;
+export const PERFORMANCE_TRENDS = ["FAVORABLE", "STABLE", "DEFAVORABLE"] as const;
+export type PerformanceTrend = (typeof PERFORMANCE_TRENDS)[number];
+export const PERFORMANCE_TREND_LABELS: Record<PerformanceTrend, string> = {
+  FAVORABLE: "Favorable",
+  STABLE: "Stable",
+  DEFAVORABLE: "Défavorable",
+};
+// Memes sept colonnes (modele client) pour les exercices ecoules et l'exercice en cours.
+export interface PerformanceReviewRow {
+  year: number; // exercice : 2021-2025 (ecoule) ou 2026 (en cours). Une ligne de l'ancien tableau 2026 n'en a pas : le serveur la convertit a la lecture
+  objective: string;
   indicator: string;
-  target2026: number;
-  achieved2026: number;
-  rate?: number | null; // calcule : realise / cible x 100, ou cible / realise pour un delai, un nombre d'incidents, un ecart ou un cout ; null si la cible vaut 0
-  comment: string;
+  expectedResult: string; // Resultat attendu en decembre
+  gap: string; // Ecart
+  cause: string;
+  rootCause: string; // Cause profonde
+  action: string; // Action entreprise
+  trend?: PerformanceTrend | ""; // exercice en cours seulement : tendance de l'indicateur vers sa cible de decembre
 }
 export interface PerformanceReview2026Content {
-  rows: PerformanceReview2026Row[];
+  rows: PerformanceReviewRow[];
 }
 
 // ---- S02 : Matrice d'analyse des ressources et competences ----

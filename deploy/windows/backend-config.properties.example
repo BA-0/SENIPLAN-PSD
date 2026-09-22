@@ -1,0 +1,34 @@
+# SENIPLAN - configuration du backend sous Windows Server.
+#
+# A copier vers C:\seniplan\backend\config\application.properties : Spring Boot charge
+# automatiquement le dossier config\ situe a cote du jar, et ces valeurs remplacent celles
+# empaquetees dans le jar (memes noms que backend\.env.example, utilise sous Linux).
+#
+# Ce fichier contient des secrets : restreindre ses droits aux administrateurs et au compte
+# des services (cf. DEPLOYMENT-WINDOWS.md, section 5).
+
+spring.profiles.active=prod
+
+# Le backend n'ecoute que sur la boucle locale : seul Nginx y accede.
+server.address=127.0.0.1
+SERVER_PORT=8080
+
+# Base de donnees MySQL 8
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=senico_diagnostic
+DB_USER=senico_app
+DB_PASSWORD=CHANGE_ME
+DB_POOL_SIZE=10
+
+# JWT - generer sur le serveur une valeur aleatoire forte, jamais transmise par mail :
+#   [Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])
+JWT_SECRET=CHANGE_ME
+JWT_ACCESS_EXPIRATION_MS=900000
+JWT_REFRESH_EXPIRATION_MS=604800000
+
+# CORS - origine publique du frontend (plusieurs valeurs separees par des virgules)
+CORS_ALLOWED_ORIGINS=https://seniplan.senico.sn
+
+# Journal applicatif (barres obliques simples, ou antislashs doubles)
+LOG_FILE=C:/seniplan/logs/backend.log

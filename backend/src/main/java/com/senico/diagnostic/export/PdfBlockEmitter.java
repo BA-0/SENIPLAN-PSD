@@ -7,7 +7,6 @@ import com.lowagie.text.Element;
 import com.lowagie.text.Font;
 import com.lowagie.text.Image;
 import com.lowagie.text.Paragraph;
-import com.lowagie.text.Phrase;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.ColumnText;
 import com.lowagie.text.pdf.PdfPCell;
@@ -26,9 +25,6 @@ import java.util.List;
  */
 @Component
 public class PdfBlockEmitter {
-
-    /** Prefixe des marqueurs poses sur les intertitres, releves a la pagination pour le sommaire. */
-    static final String TOC_TAG = "toc:";
 
     private static final Color PRIMARY = new Color(0x2D, 0x7A, 0x45);
     private static final Color PRIMARY_DARK = new Color(0x1F, 0x5C, 0x33);
@@ -552,13 +548,14 @@ public class PdfBlockEmitter {
 
     /**
      * Le niveau 1 est le titre de partie d'un document redige (« I. CONTEXTE... ») : il ouvre une
-     * page, en grand, souligne d'un filet, comme dans un PSD publie. Les niveaux 1 et 2 portent un
-     * marqueur que la pagination releve pour numeroter le sommaire.
+     * page, en grand, souligne d'un filet, comme dans un PSD publie. Les intertitres ne portent plus
+     * de marqueur de pagination : la note n'a plus de sommaire (revue du 22/09/2026) et le Plan
+     * numerote le sien depuis ses propres titres de rubrique (cf. PdfExportService#PLAN_TAG).
      */
     private void emitHeading(Document document, PdfWriter writer, ExportBlock.Heading h) throws DocumentException {
         if (h.level() == 1) {
             document.newPage();
-            Paragraph title = tagged(h.text(), PdfFonts.font(18, Font.BOLD, PRIMARY), TOC_TAG + h.text());
+            Paragraph title = titled(h.text(), PdfFonts.font(18, Font.BOLD, PRIMARY));
             title.setSpacingAfter(4);
             document.add(title);
             LineSeparator rule = new LineSeparator();
@@ -579,7 +576,7 @@ public class PdfBlockEmitter {
         Paragraph p;
         switch (h.level()) {
             case 2 -> {
-                p = tagged(h.text(), PdfFonts.font(13, Font.BOLD, PRIMARY), TOC_TAG + h.text());
+                p = titled(h.text(), PdfFonts.font(13, Font.BOLD, PRIMARY));
                 p.setSpacingBefore(14);
                 p.setSpacingAfter(6);
             }
@@ -603,12 +600,9 @@ public class PdfBlockEmitter {
         }
     }
 
-    private Paragraph tagged(String text, Font font, String tag) {
-        Phrase phrase = PdfFonts.phrase(text, font);
-        for (Object element : phrase.getChunks()) {
-            ((Chunk) element).setGenericTag(tag);
-        }
-        Paragraph paragraph = new Paragraph(phrase);
+    /** Titre de partie ou de sous-partie, a l'interligne serre d'un titre. */
+    private Paragraph titled(String text, Font font) {
+        Paragraph paragraph = new Paragraph(PdfFonts.phrase(text, font));
         paragraph.setLeading(font.getSize() * 1.25f);
         return paragraph;
     }

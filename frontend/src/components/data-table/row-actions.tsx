@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import { TableCell, TableRow } from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -106,4 +107,27 @@ export function insertInModelOrder<R>(rows: R[], row: R, keyOf: (r: R) => string
 /** Options du modele pas encore utilisees par une ligne du tableau. */
 export function remainingOptions(order: readonly string[], labels: Record<string, string>, used: string[]) {
   return order.filter((k) => !used.includes(k)).map((k) => ({ value: k, label: labels[k] ?? k }));
+}
+
+/** Ligne d'ajout en pied de tableau (ou de bloc) : un lien « + Ajouter … » sur toute la largeur. */
+export function TableAddRow({
+  colSpan,
+  onAdd,
+  label,
+  emphasis,
+}: {
+  colSpan: number;
+  onAdd: () => void;
+  label: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <TableRow className="hover:bg-transparent">
+      <TableCell colSpan={colSpan} className="py-1.5">
+        <Button type="button" variant="link" size="sm" onClick={onAdd} className={emphasis ? "gap-1 font-semibold" : "gap-1"}>
+          <Plus className="h-3.5 w-3.5" /> {label}
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
 }

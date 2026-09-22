@@ -70,6 +70,16 @@ public class DefaultSectionContentFactory {
     public static final int[] YEARS = {2027, 2028, 2029, 2030, 2031};
     public static final String[] AXIS_CODES = {"AXE1", "AXE2", "AXE3", "AXE4"};
 
+    /**
+     * Bilan des performances (S01B) : l'exercice en cours, dont les resultats attendus en decembre se
+     * lisent avec leur tendance, et les cinq exercices ecoules qui le precedent, regroupes dans un seul
+     * tableau. Une ligne porte son exercice ({@code year}).
+     */
+    public static final int REVIEW_YEAR = 2026;
+    public static final int[] PAST_REVIEW_YEARS = {2021, 2022, 2023, 2024, 2025};
+    /** Tendance d'un indicateur de l'exercice en cours : vers sa cible de decembre, stable, ou en ecart croissant. */
+    public static final String[] PERFORMANCE_TRENDS = {"FAVORABLE", "STABLE", "DEFAVORABLE"};
+
     public ObjectNode buildDefault(SectionType type) {
         return switch (type) {
             // Tableaux a lignes : ils demarrent vides, chaque direction ajoute les lignes qu'elle renseigne.
@@ -189,22 +199,14 @@ public class DefaultSectionContentFactory {
         return n;
     }
 
+    /** S10 / S11 : un onglet par axe, sans bloc « Effet » pre-cree ; la direction ajoute les siens. */
     private ObjectNode actionPlanOrBudget(boolean withAmounts) {
         ObjectNode n = F.objectNode();
         ArrayNode axes = F.arrayNode();
         for (String axisCode : AXIS_CODES) {
             ObjectNode axis = F.objectNode();
             axis.put("axisCode", axisCode);
-            ArrayNode effects = F.arrayNode();
-            for (int i = 1; i <= 4; i++) {
-                ObjectNode effect = F.objectNode();
-                effect.put("effectCode", "EFFET" + i);
-                effect.put("osCode", "OS" + i);
-                effect.put("effectLabel", "");
-                effect.set("rows", F.arrayNode());
-                effects.add(effect);
-            }
-            axis.set("effects", effects);
+            axis.set("effects", F.arrayNode());
             axes.add(axis);
         }
         n.set("axes", axes);
@@ -212,20 +214,14 @@ public class DefaultSectionContentFactory {
         return n;
     }
 
+    /** S12 : un onglet par axe, sans niveau pre-cree ; la direction ajoute ceux qu'elle renseigne. */
     private ObjectNode performanceFramework() {
         ObjectNode n = F.objectNode();
         ArrayNode axes = F.arrayNode();
         for (String axisCode : AXIS_CODES) {
             ObjectNode axis = F.objectNode();
             axis.put("axisCode", axisCode);
-            ArrayNode groups = F.arrayNode();
-            for (String level : LOGFRAME_LEVELS) {
-                ObjectNode group = F.objectNode();
-                group.put("level", level);
-                group.set("rows", F.arrayNode());
-                groups.add(group);
-            }
-            axis.set("groups", groups);
+            axis.set("groups", F.arrayNode());
             axes.add(axis);
         }
         n.set("axes", axes);

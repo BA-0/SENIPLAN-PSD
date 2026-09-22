@@ -24,7 +24,7 @@ import java.util.Optional;
  * a la LECTURE, jamais persistes tels quels : la source de verite reste la saisie brute.
  * Sections concernees : S05 (sync S04), S07 (agregation S01/S03/S04/S06), S08->S09-S12/S17
  * (intitules d'axes), S11 (totaux budget), S14 (criticite N x Q), S15 (pourcentages),
- * S16 (resultats/tresorerie auto), S01B (taux de realisation 2026), S03B (reprise S02),
+ * S16 (resultats/tresorerie auto), S01B (reprise de l'ancien bilan 2026), S03B (reprise S02),
  * S09B (reprise S09), S14B (totaux effectifs par annee).
  */
 @Service
@@ -67,7 +67,7 @@ public class DerivedFieldsService {
             case BUDGET -> applyBudgetTotals(applyAxisTitleSync(groupId, content));
             case RISK_MATRIX -> applyRiskCriticality(content);
             case FINANCING_PLAN -> applyFinancingTotals(content);
-            case PERFORMANCE_REVIEW_2026 -> applyPerformanceReviewRates(content);
+            case PERFORMANCE_REVIEW_2026 -> normalizePerformanceReview(content);
             case RESOURCES_MATRIX -> normalizeResourceRows(content);
             case RESOURCES_SYNTHESIS -> applyResourcesSynthesisSync(groupId, content);
             case LOGFRAME_SYNTHESIS -> applyLogframeSynthesisSync(groupId, content);
@@ -365,10 +365,23 @@ public class DerivedFieldsService {
         return content;
     }
 
-    // ---- S01B : taux d'atteinte 2026, en pourcentage ----
-    // realise / cible pour un indicateur a faire monter ; cible / realise pour un delai, un nombre
-    // d'incidents, un ecart ou un cout : 17 incidents pour une cible de 10 s'affichaient « 170 % ».
-    private ObjectNode applyPerformanceReviewRates(ObjectNode content) {
+    // ---- S01B : compat ascendante - ancien bilan 2026 {domain, target2026, achieved2026, comment} ----
+    // -> bilan par exercice {year, objective, indicator, expectedResult, gap, cause, rootCause, action, trend}
+    private static final String[] PERFORMANCE_REVIEW_FIELDS = {
+            "objective", "indicator", "expectedResult", "gap", "cause", "rootCause", "action"};
+    private static final String[] LEGACY_PERFORMANCE_REVIEW_FIELDS = {
+            "domain", "target2026", "achieved2026", "comment", "rate", "lowerIsBetter"};
+
+    /**
+     * Le bilan des performances porte les cinq exercices ecoules et l'exercice en cours, dans les sept
+     * colonnes du modele client. Une ligne saisie avec l'ancien tableau (cible et realise 2026, taux
+     * calcule) est convertie sans perte : le domaine devient l'objectif, la cible le resultat attendu en
+     * decembre, l'ecart la difference signee entre realise et cible, le commentaire la cause ; la
+     * tendance suit le sens de l'indicateur (un delai au-dessus de sa cible est defavorable). Les anciens
+     * champs sont retires une fois convertis : la prochaine sauvegarde ecrit la nouvelle structure. Une
+     * ligne sans exercice est celle de l'annee en cours.
+     */
+    private ObjectNode normalizePerformanceReview(ObjectNode content) {
         JsonNode rows = content.get("rows");
         if (rows == null || !rows.isArray()) {
             return content;
@@ -377,19 +390,75 @@ public class DerivedFieldsService {
             if (!(rowNode instanceof ObjectNode row)) {
                 continue;
             }
-            double target = row.path("target2026").asDouble(0);
-            double achieved = row.path("achieved2026").asDouble(0);
-            boolean lowerIsBetter = lowerIsBetter(row);
-            // Cible a zero (ou, pour un indicateur a faire baisser, realise a zero) : le taux n'a pas de
-            // sens, on laisse la case vide plutot que d'afficher 0 % ou une division infinie.
-            if (target == 0 || (lowerIsBetter && achieved == 0)) {
-                row.putNull("rate");
-            } else {
-                double ratio = lowerIsBetter ? target / achieved : achieved / target;
-                row.put("rate", Math.round(ratio * 1000d) / 10d);
+            int year = reviewYearOf(row);
+            row.put("year", year);
+            boolean legacy = row.has("target2026") || row.has("achieved2026") || row.has("domain");
+            if (legacy) {
+                double target = row.path("target2026").asDouble(0);
+                double achieved = row.path("achieved2026").asDouble(0);
+                // Les deux chiffres a zero : la ligne n'avait pas ete chiffree, on ne fabrique ni cible ni ecart.
+                boolean figures = row.path("target2026").isNumber() && row.path("achieved2026").isNumber()
+                        && (target != 0 || achieved != 0);
+                putIfBlank(row, "objective", row.path("domain").asText(""));
+                putIfBlank(row, "expectedResult", figures ? formatReviewNumber(target) : "");
+                putIfBlank(row, "gap", figures ? formatReviewGap(achieved - target) : "");
+                putIfBlank(row, "cause", row.path("comment").asText(""));
+                if (figures && year == DefaultSectionContentFactory.REVIEW_YEAR && row.path("trend").asText("").isBlank()) {
+                    boolean onTrack = lowerIsBetter(row) ? achieved <= target : achieved >= target;
+                    row.put("trend", onTrack ? "FAVORABLE" : "DEFAVORABLE");
+                }
+                for (String field : LEGACY_PERFORMANCE_REVIEW_FIELDS) {
+                    row.remove(field);
+                }
+            }
+            for (String field : PERFORMANCE_REVIEW_FIELDS) {
+                if (!row.path(field).isTextual()) {
+                    row.put(field, "");
+                }
+            }
+            if (!row.path("trend").isTextual()) {
+                row.put("trend", "");
             }
         }
         return content;
+    }
+
+    private static int reviewYearOf(JsonNode row) {
+        JsonNode year = row.get("year");
+        if (year != null && year.isNumber()) {
+            return year.asInt();
+        }
+        if (year != null && year.isTextual()) {
+            try {
+                return Integer.parseInt(year.asText().trim());
+            } catch (NumberFormatException ignored) {
+                // exercice illisible : celui de l'annee en cours, ci-dessous
+            }
+        }
+        return DefaultSectionContentFactory.REVIEW_YEAR;
+    }
+
+    private static void putIfBlank(ObjectNode row, String field, String value) {
+        if (row.path(field).asText("").isBlank() && !value.isBlank()) {
+            row.put(field, value);
+        }
+    }
+
+    /** Nombre a une decimale au plus, en typographie francaise (« 4 200 », « 3,8 »). */
+    private static String formatReviewNumber(double value) {
+        java.text.DecimalFormatSymbols symbols = new java.text.DecimalFormatSymbols(java.util.Locale.FRANCE);
+        symbols.setGroupingSeparator(' ');
+        symbols.setDecimalSeparator(',');
+        return new java.text.DecimalFormat("#,##0.#", symbols).format(value);
+    }
+
+    /** Ecart signe entre le realise et la cible : « +130 », « -220 », « 0 ». */
+    private static String formatReviewGap(double gap) {
+        double rounded = Math.round(gap * 10d) / 10d;
+        if (rounded == 0) {
+            return "0";
+        }
+        return (rounded > 0 ? "+" : "-") + formatReviewNumber(Math.abs(rounded));
     }
 
     /** Intitules d'indicateurs dont la valeur doit baisser, sans accents ni majuscules. */

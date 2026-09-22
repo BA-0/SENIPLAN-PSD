@@ -2,7 +2,7 @@ import { SECTION_CODES } from "@/types/common";
 import type { SectionStatus } from "@/types/common";
 
 /**
- * Regroupement des 23 sections du canevas en 5 parties (et sous-parties pour le
+ * Regroupement des 22 sections du canevas en 5 parties (et sous-parties pour le
  * diagnostic, la plus longue). Sert a raccourcir les listes plates de sections :
  * navigation laterale et checklist du tableau de bord.
  *

@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "prod": "next build && next start",
+    "prod": "node scripts/prod.mjs",
     "lint": "next lint"
   },
   "dependencies": {
@@ -36,6 +36,7 @@
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.52.2",
     "recharts": "^2.12.7",
+    "sharp": "^0.35.4",
     "sockjs-client": "^1.6.1",
     "sonner": "^1.5.0",
     "tailwind-merge": "^2.5.2",

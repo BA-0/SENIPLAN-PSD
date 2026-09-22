@@ -15,7 +15,7 @@ import java.util.function.Function;
 final class JsonUtil {
 
     private static final DecimalFormat CURRENCY_FORMAT;
-    /** Taux de realisation (S01B) : une decimale, la ou les montants restent entiers. */
+    /** Valeurs a une decimale au plus (delais, taux, millions), la ou les montants restent entiers. */
     private static final DecimalFormat RATE_FORMAT;
     /** Milliards dans le texte : deux decimales, « 12,51 milliards ». */
     private static final DecimalFormat AMOUNT_FORMAT;
@@ -87,10 +87,6 @@ final class JsonUtil {
     /** Effectifs, cibles, realises : entiers groupes, sans unite (contrairement a formatCurrency). */
     static String formatNumber(double value) {
         return CURRENCY_FORMAT.format(Math.round(value));
-    }
-
-    static String formatRate(double percent) {
-        return RATE_FORMAT.format(percent) + " %";
     }
 
     /** Valeur a une decimale au plus (3,8 jours ; 96,5 %) : formatNumber arrondirait 3,8 a 4. */

@@ -14,46 +14,51 @@ import { extractErrorMessage } from "@/lib/api-client";
 
 /** Les parties de la note, dans l'ordre du document (cf. PsdBriefBuilder côté serveur). */
 const PARTS: { title: string; description: string }[] = [
-  { title: "Sigles, mot du Directeur Général, l'essentiel du plan", description: "chiffres clés, vision et axes en une page." },
-  { title: "I. Contexte et justification", description: "introduction, objet et périmètre, lecture des couleurs." },
+  { title: "Sigles, mot du Directeur Général, l'essentiel du plan", description: "chiffres clés et budget par axe en une page." },
+  { title: "I. Contexte et justification", description: "introduction, objet et périmètre, code couleur des directions." },
   { title: "II. Approche méthodologique", description: "les phases d'élaboration du plan." },
-  { title: "III. Présentation de SENICO", description: "missions, organisation, ressources." },
-  { title: "IV. Analyse des parties prenantes", description: "matrice intérêt / pouvoir d'influence." },
+  { title: "III. Présentation de SENICO", description: "historique, missions, gouvernance, organisation, ressources." },
+  { title: "IV. Analyse des parties prenantes", description: "le tableau du canevas (rôles, attentes, importance, influence, actions)." },
   {
-    title: "V. Diagnostic stratégique",
+    title: "V. Bilan des performances des années précédentes",
     description:
-      "performances 2026, ressources et compétences, PESTEL, SWOT, orientations croisées et risques de criticité élevée avec leur impact.",
+      "enseignements, puis les performances des années passées (les cinq exercices écoulés dans un seul tableau) et celles de 2026 avec leurs tendances, dans les sept colonnes du modèle client.",
   },
-  { title: "VI. Bilan des performances des années précédentes", description: "résultats et enseignements." },
+  {
+    title: "VI. Diagnostic stratégique",
+    description:
+      "ressources et compétences et leur synthèse, PESTEL, SWOT, mise en relation du diagnostic, analyse causale, risques de criticité élevée.",
+  },
   {
     title: "VII. Principaux enjeux et défis — VIII. Facteurs clés de réussite et d'échec",
-    description: "dont la synthèse des contraintes, enjeux, défis et priorités par domaine d'activités.",
+    description: "synthèse des contraintes, enjeux et défis par domaine d'activités, puis les enjeux et défis arrêtés par la Direction Générale.",
   },
   {
     title: "IX. Cadre stratégique",
-    description: "vision, mission, valeurs et axes arrêtés par la Direction Générale, avec les objectifs des directions.",
+    description: "vision, mission, valeurs et le tableau des axes : objectif, objectifs spécifiques et axes des directions regroupés.",
   },
   {
     title: "X. Cadre de mise en œuvre",
-    description: "budget par axe et par exercice, plan de financement, effectifs par hiérarchie, statut et genre.",
+    description: "synthèse du cadre logique, budget par axe et par exercice, plan de financement, effectifs par hiérarchie, statut et genre.",
   },
-  { title: "XI. Cadre de pilotage et de suivi-évaluation", description: "dispositif de pilotage et indicateurs." },
+  { title: "XI. Cadre de pilotage et de suivi-évaluation", description: "dispositif de pilotage et renvoi au cadre de mesure de rendement (annexe 5)." },
   {
     title: "XII. Synthèse du cadre stratégique",
-    description:
-      "tableau de synthèse (OS, actions, contraintes ou opportunités) et récapitulatif des objectifs, actions, cibles 2031, indicateurs et coûts.",
+    description: "le tableau du modèle client : OS, actions, budget, objectif, contraintes ou opportunités, par axe.",
   },
   {
-    title: "XIII. Conclusion et annexes",
-    description: "parties prenantes, matrice des risques, fiche des indicateurs.",
+    title: "XIII. Conclusion, puis cinq annexes par axe",
+    description:
+      "1. matrice des risques, 2. cadre logique, 3. planification, 4. budget détaillé, 5. fiche des indicateurs puis cadre de mesure de rendement.",
   },
 ];
 
 /**
  * Note de synthese : le Plan Stratégique 2027-2031 présenté sur le plan d'un plan stratégique publié
- * (page de garde, sommaire paginé, parties numérotées, graphiques), à partir des contributions des
+ * (page de garde, parties numérotées, tableaux du canevas, graphiques), à partir des contributions des
  * directions et des textes arrêtés par la Direction Générale. Plus courte que le Plan Stratégique
- * de SENICO, qui reprend en détail les tableaux de chaque direction.
+ * de SENICO, qui reprend en détail les tableaux de chaque direction. Sans page de sommaire et avec
+ * chaque tableau présent même vide, depuis la revue de l'auditeur du 22/09/2026.
  *
  * Même périmètre que ce dernier depuis la validation à deux niveaux : seules les sections
  * approuvées par le DG y figurent.
@@ -81,10 +86,10 @@ export default function SynthesisPage() {
       <div>
         <h1>Note de synthèse</h1>
         <p className="text-[13px] text-muted-foreground mt-1">
-          Le Plan Stratégique 2027-2031 présenté comme un plan stratégique publié — page de garde, sommaire
-          paginé, parties numérotées, graphiques — avec tous les tableaux du canevas consolidés axe par axe (cadre
-          logique, plan d&apos;actions, budget, cadre de mesure de rendement…), chaque ligne à la couleur de sa
-          direction. Pour le Conseil d&apos;Administration et le comité de pilotage.
+          Le Plan Stratégique 2027-2031 présenté comme un plan stratégique publié — page de garde, parties
+          numérotées, graphiques — avec tous les tableaux du canevas consolidés axe par axe (cadre logique, plan
+          d&apos;actions, budget, cadre de mesure de rendement…), présents même vides, chaque ligne à la couleur
+          de sa direction. Pour le Conseil d&apos;Administration et le comité de pilotage.
         </p>
       </div>
 
@@ -131,8 +136,9 @@ export default function SynthesisPage() {
             ))}
           </ol>
           <p className="text-[13px] text-muted-foreground mt-4">
-            Chaque tableau chiffré est suivi de la lecture qu&apos;on en attend (« Analyse : … »). Les constats des
-            directions portent leur couleur ; les textes de la Direction Générale engagent l&apos;entreprise entière.
+            Un tableau que rien n&apos;alimente encore garde ses colonnes et les lignes du modèle, avec un tiret par
+            case. Les constats des directions portent leur couleur ; les textes de la Direction Générale engagent
+            l&apos;entreprise entière.
           </p>
         </CardContent>
       </Card>

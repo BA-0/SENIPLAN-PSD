@@ -135,13 +135,8 @@ export function StaffEvolutionForm({ content, onChange, readOnly }: SectionFormP
             return (
               <Fragment key={index}>
                 {isFirstOfCategory && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columnCount}
-                      className="bg-muted/60 text-[12px] font-semibold uppercase tracking-wide text-foreground/80"
-                    >
-                      {STAFF_CATEGORY_LABELS[row.category as StaffCategory] ?? row.category}
-                    </TableCell>
+                  <TableRow band>
+                    <TableCell colSpan={columnCount}>{STAFF_CATEGORY_LABELS[row.category as StaffCategory] ?? row.category}</TableCell>
                   </TableRow>
                 )}
                 <TableRow>

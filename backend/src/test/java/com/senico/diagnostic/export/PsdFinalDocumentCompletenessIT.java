@@ -1,6 +1,8 @@
 package com.senico.diagnostic.export;
 
+import com.senico.diagnostic.domain.GroupSectionStatus;
 import com.senico.diagnostic.domain.WorkGroup;
+import com.senico.diagnostic.repository.GroupSectionStatusRepository;
 import com.senico.diagnostic.repository.WorkGroupRepository;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -50,6 +52,9 @@ class PsdFinalDocumentCompletenessIT {
     @Autowired
     private WorkGroupRepository workGroupRepository;
 
+    @Autowired
+    private GroupSectionStatusRepository groupSectionStatusRepository;
+
     private static String texte;
     private static List<String> directions;
 
@@ -61,8 +66,13 @@ class PsdFinalDocumentCompletenessIT {
 
     private String document() throws Exception {
         if (texte == null) {
-            directions = workGroupRepository.findAll().stream().map(WorkGroup::getName).toList();
+            // Seules les directions actives entrent dans le document (une direction desactivee en disparait).
+            directions = workGroupRepository.findByEnabledTrueOrderByIdAsc().stream().map(WorkGroup::getName).toList();
             assumeTrue(!directions.isEmpty(), "Aucune direction en base : recette ignoree");
+            // La completude est une propriete des donnees : tant qu'aucune section n'est approuvee par la
+            // Direction Generale (seul perimetre repris dans le document), il n'y a encore rien a verifier.
+            assumeTrue(groupSectionStatusRepository.findAllWithGroupAndSection().stream().anyMatch(GroupSectionStatus::isDgApproved),
+                "Aucune section approuvee par la Direction Generale : recette ignoree");
             byte[] docx = wordExportService.exportPsdFinalDocument();
             try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(docx));
                  XWPFWordExtractor extractor = new XWPFWordExtractor(document)) {
@@ -96,7 +106,7 @@ class PsdFinalDocumentCompletenessIT {
     void sectionsDeRevueClientReprises() throws Exception {
         String contenu = document();
         assertThat(contenu).contains(
-                "Analyse des performances de l'année 2026",
+                "Performances des années passées et de l'année 2026",
                 "Synthèse de l'analyse des ressources",
                 "Synthèse des enjeux et des contraintes",
                 "Synthèse du cadre logique",

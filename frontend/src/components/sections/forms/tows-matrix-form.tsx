@@ -1,110 +1,101 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import type { TowsMatrixContent } from "@/types/sections";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EditableCell } from "@/components/data-table/editable-cell";
+import { TOWS_ACTION_LABELS } from "@/types/sections";
+import type { TowsActions, TowsMatrixContent } from "@/types/sections";
 import type { SectionFormProps } from "./types";
+import { SwotTable } from "./swot-table";
 
-function RefList({ label, items, tone }: { label: string; items: string[]; tone: string }) {
-  return (
-    <div>
-      <p className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground mb-1.5">{label}</p>
-      {items.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground italic">Aucun élément (voir l&apos;analyse SWOT)</p>
-      ) : (
-        <ul className="space-y-1">
-          {items.map((item, i) => (
-            <li key={i} className={`text-[13px] rounded-md px-2 py-1 ${tone}`}>
-              {item}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-const FIELD_GROUPS: { title: string; fields: { key: keyof TowsMatrixContent; question: string }[] }[] = [
-  {
-    title: "Forces × Faiblesses",
-    fields: [
-      { key: "maximizeStrengths", question: "Comment maximiser les forces ?" },
-      { key: "minimizeWeaknesses", question: "Comment minimiser les faiblesses ?" },
-      { key: "strengthsControlWeaknesses", question: "En quoi les forces permettent-elles de maîtriser les faiblesses ?" },
-    ],
-  },
-  {
-    title: "Opportunités",
-    fields: [
-      { key: "maximizeOpportunities", question: "Comment maximiser les opportunités ?" },
-      { key: "strengthsForOpportunities", question: "Comment utiliser les forces pour tirer parti des opportunités ?" },
-      { key: "correctWeaknessesViaOpportunities", question: "Comment corriger les faiblesses en tirant parti des opportunités ?" },
-    ],
-  },
-  {
-    title: "Menaces",
-    fields: [
-      { key: "minimizeThreats", question: "Comment minimiser les menaces ?" },
-      { key: "strengthsReduceThreats", question: "Comment utiliser les forces pour réduire les menaces ?" },
-      { key: "minimizeWeaknessesAndThreats", question: "Comment minimiser les faiblesses et les menaces ?" },
-    ],
-  },
-  {
-    title: "Synthèse",
-    fields: [
-      { key: "opportunitiesMinimizeThreats", question: "En quoi les opportunités permettent-elles de minimiser les menaces ?" },
-    ],
-  },
-];
-
+/**
+ * S05 — mise en relation du diagnostic, sur le modele du canevas : les facteurs internes en
+ * colonnes (forces, faiblesses), les facteurs externes en lignes (opportunites, menaces) et, a
+ * chaque croisement, la strategie qu'en tire la direction. Les cases grises ne se remplissent pas.
+ * Le SWOT est rappele au-dessus, en lecture seule (il se saisit dans sa propre section).
+ */
 export function TowsMatrixForm({ content, onChange, readOnly }: SectionFormProps<TowsMatrixContent>) {
-  function updateField(key: keyof TowsMatrixContent, value: string) {
+  function updateField(key: keyof TowsActions, value: string) {
     onChange((prev) => ({ ...prev, [key]: value }));
   }
 
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Rappel — Analyse SWOT</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <RefList label="Forces" items={content.strengths} tone="bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-300" />
-          <RefList label="Faiblesses" items={content.weaknesses} tone="bg-accent-50 dark:bg-accent-500/10 text-accent-700 dark:text-accent-300" />
-          <RefList label="Opportunités" items={content.opportunities} tone="bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300" />
-          <RefList label="Menaces" items={content.threats} tone="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300" />
-        </CardContent>
-      </Card>
+  const answer = (key: keyof TowsActions) => (
+    <TableCell className="min-w-[220px] align-top">
+      <EditableCell
+        value={content[key] ?? ""}
+        onChange={(v) => updateField(key, v)}
+        readOnly={readOnly}
+        placeholder={TOWS_ACTION_LABELS[key]}
+        multiline
+        rows={3}
+      />
+    </TableCell>
+  );
+  const none = <TableCell className="bg-muted/40" aria-hidden />;
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Matrice de confrontation</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <Accordion type="multiple" defaultValue={FIELD_GROUPS.map((g) => g.title)} className="divide-y-0">
-            {FIELD_GROUPS.map((group) => (
-              <AccordionItem key={group.title} value={group.title}>
-                <AccordionTrigger>{group.title}</AccordionTrigger>
-                <AccordionContent className="space-y-4">
-                  {group.fields.map((f) => (
-                    <div key={String(f.key)} className="space-y-1.5">
-                      <Label>{f.question}</Label>
-                      <Textarea
-                        value={content[f.key] as string}
-                        onChange={(e) => updateField(f.key, e.target.value)}
-                        readOnly={readOnly}
-                        rows={3}
-                      />
-                    </div>
-                  ))}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </CardContent>
-      </Card>
+  return (
+    <div className="space-y-5">
+      <section className="space-y-2">
+        <h3>
+          Rappel de l&apos;analyse SWOT
+          <span className="ml-2 text-[12px] font-normal text-muted-foreground">lecture seule — se saisit dans la section SWOT</span>
+        </h3>
+        <SwotTable
+          swot={{
+            strengths: content.strengths ?? [],
+            weaknesses: content.weaknesses ?? [],
+            opportunities: content.opportunities ?? [],
+            threats: content.threats ?? [],
+          }}
+          readOnly
+        />
+      </section>
+
+      <section className="space-y-2">
+        <h3>Matrice de confrontation</h3>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="min-w-[160px] whitespace-normal">Approche externe</TableHead>
+              <TableHead className="min-w-[220px] whitespace-normal">
+                Comment maximiser les opportunités / minimiser les menaces ?
+              </TableHead>
+              <TableHead className="min-w-[220px] whitespace-normal">Forces : comment les maximiser et s&apos;en servir ?</TableHead>
+              <TableHead className="min-w-[220px] whitespace-normal">Faiblesses : comment les minimiser et les corriger ?</TableHead>
+              <TableHead className="min-w-[220px] whitespace-normal">En quoi les forces permettent de maîtriser les faiblesses</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow className="hover:bg-transparent">
+              <TableCell label>Approche interne</TableCell>
+              {none}
+              {answer("maximizeStrengths")}
+              {answer("minimizeWeaknesses")}
+              {answer("strengthsControlWeaknesses")}
+            </TableRow>
+            <TableRow className="hover:bg-transparent">
+              <TableCell label>Opportunités</TableCell>
+              {answer("maximizeOpportunities")}
+              {answer("strengthsForOpportunities")}
+              {answer("correctWeaknessesViaOpportunities")}
+              {none}
+            </TableRow>
+            <TableRow className="hover:bg-transparent">
+              <TableCell label>Menaces</TableCell>
+              {answer("minimizeThreats")}
+              {answer("strengthsReduceThreats")}
+              {answer("minimizeWeaknessesAndThreats")}
+              {none}
+            </TableRow>
+            <TableRow className="hover:bg-transparent">
+              <TableCell label>En quoi les opportunités permettent de minimiser les menaces</TableCell>
+              {answer("opportunitiesMinimizeThreats")}
+              {none}
+              {none}
+              {none}
+            </TableRow>
+          </TableBody>
+        </Table>
+      </section>
     </div>
   );
 }

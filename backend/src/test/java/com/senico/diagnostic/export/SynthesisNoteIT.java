@@ -1,6 +1,8 @@
 package com.senico.diagnostic.export;
 
+import com.senico.diagnostic.domain.GroupSectionStatus;
 import com.senico.diagnostic.domain.WorkGroup;
+import com.senico.diagnostic.repository.GroupSectionStatusRepository;
 import com.senico.diagnostic.repository.WorkGroupRepository;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -18,8 +20,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Recette de la "Note de synthese" : le resume de toutes les directions doit tenir debout
- * seul — chiffres agreges renseignes, les huit parties du plan d'un PSD publie presentes et
- * annoncees au sommaire, et surtout aucune reprise direction par direction, qui est
+ * seul — chiffres agreges renseignes, les parties du plan d'un PSD publie presentes (sans page de
+ * sommaire depuis la revue du 22/09/2026), et surtout aucune reprise direction par direction, qui est
  * precisement ce que la note doit eviter.
  *
  * <p>Comme {@link PsdFinalDocumentCompletenessIT}, lit la base de developpement reelle : ce
@@ -40,8 +42,19 @@ class SynthesisNoteIT {
     @Autowired
     private WorkGroupRepository workGroupRepository;
 
+    @Autowired
+    private GroupSectionStatusRepository groupSectionStatusRepository;
+
+    /**
+     * La recette porte sur les donnees autant que sur le code : tant qu'aucune section n'est approuvee
+     * par la Direction Generale (seul perimetre repris dans la note : une saisie en cours, soumise ou
+     * validee par le comite de pilotage n'y entre pas), la note se genere mais n'a rien a montrer. On
+     * l'ignore alors, plutot que de la laisser echouer sur des tableaux absents.
+     */
     private String note() throws Exception {
         assumeTrue(!workGroupRepository.findAll().isEmpty(), "Aucune direction en base : recette ignoree");
+        assumeTrue(groupSectionStatusRepository.findAllWithGroupAndSection().stream().anyMatch(GroupSectionStatus::isDgApproved),
+                "Aucune section approuvee par la Direction Generale : recette ignoree");
         byte[] docx = wordExportService.exportSynthesisNote();
         try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(docx));
              XWPFWordExtractor extractor = new XWPFWordExtractor(document)) {
@@ -50,16 +63,15 @@ class SynthesisNoteIT {
     }
 
     @Test
-    @DisplayName("Toutes les parties de la note sont presentes, sommaire compris")
+    @DisplayName("Toutes les parties de la note sont presentes, sans page de sommaire")
     void toutesLesPartiesSontPresentes() throws Exception {
         String contenu = note();
-        assertThat(contenu).contains("SOMMAIRE");
+        // Revue de l'auditeur (22/09/2026) : la note n'a plus de sommaire.
+        assertThat(contenu).doesNotContain("SOMMAIRE");
         for (String partie : PsdBriefBuilder.partTitles()) {
-            // Deux fois : une au sommaire, une en tete de partie. Une seule signalerait
-            // un sommaire qui a decroche du corps du document.
             assertThat(contenu.split(java.util.regex.Pattern.quote(partie), -1).length - 1)
-                    .as("« %s » : attendu au sommaire et en tete de partie", partie)
-                    .isEqualTo(2);
+                    .as("« %s » : attendu une fois, en tete de partie", partie)
+                    .isEqualTo(1);
         }
     }
 
@@ -121,11 +133,12 @@ class SynthesisNoteIT {
         }
     }
 
-    /** Decoupe le corps de la note sur ses intertitres de partie, sommaire exclu. */
+    /** Decoupe le corps de la note sur ses intertitres de partie. */
     private List<String> partiesDeLaNote(String contenu) {
         List<String> titres = PsdBriefBuilder.partTitles();
-        // Le sommaire enumere les memes titres : on repart du second « I. ... », qui ouvre le corps.
-        int debutDuCorps = contenu.indexOf(titres.get(0), contenu.indexOf(titres.get(0)) + 1);
+        // Sans sommaire (revue du 22/09/2026), chaque titre de partie n'apparait qu'une fois : le corps
+        // commence a la premiere occurrence du premier.
+        int debutDuCorps = contenu.indexOf(titres.get(0));
         String corps = debutDuCorps < 0 ? contenu : contenu.substring(debutDuCorps);
 
         List<String> parties = new ArrayList<>();

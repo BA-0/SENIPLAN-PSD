@@ -15,8 +15,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 /**
- * Champs derives du plan d'evolution des effectifs (S14B) et de la matrice des ressources (S02) :
- * sans base de donnees, ces deux calculs ne lisent aucune autre section.
+ * Champs derives du plan d'evolution des effectifs (S14B), de la matrice des ressources (S02) et du
+ * bilan des performances (S01B) : sans base de donnees, ces calculs ne lisent aucune autre section.
  */
 class DerivedFieldsServiceTest {
 
@@ -75,19 +75,40 @@ class DerivedFieldsServiceTest {
     }
 
     @Test
-    @DisplayName("Performances 2026 : un délai ou un nombre d'incidents au-dessus de la cible donne un taux sous 100 %")
-    void leTauxSuitLeSensDeLIndicateur() throws Exception {
+    @DisplayName("Bilan des performances : une ligne de l'ancien tableau 2026 est convertie sans perte dans les colonnes du modèle")
+    void convertitLAncienBilan2026() throws Exception {
         ObjectNode content = apply(SectionType.PERFORMANCE_REVIEW_2026, """
-                {"rows":[{"indicator":"Chiffre d'affaires commercial annuel","target2026":4200,"achieved2026":3980},
+                {"rows":[{"domain":"Ventes","indicator":"Chiffre d'affaires commercial annuel","target2026":4200,"achieved2026":3980,
+                          "comment":"Recul du courrier classique"},
                          {"indicator":"Délai moyen d'acheminement (jours)","target2026":3,"achieved2026":3.8},
-                         {"indicator":"Nombre d'incidents techniques majeurs","target2026":10,"achieved2026":17},
-                         {"indicator":"Taux de satisfaction sur les délais de livraison (%)","target2026":80,"achieved2026":65},
-                         {"indicator":"Pannes du parc","lowerIsBetter":true,"target2026":4,"achieved2026":5}]}""");
+                         {"indicator":"Taux de satisfaction sur les délais de livraison (%)","target2026":80,"achieved2026":85},
+                         {"indicator":"Pannes du parc","lowerIsBetter":true,"target2026":4,"achieved2026":5},
+                         {"domain":"Ligne non chiffrée","indicator":"","target2026":0,"achieved2026":0},
+                         {"year":2024,"objective":"Objectif 2024","indicator":"Indicateur 2024","expectedResult":"10","gap":"-2"}]}""");
 
-        assertThat(content.at("/rows/0/rate").asDouble()).isEqualTo(94.8);
-        assertThat(content.at("/rows/1/rate").asDouble()).isEqualTo(78.9);
-        assertThat(content.at("/rows/2/rate").asDouble()).isEqualTo(58.8);
-        assertThat(content.at("/rows/3/rate").asDouble()).as("un taux de satisfaction se lit à la hausse").isEqualTo(81.3);
-        assertThat(content.at("/rows/4/rate").asDouble()).as("le sens précisé par la ligne l'emporte").isEqualTo(80);
+        JsonNode ventes = content.at("/rows/0");
+        assertThat(ventes.path("year").asInt()).as("une ligne sans exercice est celle de l'année en cours").isEqualTo(2026);
+        assertThat(ventes.path("objective").asText()).isEqualTo("Ventes");
+        assertThat(ventes.path("expectedResult").asText()).isEqualTo("4 200");
+        assertThat(ventes.path("gap").asText()).isEqualTo("-220");
+        assertThat(ventes.path("cause").asText()).isEqualTo("Recul du courrier classique");
+        assertThat(ventes.path("trend").asText()).isEqualTo("DEFAVORABLE");
+        assertThat(ventes.path("rootCause").asText()).isEmpty();
+        assertThat(ventes.path("action").asText()).isEmpty();
+        assertThat(ventes.has("target2026")).as("les anciens champs sont retirés une fois convertis").isFalse();
+        assertThat(ventes.has("achieved2026")).isFalse();
+        assertThat(ventes.has("domain")).isFalse();
+        assertThat(ventes.has("rate")).isFalse();
+
+        assertThat(content.at("/rows/1/gap").asText()).isEqualTo("+0,8");
+        assertThat(content.at("/rows/1/trend").asText()).as("un délai au-dessus de sa cible est défavorable").isEqualTo("DEFAVORABLE");
+        assertThat(content.at("/rows/2/trend").asText()).as("un taux de satisfaction au-dessus de sa cible est favorable").isEqualTo("FAVORABLE");
+        assertThat(content.at("/rows/3/trend").asText()).as("le sens précisé par la ligne l'emporte").isEqualTo("DEFAVORABLE");
+        assertThat(content.at("/rows/4/expectedResult").asText()).as("deux chiffres à zéro : ni cible ni écart fabriqués").isEmpty();
+        assertThat(content.at("/rows/4/gap").asText()).isEmpty();
+        assertThat(content.at("/rows/4/trend").asText()).isEmpty();
+        assertThat(content.at("/rows/5/year").asInt()).isEqualTo(2024);
+        assertThat(content.at("/rows/5/gap").asText()).as("une ligne déjà au nouveau format reste telle quelle").isEqualTo("-2");
+        assertThat(content.at("/rows/5/trend").asText()).isEmpty();
     }
 }

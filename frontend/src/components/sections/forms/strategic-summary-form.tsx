@@ -1,17 +1,20 @@
 "use client";
 
+import { Fragment } from "react";
 import { Plus } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableEmptyRow, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { RemoveRowButton } from "@/components/data-table/row-actions";
+import { EditableCell } from "@/components/data-table/editable-cell";
+import { RemoveRowButton, TableAddRow } from "@/components/data-table/row-actions";
 import { directionAxisLabel } from "@/lib/utils";
-import type { StrategicSummaryContent, SummaryAxis, SummaryOrientation } from "@/types/sections";
+import type { StrategicSummaryContent, SummaryAction, SummaryOrientation } from "@/types/sections";
 import type { SectionFormProps } from "./types";
 
+/**
+ * S17 — tableau de synthese du cadre strategique, sur le modele transmis par le client : la vision
+ * en tete, puis pour chaque axe son bandeau et ses orientations strategiques (OS), chacune fusionnee
+ * sur les lignes de ses actions, avec les contraintes a lever ou opportunites a saisir.
+ */
 export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFormProps<StrategicSummaryContent>) {
   function updateAxis(axisIndex: number, updater: (orientations: SummaryOrientation[]) => SummaryOrientation[]) {
     onChange((prev) => ({
@@ -19,127 +22,159 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
       axes: prev.axes.map((a, i) => (i === axisIndex ? { ...a, orientations: updater(a.orientations) } : a)),
     }));
   }
-
   function addOrientation(axisIndex: number) {
     updateAxis(axisIndex, (orientations) => [...orientations, { label: "", actions: [] }]);
   }
-
   function updateOrientation(axisIndex: number, orientationIndex: number, patch: Partial<SummaryOrientation>) {
-    updateAxis(axisIndex, (orientations) =>
-      orientations.map((o, i) => (i === orientationIndex ? { ...o, ...patch } : o))
-    );
+    updateAxis(axisIndex, (orientations) => orientations.map((o, i) => (i === orientationIndex ? { ...o, ...patch } : o)));
   }
-
   function removeOrientation(axisIndex: number, orientationIndex: number) {
     updateAxis(axisIndex, (orientations) => orientations.filter((_, i) => i !== orientationIndex));
   }
-
+  function updateActions(axisIndex: number, orientationIndex: number, updater: (actions: SummaryAction[]) => SummaryAction[]) {
+    updateAxis(axisIndex, (orientations) =>
+      orientations.map((o, i) => (i === orientationIndex ? { ...o, actions: updater(o.actions) } : o))
+    );
+  }
   function addAction(axisIndex: number, orientationIndex: number) {
-    const orientation = content.axes[axisIndex].orientations[orientationIndex];
-    updateOrientation(axisIndex, orientationIndex, {
-      actions: [...orientation.actions, { label: "", constraintsOrOpportunities: "" }],
-    });
+    updateActions(axisIndex, orientationIndex, (actions) => [...actions, { label: "", constraintsOrOpportunities: "" }]);
   }
-
-  function updateAction(axisIndex: number, orientationIndex: number, actionIndex: number, patch: Partial<SummaryAxis["orientations"][number]["actions"][number]>) {
-    const orientation = content.axes[axisIndex].orientations[orientationIndex];
-    updateOrientation(axisIndex, orientationIndex, {
-      actions: orientation.actions.map((a, i) => (i === actionIndex ? { ...a, ...patch } : a)),
-    });
+  function updateAction(axisIndex: number, orientationIndex: number, actionIndex: number, patch: Partial<SummaryAction>) {
+    updateActions(axisIndex, orientationIndex, (actions) => actions.map((a, i) => (i === actionIndex ? { ...a, ...patch } : a)));
   }
-
   function removeAction(axisIndex: number, orientationIndex: number, actionIndex: number) {
-    const orientation = content.axes[axisIndex].orientations[orientationIndex];
-    updateOrientation(axisIndex, orientationIndex, {
-      actions: orientation.actions.filter((_, i) => i !== actionIndex),
-    });
+    updateActions(axisIndex, orientationIndex, (actions) => actions.filter((_, i) => i !== actionIndex));
   }
+
+  const colCount = readOnly ? 3 : 4;
 
   return (
-    <div className="space-y-5">
-      <Card>
-        <CardHeader>
-          <Label required>Vision</Label>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={content.vision}
-            onChange={(e) => onChange((prev) => ({ ...prev, vision: e.target.value }))}
-            readOnly={readOnly}
-            rows={3}
-            placeholder="Vision globale du Plan Stratégique 2027-2031…"
-          />
-        </CardContent>
-      </Card>
-
-      <Tabs defaultValue={content.axes[0]?.axisCode}>
-        <TabsList className="axis-tabs">
-          {content.axes.map((axis) => (
-            <TabsTrigger key={axis.axisCode} value={axis.axisCode}>
-              {directionAxisLabel(axis.axisCode, axis.axisTitle)}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="min-w-[260px] whitespace-normal">Orientations stratégiques (OS)</TableHead>
+          <TableHead className="min-w-[260px]">Actions</TableHead>
+          <TableHead className="min-w-[260px] whitespace-normal">Contraintes à lever / opportunités à saisir</TableHead>
+          {!readOnly && <TableHead className="w-10" />}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow className="hover:bg-transparent">
+          <TableCell label>
+            Vision
+            <span className="ml-0.5 text-accent-500" aria-hidden>
+              *
+            </span>
+          </TableCell>
+          <TableCell colSpan={colCount - 1} className="py-3">
+            <EditableCell
+              value={content.vision}
+              onChange={(v) => onChange((prev) => ({ ...prev, vision: v }))}
+              readOnly={readOnly}
+              placeholder="Vision globale du Plan Stratégique 2027-2031…"
+              multiline
+            />
+          </TableCell>
+        </TableRow>
 
         {content.axes.map((axis, axisIndex) => (
-          <TabsContent key={axis.axisCode} value={axis.axisCode} className="space-y-4">
-            {axis.orientations.map((orientation, orientationIndex) => (
-              <Card key={orientationIndex}>
-                <CardHeader className="flex-col items-stretch gap-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[13px] font-semibold text-primary-700">OS{orientationIndex + 1}</span>
-                    {!readOnly && <RemoveRowButton onConfirm={() => removeOrientation(axisIndex, orientationIndex)} />}
-                  </div>
-                  <Input
-                    value={orientation.label}
-                    onChange={(e) => updateOrientation(axisIndex, orientationIndex, { label: e.target.value })}
-                    readOnly={readOnly}
-                    placeholder="Intitulé de l'orientation stratégique…"
-                  />
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {orientation.actions.map((action, actionIndex) => (
-                    <div key={actionIndex} className="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr_auto] gap-2 items-start rounded-lg bg-muted/50 p-2.5">
-                      <span className="text-[12px] font-medium text-muted-foreground pt-2.5 sm:pt-0 sm:self-center">
-                        Action {orientationIndex + 1}.{actionIndex + 1}
+          <Fragment key={axis.axisCode}>
+            <TableRow band>
+              <TableCell colSpan={colCount}>{directionAxisLabel(axis.axisCode, axis.axisTitle)}</TableCell>
+            </TableRow>
+
+            {axis.orientations.map((orientation, orientationIndex) => {
+              const osCell = (
+                <TableCell rowSpan={Math.max(orientation.actions.length, 1)} label>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[12px] font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-300">
+                        OS{orientationIndex + 1}
                       </span>
-                      <Input
+                      {!readOnly && <RemoveRowButton onConfirm={() => removeOrientation(axisIndex, orientationIndex)} />}
+                    </div>
+                    <EditableCell
+                      value={orientation.label}
+                      onChange={(v) => updateOrientation(axisIndex, orientationIndex, { label: v })}
+                      readOnly={readOnly}
+                      placeholder="Intitulé de l'orientation stratégique…"
+                      multiline
+                    />
+                    {!readOnly && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        onClick={() => addAction(axisIndex, orientationIndex)}
+                        className="gap-1"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Ajouter une action
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              );
+
+              if (orientation.actions.length === 0) {
+                return (
+                  <TableRow key={orientationIndex} className="hover:bg-transparent">
+                    {osCell}
+                    <TableCell colSpan={colCount - 1} className="text-[13px] italic text-muted-foreground">
+                      Aucune action pour cette orientation
+                    </TableCell>
+                  </TableRow>
+                );
+              }
+
+              return orientation.actions.map((action, actionIndex) => (
+                <TableRow key={`${orientationIndex}-${actionIndex}`} className="hover:bg-transparent">
+                  {actionIndex === 0 && osCell}
+                  <TableCell className="align-top">
+                    <div className="flex items-start gap-2">
+                      <span className="mt-2 shrink-0 text-[12px] font-medium tabular-nums text-muted-foreground">
+                        {orientationIndex + 1}.{actionIndex + 1}
+                      </span>
+                      <EditableCell
                         value={action.label}
-                        onChange={(e) => updateAction(axisIndex, orientationIndex, actionIndex, { label: e.target.value })}
+                        onChange={(v) => updateAction(axisIndex, orientationIndex, actionIndex, { label: v })}
                         readOnly={readOnly}
                         placeholder="Intitulé de l'action…"
-                        className="bg-card"
+                        multiline
                       />
-                      <Input
-                        value={action.constraintsOrOpportunities}
-                        onChange={(e) =>
-                          updateAction(axisIndex, orientationIndex, actionIndex, { constraintsOrOpportunities: e.target.value })
-                        }
-                        readOnly={readOnly}
-                        placeholder="Contraintes à lever / opportunités à saisir…"
-                        className="bg-card"
-                      />
-                      {!readOnly && (
-                        <RemoveRowButton onConfirm={() => removeAction(axisIndex, orientationIndex, actionIndex)} />
-                      )}
                     </div>
-                  ))}
+                  </TableCell>
+                  <TableCell className="align-top">
+                    <EditableCell
+                      value={action.constraintsOrOpportunities}
+                      onChange={(v) => updateAction(axisIndex, orientationIndex, actionIndex, { constraintsOrOpportunities: v })}
+                      readOnly={readOnly}
+                      placeholder="Contraintes à lever / opportunités à saisir…"
+                      multiline
+                    />
+                  </TableCell>
                   {!readOnly && (
-                    <Button type="button" variant="link" size="sm" onClick={() => addAction(axisIndex, orientationIndex)} className="gap-1">
-                      <Plus className="h-3.5 w-3.5" /> Ajouter une action
-                    </Button>
+                    <TableCell className="align-top">
+                      <RemoveRowButton onConfirm={() => removeAction(axisIndex, orientationIndex, actionIndex)} />
+                    </TableCell>
                   )}
-                </CardContent>
-              </Card>
-            ))}
-            {!readOnly && (
-              <Button type="button" variant="secondary" size="sm" onClick={() => addOrientation(axisIndex)}>
-                <Plus className="h-4 w-4" /> Ajouter une orientation stratégique
-              </Button>
+                </TableRow>
+              ));
+            })}
+
+            {axis.orientations.length === 0 && (
+              <TableEmptyRow colSpan={colCount}>Aucune orientation stratégique pour cet axe</TableEmptyRow>
             )}
-          </TabsContent>
+            {!readOnly && (
+              <TableAddRow
+                colSpan={colCount}
+                onAdd={() => addOrientation(axisIndex)}
+                label="Ajouter une orientation stratégique"
+                emphasis
+              />
+            )}
+          </Fragment>
         ))}
-      </Tabs>
-    </div>
+      </TableBody>
+    </Table>
   );
 }

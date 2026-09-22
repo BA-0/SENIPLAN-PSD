@@ -1,11 +1,9 @@
 "use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableEmptyRow, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EditableCell } from "@/components/data-table/editable-cell";
 import { KeyedRowAdder, RemoveRowButton, insertInModelOrder, remainingOptions } from "@/components/data-table/row-actions";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { directionAxisLabel } from "@/lib/utils";
 import { LOGFRAME_LABELS } from "@/types/sections";
 import type { LogicalFrameworkContent } from "@/types/sections";
@@ -13,51 +11,33 @@ import type { SectionFormProps } from "./types";
 
 const LOGFRAME_LEVELS = Object.keys(LOGFRAME_LABELS);
 
+type LogframeRow = LogicalFrameworkContent["axes"][number]["rows"][number];
+
+/**
+ * S09 — cadre logique, sur le modele du canevas : un tableau par axe, l'objectif de l'axe en
+ * premiere ligne, puis un niveau par ligne (impact, effet, effets immediats, extrants, ressources)
+ * avec sa logique d'intervention, ses IOV, ses moyens de verification et ses hypotheses. La direction
+ * ajoute les niveaux qu'elle renseigne.
+ */
 export function LogicalFrameworkForm({ content, onChange, readOnly }: SectionFormProps<LogicalFrameworkContent>) {
   function updateAxis(axisIndex: number, patch: Partial<LogicalFrameworkContent["axes"][number]>) {
-    onChange((prev) => ({
-      axes: prev.axes.map((a, i) => (i === axisIndex ? { ...a, ...patch } : a)),
-    }));
+    onChange((prev) => ({ axes: prev.axes.map((a, i) => (i === axisIndex ? { ...a, ...patch } : a)) }));
   }
-
-  function updateRow(axisIndex: number, rowIndex: number, patch: Partial<LogicalFrameworkContent["axes"][number]["rows"][number]>) {
-    onChange((prev) => ({
-      axes: prev.axes.map((a, i) =>
-        i === axisIndex
-          ? {
-              ...a,
-              rows: a.rows.map((r, ri) => (ri === rowIndex ? { ...r, ...patch } : r)),
-            }
-          : a
-      ),
-    }));
+  function updateRows(axisIndex: number, updater: (rows: LogframeRow[]) => LogframeRow[]) {
+    onChange((prev) => ({ axes: prev.axes.map((a, i) => (i === axisIndex ? { ...a, rows: updater(a.rows) } : a)) }));
   }
-
+  function updateRow(axisIndex: number, rowIndex: number, patch: Partial<LogframeRow>) {
+    updateRows(axisIndex, (rows) => rows.map((r, ri) => (ri === rowIndex ? { ...r, ...patch } : r)));
+  }
   function addRow(axisIndex: number, level: string) {
-    const row = {
-      level,
-      interventionLogic: "",
-      iov: "",
-      verificationMeans: "",
-      assumptions: "",
-    };
-    onChange((prev) => ({
-      axes: prev.axes.map((a, i) =>
-        i === axisIndex
-          ? {
-              ...a,
-              rows: insertInModelOrder(a.rows, row, (r) => r.level, LOGFRAME_LEVELS),
-            }
-          : a
-      ),
-    }));
+    const row: LogframeRow = { level, interventionLogic: "", iov: "", verificationMeans: "", assumptions: "" };
+    updateRows(axisIndex, (rows) => insertInModelOrder(rows, row, (r) => r.level, LOGFRAME_LEVELS));
+  }
+  function removeRow(axisIndex: number, rowIndex: number) {
+    updateRows(axisIndex, (rows) => rows.filter((_, ri) => ri !== rowIndex));
   }
 
-  function removeRow(axisIndex: number, rowIndex: number) {
-    onChange((prev) => ({
-      axes: prev.axes.map((a, i) => (i === axisIndex ? { ...a, rows: a.rows.filter((_, ri) => ri !== rowIndex) } : a)),
-    }));
-  }
+  const colCount = readOnly ? 5 : 6;
 
   return (
     <Tabs defaultValue={content.axes[0]?.axisCode}>
@@ -70,29 +50,41 @@ export function LogicalFrameworkForm({ content, onChange, readOnly }: SectionFor
       </TabsList>
 
       {content.axes.map((axis, axisIndex) => (
-        <TabsContent key={axis.axisCode} value={axis.axisCode} className="space-y-4">
-          <div className="space-y-1.5 max-w-xl">
-            <Label required>Objectif</Label>
-            <Input value={axis.objective} onChange={(e) => updateAxis(axisIndex, { objective: e.target.value })} readOnly={readOnly} />
-          </div>
-
+        <TabsContent key={axis.axisCode} value={axis.axisCode} className="space-y-3">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[200px]">Logique d&apos;intervention</TableHead>
+                <TableHead className="min-w-[180px] whitespace-normal">Niveau</TableHead>
+                <TableHead className="min-w-[220px] whitespace-normal">Logique d&apos;intervention</TableHead>
                 <TableHead className="min-w-[200px]">IOV</TableHead>
-                <TableHead className="min-w-[200px]">Moyens et sources de vérification</TableHead>
-                <TableHead className="min-w-[200px]">Conditions critiques / Hypothèses</TableHead>
+                <TableHead className="min-w-[200px] whitespace-normal">Moyens et sources de vérification</TableHead>
+                <TableHead className="min-w-[200px] whitespace-normal">Conditions critiques / Hypothèses</TableHead>
                 {!readOnly && <TableHead className="w-10" />}
               </TableRow>
             </TableHeader>
             <TableBody>
+              <TableRow className="hover:bg-transparent">
+                <TableCell label>
+                  Objectif de l&apos;axe
+                  <span className="ml-0.5 text-accent-500" aria-hidden>
+                    *
+                  </span>
+                </TableCell>
+                <TableCell colSpan={colCount - 1} className="py-3">
+                  <EditableCell
+                    value={axis.objective}
+                    onChange={(v) => updateAxis(axisIndex, { objective: v })}
+                    readOnly={readOnly}
+                    placeholder="Objectif de l'axe…"
+                    multiline
+                  />
+                </TableCell>
+              </TableRow>
+
               {axis.rows.map((row, rowIndex) => (
-                <TableRow key={row.level}>
+                <TableRow key={row.level} className="hover:bg-transparent">
+                  <TableCell label>{LOGFRAME_LABELS[row.level] ?? row.level}</TableCell>
                   <TableCell className="align-top">
-                    <p className="text-[12px] font-semibold text-muted-foreground uppercase mb-1">
-                      {LOGFRAME_LABELS[row.level] ?? row.level}
-                    </p>
                     <EditableCell
                       value={row.interventionLogic}
                       onChange={(v) => updateRow(axisIndex, rowIndex, { interventionLogic: v })}
@@ -100,7 +92,7 @@ export function LogicalFrameworkForm({ content, onChange, readOnly }: SectionFor
                       multiline
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top">
                     <EditableCell
                       value={row.iov}
                       onChange={(v) => updateRow(axisIndex, rowIndex, { iov: v })}
@@ -108,7 +100,7 @@ export function LogicalFrameworkForm({ content, onChange, readOnly }: SectionFor
                       multiline
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top">
                     <EditableCell
                       value={row.verificationMeans}
                       onChange={(v) => updateRow(axisIndex, rowIndex, { verificationMeans: v })}
@@ -116,7 +108,7 @@ export function LogicalFrameworkForm({ content, onChange, readOnly }: SectionFor
                       multiline
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top">
                     <EditableCell
                       value={row.assumptions}
                       onChange={(v) => updateRow(axisIndex, rowIndex, { assumptions: v })}
@@ -131,13 +123,7 @@ export function LogicalFrameworkForm({ content, onChange, readOnly }: SectionFor
                   )}
                 </TableRow>
               ))}
-              {axis.rows.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={readOnly ? 4 : 5} className="py-8 text-center text-muted-foreground">
-                    Aucun niveau renseigné pour cet axe
-                  </TableCell>
-                </TableRow>
-              )}
+              {axis.rows.length === 0 && <TableEmptyRow colSpan={colCount}>Aucun niveau renseigné pour cet axe</TableEmptyRow>}
             </TableBody>
           </Table>
           {!readOnly && (

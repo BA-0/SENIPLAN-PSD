@@ -10,6 +10,8 @@ interface EditableCellProps {
   placeholder?: string;
   align?: "left" | "right";
   multiline?: boolean;
+  /** Hauteur initiale d'une cellule multiligne, en lignes de texte (2 par defaut). */
+  rows?: number;
   className?: string;
 }
 
@@ -20,6 +22,7 @@ export function EditableCell({
   placeholder,
   align = "left",
   multiline = false,
+  rows = 2,
   className,
 }: EditableCellProps) {
   // Vue lecture : texte simple qui peut s'enrouler sur plusieurs lignes,
@@ -55,21 +58,13 @@ export function EditableCell({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        rows={2}
+        rows={rows}
         className={cn(baseClass, "resize-y min-h-[40px]")}
       />
     );
   }
 
-  return (
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className={baseClass}
-    />
-  );
+  return <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={baseClass} />;
 }
 
 interface EditableNumberCellProps {

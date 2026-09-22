@@ -2,6 +2,8 @@
 
 Runbook de déploiement en production sur **Ubuntu 22.04 LTS**, Nginx en reverse proxy, backend en service **systemd**, frontend géré par **PM2**.
 
+Pour un serveur **Windows Server 2022**, voir [DEPLOYMENT-WINDOWS.md](DEPLOYMENT-WINDOWS.md) (services NSSM, Nginx pour Windows, scripts dans `deploy/windows`).
+
 ## 1. Prérequis serveur
 
 ```bash
@@ -114,6 +116,7 @@ Certbot modifie automatiquement la configuration Nginx pour rediriger en HTTPS e
 | `JWT_ACCESS_EXPIRATION_MS` / `JWT_REFRESH_EXPIRATION_MS` | Durées de vie des tokens | Backend |
 | `CORS_ALLOWED_ORIGINS` | Origines autorisées (domaine du frontend) | Backend |
 | `SPRING_PROFILES_ACTIVE` | `dev` ou `prod` | Backend |
+| `LOG_FILE` | Journal applicatif en `prod` (défaut `/var/log/senico-diagnostic/backend.log`) | Backend |
 | `NEXT_PUBLIC_API_BASE_URL` | URL publique de l'API (`https://.../api/v1`) | Frontend |
 | `NEXT_PUBLIC_WS_BASE_URL` | URL publique du endpoint WebSocket (`https://.../ws`) | Frontend |
 

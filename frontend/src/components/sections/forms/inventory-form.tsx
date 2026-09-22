@@ -1,107 +1,130 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { PESTEL_LABELS, CAUSAL_LABELS, STAKEHOLDER_CATEGORY_LABELS } from "@/types/sections";
-import type { InventoryContent } from "@/types/sections";
+import { Table, TableBody, TableCell, TableEmptyRow, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { NoteTable } from "@/components/data-table/note-table";
+import { TagListEditor } from "@/components/data-table/tag-list-editor";
+import { CAUSAL_LABELS, PESTEL_LABELS, STAKEHOLDER_CATEGORY_LABELS, STAKEHOLDER_SCOPE_LABELS } from "@/types/sections";
+import type { InventoryContent, Level, StakeholderCategory, StakeholderScope } from "@/types/sections";
 import type { SectionFormProps } from "./types";
+import { SwotTable } from "./swot-table";
 
+const LEVEL_LABELS: Record<Level, string> = { FORT: "Fort", MOYEN: "Moyen", FAIBLE: "Faible" };
+
+function text(value: string | null | undefined) {
+  return value?.trim() || "—";
+}
+
+/**
+ * S07 — inventaire du diagnostic : la note de synthese de la direction, puis le rappel en lecture
+ * seule, tableau par tableau, de ce qu'elle a saisi dans les sections parties prenantes, PESTEL,
+ * SWOT et analyse causale (agrege a la lecture par DerivedFieldsService).
+ */
 export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<InventoryContent>) {
   const stakeholders = content.stakeholders ?? [];
   const pestel = content.pestel ?? [];
   const causalAnalysis = content.causalAnalysis ?? [];
-  const swot = content.swot ?? { strengths: [], weaknesses: [], opportunities: [], threats: [] };
+  const readOnlyHint = <span className="ml-2 text-[12px] font-normal text-muted-foreground">lecture seule — repris de la section</span>;
+  const cellClass = "whitespace-pre-wrap align-top text-[13px] leading-snug text-foreground/90";
+
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Note de synthèse</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={content.synthesisNote}
-            onChange={(e) => onChange((prev) => ({ ...prev, synthesisNote: e.target.value }))}
-            readOnly={readOnly}
-            rows={4}
-            placeholder="Synthèse consolidée du diagnostic (parties prenantes, PESTEL, SWOT, analyse causale)…"
-          />
-        </CardContent>
-      </Card>
+    <div className="space-y-5">
+      <NoteTable
+        title="Note de synthèse"
+        value={content.synthesisNote}
+        onChange={(v) => onChange((prev) => ({ ...prev, synthesisNote: v }))}
+        readOnly={readOnly}
+        placeholder="Synthèse consolidée du diagnostic (parties prenantes, PESTEL, SWOT, analyse causale)…"
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Parties prenantes</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {stakeholders.length === 0 && <p className="text-[13px] text-muted-foreground italic">Aucune donnée</p>}
-          {stakeholders.map((s, i) => (
-            <div key={i} className="text-[13px] rounded-lg border border-border/60 p-2.5">
-              <span className="font-medium text-foreground">{s.category ? STAKEHOLDER_CATEGORY_LABELS[s.category] : "—"}</span>
-              <span className="text-muted-foreground"> · {s.roles}</span>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <section className="space-y-2">
+        <h3>Parties prenantes{readOnlyHint}</h3>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="min-w-[150px]">Catégorie (PP)</TableHead>
+              <TableHead className="min-w-[110px]">Portée</TableHead>
+              <TableHead className="min-w-[180px] whitespace-normal">Rôles / Responsabilités</TableHead>
+              <TableHead className="min-w-[180px] whitespace-normal">Attentes / Intérêt / Priorités</TableHead>
+              <TableHead className="min-w-[180px] whitespace-normal">Stratégie d&apos;adaptation</TableHead>
+              <TableHead>Importance</TableHead>
+              <TableHead>Influence</TableHead>
+              <TableHead className="min-w-[160px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {stakeholders.map((s, i) => (
+              <TableRow key={i}>
+                <TableCell label>
+                  {s.category ? (STAKEHOLDER_CATEGORY_LABELS[s.category as StakeholderCategory] ?? s.category) : "—"}
+                </TableCell>
+                <TableCell className={cellClass}>
+                  {s.scope ? (STAKEHOLDER_SCOPE_LABELS[s.scope as StakeholderScope] ?? s.scope) : "—"}
+                </TableCell>
+                <TableCell className={cellClass}>{text(s.roles)}</TableCell>
+                <TableCell className={cellClass}>{text(s.expectations)}</TableCell>
+                <TableCell className={cellClass}>{text(s.adaptationStrategy)}</TableCell>
+                <TableCell className={cellClass}>{s.importance ? LEVEL_LABELS[s.importance as Level] : "—"}</TableCell>
+                <TableCell className={cellClass}>{s.influence ? LEVEL_LABELS[s.influence as Level] : "—"}</TableCell>
+                <TableCell className={cellClass}>{text(s.actions)}</TableCell>
+              </TableRow>
+            ))}
+            {stakeholders.length === 0 && <TableEmptyRow colSpan={8}>Aucune partie prenante renseignée</TableEmptyRow>}
+          </TableBody>
+        </Table>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>PESTEL</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {pestel.map((p, i) => (
-            <div key={i} className="text-[13px] rounded-lg border border-border/60 p-2.5">
-              <p className="font-medium text-foreground mb-1">{PESTEL_LABELS[p.axis] ?? p.axis}</p>
-              <p className="text-muted-foreground">Menaces : {p.threats || "—"}</p>
-              <p className="text-muted-foreground">Opportunités : {p.opportunities || "—"}</p>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <section className="space-y-2">
+        <h3>Analyse PESTEL{readOnlyHint}</h3>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="min-w-[160px]">Axe</TableHead>
+              <TableHead className="min-w-[220px]">Menaces</TableHead>
+              <TableHead className="min-w-[220px]">Opportunités</TableHead>
+              <TableHead className="min-w-[220px] whitespace-normal">Actions pour atténuer les menaces / saisir les opportunités</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pestel.map((p, i) => (
+              <TableRow key={i}>
+                <TableCell label>{PESTEL_LABELS[p.axis] ?? p.axis}</TableCell>
+                <TableCell className={cellClass}>{text(p.threats)}</TableCell>
+                <TableCell className={cellClass}>{text(p.opportunities)}</TableCell>
+                <TableCell className={cellClass}>{text(p.actions)}</TableCell>
+              </TableRow>
+            ))}
+            {pestel.length === 0 && <TableEmptyRow colSpan={4}>Aucun axe PESTEL renseigné</TableEmptyRow>}
+          </TableBody>
+        </Table>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>SWOT</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <SwotMini label="Forces" items={swot.strengths} variant="submitted" />
-          <SwotMini label="Faiblesses" items={swot.weaknesses} variant="criticalHigh" />
-          <SwotMini label="Opportunités" items={swot.opportunities} variant="inProgress" />
-          <SwotMini label="Menaces" items={swot.threats} variant="criticalMedium" />
-        </CardContent>
-      </Card>
+      <section className="space-y-2">
+        <h3>Analyse SWOT{readOnlyHint}</h3>
+        <SwotTable swot={content.swot} readOnly />
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Analyse causale</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {causalAnalysis.map((c, i) => (
-            <div key={i} className="text-[13px]">
-              <span className="font-medium text-foreground">{CAUSAL_LABELS[c.source] ?? c.source} : </span>
-              <span className="text-muted-foreground">{(c.items ?? []).filter(Boolean).join(", ") || "—"}</span>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function SwotMini({ label, items, variant }: { label: string; items: string[]; variant: string }) {
-  const safeItems = items ?? [];
-  return (
-    <div>
-      <Label className="mb-1.5 block">{label}</Label>
-      <div className="flex flex-wrap gap-1">
-        {safeItems.length === 0 && <span className="text-[13px] text-muted-foreground italic">—</span>}
-        {safeItems.map((item, i) => (
-          <Badge key={i} variant={variant as never} className="font-normal whitespace-normal break-words text-left">
-            {item}
-          </Badge>
-        ))}
-      </div>
+      <section className="space-y-2">
+        <h3>Analyse causale{readOnlyHint}</h3>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="min-w-[240px] whitespace-normal">Sources</TableHead>
+              <TableHead className="min-w-[320px]">Analyse</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {causalAnalysis.map((c, i) => (
+              <TableRow key={i}>
+                <TableCell label>{CAUSAL_LABELS[c.source] ?? c.source}</TableCell>
+                <TableCell className="py-3 align-top">
+                  <TagListEditor items={(c.items ?? []).filter(Boolean)} onChange={() => undefined} readOnly />
+                </TableCell>
+              </TableRow>
+            ))}
+            {causalAnalysis.length === 0 && <TableEmptyRow colSpan={2}>Aucune source d&apos;analyse renseignée</TableEmptyRow>}
+          </TableBody>
+        </Table>
+      </section>
     </div>
   );
 }

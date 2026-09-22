@@ -60,7 +60,7 @@ public class SectionExportRenderer {
             case RISK_MATRIX -> renderRiskMatrix(content);
             case FINANCING_PLAN -> renderFinancingPlan(content);
             case STRATEGIC_SUMMARY -> renderStrategicSummary(content);
-            case PERFORMANCE_REVIEW_2026 -> List.of(RowsTableRenderer.render(JsonUtil.arr(content, "rows"), performanceReview2026Columns()));
+            case PERFORMANCE_REVIEW_2026 -> renderPerformanceReview(content);
             case RESOURCES_SYNTHESIS -> renderResourcesSynthesis(content);
             case CONSTRAINTS_SYNTHESIS -> List.of(RowsTableRenderer.render(JsonUtil.arr(content, "rows"), constraintsSynthesisColumns()));
             case LOGFRAME_SYNTHESIS -> renderLogframeSynthesis(content);
@@ -328,21 +328,18 @@ public class SectionExportRenderer {
     }
 
     // ---- S01B ----
-    private List<JsonUtil.Column> performanceReview2026Columns() {
-        // Meme regle que la note de synthese : tant que 2026 n'est pas clos, ses chiffres sont estimes a
-        // date. Et une decimale : un delai de 3,8 jours arrondi a 4 contredisait le taux affiche a cote.
-        String achieved = LocalDate.now(DAKAR).getYear() > 2026 ? "Réalisé 2026" : "Estimation 2026";
-        return List.of(
-                new JsonUtil.Column("Domaine / Activité", n -> JsonUtil.text(n, "domain")),
-                new JsonUtil.Column("Indicateur", n -> JsonUtil.text(n, "indicator")),
-                new JsonUtil.Column("Cible 2026", n -> JsonUtil.formatDecimal(JsonUtil.num(n, "target2026"))),
-                new JsonUtil.Column(achieved, n -> JsonUtil.formatDecimal(JsonUtil.num(n, "achieved2026"))),
-                new JsonUtil.Column("Taux", n -> {
-                    JsonNode rate = n.get("rate");
-                    return rate == null || rate.isNull() ? "—" : JsonUtil.formatRate(rate.asDouble());
-                }),
-                new JsonUtil.Column("Écart / Commentaire", n -> JsonUtil.text(n, "comment"))
-        );
+    /**
+     * Les deux tableaux du bilan, memes colonnes que la note de synthese : les cinq exercices ecoules dans
+     * un seul tableau, puis l'exercice en cours et ses tendances (cf. {@link PerformanceReviewTables}).
+     */
+    private List<ExportBlock> renderPerformanceReview(JsonNode content) {
+        List<PerformanceReviewTables.Line> lines = JsonUtil.arr(content, "rows").stream()
+                .filter(PerformanceReviewTables::hasContent)
+                .map(PerformanceReviewTables::plain)
+                .toList();
+        // Meme regle que la note : tant que l'exercice n'est pas clos a Dakar, ses resultats sont des projections.
+        boolean closed = LocalDate.now(DAKAR).getYear() > PerformanceReviewTables.REVIEW_YEAR;
+        return PerformanceReviewTables.blocks(lines, closed);
     }
 
     // ---- S03B ----

@@ -7,6 +7,7 @@ backend/target/
 # Frontend (Next.js)
 frontend/node_modules/
 frontend/.next/
+frontend/.next-prod/
 frontend/out/
 frontend/.env.local
 frontend/.env*.local
@@ -31,6 +32,7 @@ Thumbs.db
 
 # Artefact d'un build Next lance par erreur depuis la racine
 .next/
+.next-prod/
 
 # Cache incremental de tsc, regenere a chaque build
 frontend/tsconfig.tsbuildinfo

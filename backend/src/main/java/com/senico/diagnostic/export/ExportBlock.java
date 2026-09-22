@@ -11,7 +11,7 @@ public sealed interface ExportBlock {
 
     /**
      * Intertitre. Le niveau 1 ouvre une partie numerotee (« I. CONTEXTE ») et commence une
-     * nouvelle page, comme dans un PSD publie ; les niveaux 1 et 2 alimentent le sommaire.
+     * nouvelle page, comme dans un PSD publie ; le niveau 2 est une sous-partie, le 3 un titre de tableau.
      */
     record Heading(String text, int level) implements ExportBlock {
         public Heading(String text) {

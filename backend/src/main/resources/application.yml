@@ -51,7 +51,7 @@ spring:
     activate:
       on-profile: dev
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:senico_diagnostic}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Africa/Dakar&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:senico_diagnostic}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Africa/Dakar&allowPublicKeyRetrieval=true&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -82,7 +82,7 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME}?useUnicode=true&characterEncoding=UTF-8&useSSL=true&serverTimezone=Africa/Dakar
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME}?useUnicode=true&characterEncoding=UTF-8&useSSL=true&serverTimezone=Africa/Dakar&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -107,4 +107,5 @@ logging:
     root: WARN
     com.senico.diagnostic: INFO
   file:
-    name: /var/log/senico-diagnostic/backend.log
+    # Chemin Linux par defaut (systemd) ; sous Windows Server, LOG_FILE=C:\seniplan\logs\backend.log
+    name: ${LOG_FILE:/var/log/senico-diagnostic/backend.log}

@@ -1,0 +1,21 @@
+# Fins de ligne : LF dans le dépôt comme dans la copie de travail,
+# quel que soit le réglage core.autocrlf de la machine.
+* text=auto eol=lf
+
+# Scripts Windows : CRLF
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binaires : jamais de conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.docx binary
+*.xlsx binary

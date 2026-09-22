@@ -154,3 +154,16 @@ export interface ApiErrorBody {
   message: string;
   fieldErrors?: Record<string, string>;
 }
+
+/** Autre direction, vue par un chef de groupe (consultation croisee en lecture seule). */
+export interface PeerGroupDto {
+  id: number;
+  name: string;
+  description: string | null;
+  color: string | null;
+  leaderFullName: string | null;
+  completionPercent: number;
+  sectionsSubmitted: number;
+  sectionsValidated: number;
+  lastActivityAt: string | null;
+}

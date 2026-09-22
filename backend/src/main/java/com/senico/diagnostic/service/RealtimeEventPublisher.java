@@ -9,7 +9,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * Diffuse les evenements temps reel au dashboard admin et aux groupes (STOMP over SockJS).
- * Topics : /topic/admin/progress, /topic/admin/activity, /topic/admin/presence, /topic/group/{groupId}/activity
+ * Topics : /topic/admin/progress, /topic/admin/activity, /topic/admin/presence, /topic/group/{groupId}/activity,
+ * et, pour la consultation croisee entre directions, /topic/group/{groupId}/progress et /topic/group/{groupId}/presence.
  */
 @Service
 @RequiredArgsConstructor
@@ -19,6 +20,9 @@ public class RealtimeEventPublisher {
 
     public void publishProgress(SectionProgressEvent event) {
         messagingTemplate.convertAndSend("/topic/admin/progress", event);
+        if (event.groupId() != null) {
+            messagingTemplate.convertAndSend("/topic/group/" + event.groupId() + "/progress", event);
+        }
     }
 
     public void publishActivity(ActivityEvent event) {
@@ -30,5 +34,8 @@ public class RealtimeEventPublisher {
 
     public void publishPresence(PresenceEvent event) {
         messagingTemplate.convertAndSend("/topic/admin/presence", event);
+        if (event.groupId() != null) {
+            messagingTemplate.convertAndSend("/topic/group/" + event.groupId() + "/presence", event);
+        }
     }
 }

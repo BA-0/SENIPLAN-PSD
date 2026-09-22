@@ -31,3 +31,10 @@ export function useIsGroupTyping(groupId: number): boolean {
   if (!entry || !entry.typing) return false;
   return Date.now() - entry.updatedAt < PRESENCE_STALE_MS;
 }
+
+/** Section en cours de saisie par la direction, ou null si elle ne saisit pas en ce moment. */
+export function useGroupTypingSection(groupId: number): string | null {
+  const entry = usePresenceStore((s) => s.byGroup[groupId]);
+  if (!entry || !entry.typing) return null;
+  return Date.now() - entry.updatedAt < PRESENCE_STALE_MS ? entry.sectionCode : null;
+}

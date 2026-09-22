@@ -81,6 +81,10 @@ public class SecurityConfig {
                         // la liste des soumissions, ou tout ce qui attend encore le DG.
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/dg-approvals/**")
                         .hasAuthority("ROLE_DIRECTEUR_GENERAL")
+                        // Consultation croisee entre directions : lecture seule pour tout compte
+                        // connecte, toute autre methode est refusee (cf. PeerSectionController).
+                        .requestMatchers(HttpMethod.GET, "/api/v1/peers/**").authenticated()
+                        .requestMatchers("/api/v1/peers/**").denyAll()
                         // Consultation, revision et validation : admin et direction generale.
                         .requestMatchers("/api/v1/admin/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_DIRECTEUR_GENERAL")
                         .anyRequest().authenticated()

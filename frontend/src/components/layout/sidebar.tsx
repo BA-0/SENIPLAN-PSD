@@ -17,6 +17,7 @@ import {
   Radio,
   ClipboardList,
   ChevronDown,
+  Eye,
   ChevronsLeft,
   ChevronsRight,
   X,
@@ -211,6 +212,13 @@ export function Sidebar() {
               icon={LayoutDashboard}
               label="Tableau de bord"
               active={pathname === "/dashboard"}
+              collapsed={showCollapsed}
+            />
+            <NavItem
+              href="/directions"
+              icon={Eye}
+              label="Autres directions"
+              active={pathname.startsWith("/directions")}
               collapsed={showCollapsed}
             />
             {!showCollapsed && (

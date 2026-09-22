@@ -16,7 +16,7 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [savedAt, setSavedAt] = useState<Date | null>(null);
 
-  const initializedForCode = useRef<string | null>(null);
+  const initializedForKey = useRef<string | null>(null);
   // Copie synchrone de la saisie : minuteries et nettoyage lisent la derniere version sans
   // dependre du rendu, et l'intervalle n'est plus recree a chaque frappe.
   const contentRef = useRef<T | null>(null);
@@ -25,11 +25,13 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
   const dirtyRef = useRef(false);
 
   useEffect(() => {
-    if (initial && initializedForCode.current !== code) {
+    // Cle groupe + section : un contenu recu pour un autre groupe ne doit jamais rester affiche.
+    const key = initial ? `${initial.groupId}:${code}` : null;
+    if (initial && initializedForKey.current !== key) {
       contentRef.current = initial.content;
       setContent(initial.content);
       lastSavedRef.current = JSON.stringify(initial.content);
-      initializedForCode.current = code;
+      initializedForKey.current = key;
       dirtyRef.current = false;
       setStatus("idle");
       setSavedAt(initial.updatedAt ? new Date(initial.updatedAt) : null);

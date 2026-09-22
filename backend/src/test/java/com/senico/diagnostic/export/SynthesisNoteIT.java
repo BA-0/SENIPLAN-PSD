@@ -154,7 +154,7 @@ class SynthesisNoteIT {
                 "X.2 Opérationnalisation : plan d'actions", "Activités pour atteindre les résultats",
                 "X.3 Budget du plan", "Budget détaillé — ",
                 "XI.2 Cadre de mesure de rendement", "Résultat / extrant",
-                "Tableau 5 : Cadre logique", "Tableau 6 : Planification", "Tableau 7 : Cadre de mesure de rendement");
+                PsdBriefBuilder.ANNEXE_CADRE_LOGIQUE, PsdBriefBuilder.ANNEXE_PLANIFICATION, PsdBriefBuilder.ANNEXE_RENDEMENT);
     }
 
     @Test

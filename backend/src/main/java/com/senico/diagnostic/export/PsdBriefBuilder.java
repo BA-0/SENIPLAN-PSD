@@ -76,6 +76,17 @@ class PsdBriefBuilder {
     static final String CONCLUSION = "XIII. CONCLUSION";
     static final String ANNEXES = "ANNEXES";
 
+    // Tableaux en annexe, numerotes dans l'ordre ou le corps de la note y renvoie (revue de l'auditeur du
+    // 21/09/2026), qui est aussi celui du canevas : risques (VI.6), cadre logique (X.1), planification (X.2),
+    // budget (X.3), cadre de mesure de rendement (XI.2), fiche des indicateurs (XI.3). Les parties prenantes
+    // sont desormais dans le corps (IV).
+    static final String ANNEXE_RISQUES = "Tableau 1 : Matrice d'analyse des risques";
+    static final String ANNEXE_CADRE_LOGIQUE = "Tableau 2 : Cadre logique";
+    static final String ANNEXE_PLANIFICATION = "Tableau 3 : Planification";
+    static final String ANNEXE_BUDGET = "Tableau 4 : Budget du plan";
+    static final String ANNEXE_RENDEMENT = "Tableau 5 : Cadre de mesure de rendement";
+    static final String ANNEXE_INDICATEURS = "Tableau 6 : Fiche des indicateurs objectivement vérifiables";
+
     /** Intitules des parties, dans l'ordre. Le sommaire des exports reprend en outre les sous-parties. */
     static List<String> partTitles() {
         return List.of(SIGLES, MOT_DU_DG, ESSENTIEL, CONTEXTE, METHODE, PRESENTATION, PARTIES_PRENANTES,
@@ -163,9 +174,12 @@ class PsdBriefBuilder {
         b.addAll(diagnostic(ctx));
 
         part(b, ENJEUX);
-        sub(b, "VII.1 Enjeux");
+        // Revue de l'auditeur (21/09/2026) : le tableau du canevas (« Tableau 3 » du client) revient en tete de partie.
+        sub(b, "VII.1 Synthèse des contraintes, enjeux et défis prioritaires");
+        b.addAll(constraintsSynthesis(ctx));
+        sub(b, "VII.2 Enjeux");
         narrative(b, ctx, NarrativeBlockKey.ENJEUX);
-        sub(b, "VII.2 Défis à relever");
+        sub(b, "VII.3 Défis à relever");
         narrative(b, ctx, NarrativeBlockKey.DEFIS_A_RELEVER);
 
         part(b, FACTEURS);
@@ -340,11 +354,8 @@ class PsdBriefBuilder {
                 + f.actions() + " actions programmées, pour un budget global prévisionnel de "
                 + JsonUtil.formatAmountLabel(f.budget()) + " sur " + YEARS.length + " exercices."));
 
-        String vision = ctx.narrative(NarrativeBlockKey.VISION);
-        if (!vision.isBlank()) {
-            b.add(new ExportBlock.Callout("Vision " + LAST_YEAR + " — « " + unquote(vision) + " »"));
-        }
-
+        // Revue de l'auditeur (21/09/2026) : moins de texte. La vision n'est plus citee ici : elle ouvre le cadre
+        // strategique (IX.1) et le tableau de synthese (XII).
         String coverage = f.budget() > 0 ? " (" + JsonUtil.formatPercent(f.financing() / f.budget() * 100) + " du budget)" : "";
         b.add(new ExportBlock.MetricGrid(List.of(
                 new ExportBlock.Metric("Axes stratégiques", String.valueOf(axes)),
@@ -400,11 +411,8 @@ class PsdBriefBuilder {
         // dispose de la cle, et il doit l'avoir avant d'aborder le diagnostic.
         sub(b, "I.2 Lecture du document");
         b.add(new ExportBlock.Paragraph(
-                "Les constats issus du diagnostic des directions portent la couleur de la direction qui les a "
-                        + "formulés. Un constat partagé par plusieurs directions reste en gris et porte une pastille "
-                        + "par direction : il est commun, aucune ne peut se l'approprier. Les textes arrêtés par la "
-                        + "Direction Générale — vision, mission, valeurs, axes stratégiques — engagent l'entreprise "
-                        + "entière et ne portent pas de couleur."));
+                "Chaque constat porte la couleur de la direction qui l'a formulé ; un constat commun à plusieurs "
+                        + "directions reste en gris, avec une pastille par direction."));
         b.add(new ExportBlock.ColorLegend("Code couleur des directions", ctx.groups.stream()
                 .map(group -> new ExportBlock.Attribution(group.getName(), List.of(colorOf(group, ctx.groups))))
                 .toList()));
@@ -413,55 +421,12 @@ class PsdBriefBuilder {
 
     // ---- IV. Parties prenantes ----
 
+    /**
+     * Revue de l'auditeur (21/09/2026) : la matrice interet / pouvoir, absente du canevas, est retiree. La
+     * partie presente directement le tableau des parties prenantes du canevas, jusque-la reporte en annexe.
+     */
     private List<ExportBlock> stakeholders(Context ctx) {
-        List<ExportBlock> b = new ArrayList<>();
-        b.add(new ExportBlock.Paragraph(
-                "SENICO SA évolue dans un écosystème d'acteurs institutionnels, économiques, financiers et sociaux "
-                        + "dont les attentes influencent directement sa performance et sa trajectoire. La matrice "
-                        + "ci-dessous classe les parties prenantes identifiées par les directions selon leur intérêt "
-                        + "pour le plan et leur pouvoir d'influence sur sa mise en œuvre : elle indique avec qui "
-                        + "concerter, qui consulter et qui tenir informé."));
-
-        List<Contributions> cells = List.of(new Contributions(ctx.groups), new Contributions(ctx.groups),
-                new Contributions(ctx.groups), new Contributions(ctx.groups));
-        for (WorkGroup group : ctx.groups) {
-            for (JsonNode row : JsonUtil.arr(ctx.content(group, "S01"), "rows")) {
-                String actor = actorOf(row);
-                if (actor.isEmpty()) {
-                    continue;
-                }
-                boolean interest = "FORT".equalsIgnoreCase(JsonUtil.text(row, "importance"));
-                boolean power = "FORT".equalsIgnoreCase(JsonUtil.text(row, "influence"));
-                int index = interest ? (power ? 1 : 0) : (power ? 3 : 2);
-                cells.get(index).add(group, actor);
-            }
-        }
-        int total = cells.stream().mapToInt(Contributions::size).sum();
-        if (total == 0) {
-            b.add(new ExportBlock.Paragraph("Aucune partie prenante n'est encore renseignée dans les sections approuvées.", true, false));
-            return b;
-        }
-
-        b.add(new ExportBlock.AttributedQuadrant(List.of(
-                new ExportBlock.AttributedQuadrantCell("INTÉRÊT FORT — POUVOIR MODÉRÉ",
-                        "À informer, consulter et satisfaire régulièrement.", cells.get(0).toAttributions()),
-                new ExportBlock.AttributedQuadrantCell("INTÉRÊT FORT — POUVOIR FORT",
-                        "À impliquer étroitement dans la gouvernance, le pilotage et la mise en œuvre du plan.",
-                        cells.get(1).toAttributions()),
-                new ExportBlock.AttributedQuadrantCell("INTÉRÊT MODÉRÉ — POUVOIR MODÉRÉ",
-                        "À suivre avec un effort proportionné, en maintenant une relation de proximité.",
-                        cells.get(2).toAttributions()),
-                new ExportBlock.AttributedQuadrantCell("INTÉRÊT MODÉRÉ — POUVOIR FORT",
-                        "À maintenir satisfaits et à mobiliser sur les sujets à fort enjeu.", cells.get(3).toAttributions())),
-                List.of(ExportBlock.Background.GREEN, ExportBlock.Background.ORANGE,
-                        ExportBlock.Background.VIOLET, ExportBlock.Background.BLUE)));
-
-        b.add(analysis("les directions identifient " + total + " parties prenantes, dont " + cells.get(1).size()
-                + " à impliquer étroitement : leur intérêt et leur pouvoir d'influence sont tous deux forts. "
-                + "L'intérêt reprend l'importance et le pouvoir l'influence cotées par les directions ; une "
-                + "cotation moyenne est rangée avec les cotations faibles. Les attentes et les stratégies "
-                + "d'adaptation figurent en annexe (Tableau 1)."));
-        return b;
+        return stakeholdersTable(ctx);
     }
 
     /** Nom de la partie prenante ; a defaut, le debut de son role (« Direction Commerciale : exprime... »). */
@@ -505,13 +470,7 @@ class PsdBriefBuilder {
     private List<ExportBlock> diagnostic(Context ctx) {
         List<ExportBlock> b = new ArrayList<>();
         // Revue client du 15/09/2026 : les performances 2026 passent au bilan (partie V) et l'inventaire
-        // du diagnostic est retire.
-        b.add(new ExportBlock.Paragraph(
-                "Le diagnostic consolide les analyses conduites par chaque direction : ressources et compétences, "
-                        + "environnement externe (PESTEL), forces et faiblesses internes confrontées aux opportunités "
-                        + "et menaces (SWOT), mise en relation de ces facteurs, analyse causale et risques associés. "
-                        + "Un constat formulé par plusieurs directions n'y figure qu'une fois."));
-
+        // du diagnostic est retire. Revue de l'auditeur (21/09/2026) : les tableaux se lisent sans introduction.
         sub(b, "VI.1 Analyse des ressources et des compétences");
         b.addAll(resources(ctx));
         b.addAll(resourcesSynthesis(ctx));
@@ -520,8 +479,6 @@ class PsdBriefBuilder {
         b.addAll(pestel(ctx));
 
         sub(b, "VI.3 Analyse SWOT");
-        b.add(new ExportBlock.Paragraph("Les forces et les faiblesses relèvent de l'organisation elle-même ; les "
-                + "opportunités et les menaces, de son environnement."));
         b.add(mergedSwot(ctx));
 
         sub(b, "VI.4 Mise en relation du diagnostic stratégique");
@@ -560,23 +517,18 @@ class PsdBriefBuilder {
         // Une note datee avant la cloture de l'exercice ne peut pas presenter ses chiffres comme
         // realises : ce sont des estimations a date, que la cloture confirmera.
         boolean closed = ctx.reviewYearClosed;
-        return List.of(
-                new ExportBlock.Paragraph(closed
-                        ? "Les directions ont mesuré leurs réalisations de l'exercice " + REVIEW_YEAR + " au regard des "
-                                + "cibles fixées ; ces écarts fondent le diagnostic qui suit."
-                        : "L'exercice " + REVIEW_YEAR + " n'étant pas clos, les directions ont estimé à date leurs "
-                                + "réalisations au regard des cibles fixées ; ces écarts, que la clôture de l'exercice "
-                                + "confirmera, fondent le diagnostic qui suit."),
-                new ExportBlock.Table(List.of("Domaine", "Indicateur", "Cible " + REVIEW_YEAR,
-                        (closed ? "Réalisé " : "Estimation ") + REVIEW_YEAR, "Taux", "Écart / commentaire"),
-                        rows, List.of(15, 22, 9, 12, 9, 33)),
-                // Le taux d'un indicateur a plafond est calcule a l'envers (cible / realise, cf. DerivedFieldsService) :
-                // l'encadre annoncait l'inverse, et un delai de 3,8 jours pour 3 vises, affiche a 78,9 %, s'y lisait
-                // comme une bonne performance.
-                analysis("le taux rapporte " + (closed ? "le réalisé" : "l'estimation") + " à la cible. Pour un délai, "
-                        + "un coût, un écart ou un nombre d'incidents, dont la cible est un plafond, il rapporte la cible "
-                        + (closed ? "au réalisé" : "à l'estimation") + " : quel que soit l'indicateur, un taux inférieur "
-                        + "à 100 % signale une cible non atteinte, et un taux supérieur, une cible dépassée."));
+        List<ExportBlock> b = new ArrayList<>();
+        if (!closed) {
+            b.add(new ExportBlock.Paragraph("L'exercice " + REVIEW_YEAR + " n'étant pas clos, les réalisations sont estimées à date."));
+        }
+        b.add(new ExportBlock.Table(List.of("Domaine", "Indicateur", "Cible " + REVIEW_YEAR,
+                (closed ? "Réalisé " : "Estimation ") + REVIEW_YEAR, "Taux", "Écart / commentaire"),
+                rows, List.of(15, 22, 9, 12, 9, 33)));
+        // Le taux d'un indicateur a plafond est calcule a l'envers (cible / realise, cf. DerivedFieldsService) :
+        // sans cette precision, un delai de 3,8 jours pour 3 vises, affiche a 78,9 %, se lirait comme une reussite.
+        b.add(analysis("quel que soit l'indicateur, délais, coûts et incidents compris, un taux inférieur à 100 % "
+                + "signale une cible non atteinte."));
+        return b;
     }
 
     /**
@@ -609,50 +561,34 @@ class PsdBriefBuilder {
         if (!any) {
             return List.of(new ExportBlock.Paragraph("Aucune matrice des ressources et des compétences n'est encore approuvée.", true, false));
         }
-        return List.of(
-                new ExportBlock.Paragraph("La matrice d'analyse des ressources et des compétences confronte, pour chaque "
-                        + "ressource de l'entreprise, les forces et acquis sur lesquels le plan peut s'appuyer, les "
-                        + "faiblesses qu'il doit corriger et les défis qui en découlent."),
-                new ExportBlock.Table(List.of("Ressources", "Forces / Acquis", "Faiblesses", "Défis à relever"),
-                        rows, List.of(22, 26, 26, 26)));
+        return List.of(new ExportBlock.Table(List.of("Ressources", "Forces / Acquis", "Faiblesses", "Défis à relever"),
+                rows, List.of(22, 26, 26, 26)));
     }
 
     /**
      * Synthese de l'analyse des ressources (S03B) : les forces majeures, faiblesses majeures et defis
-     * prioritaires que chaque direction retient de sa matrice, puis sa note de synthese.
+     * prioritaires que chaque direction retient de sa matrice. Revue de l'auditeur (21/09/2026) : la note
+     * redigee de chaque direction, un paragraphe par direction, n'est plus reprise ; elle reste dans le plan
+     * strategique sectoriel de la direction.
      */
     private List<ExportBlock> resourcesSynthesis(Context ctx) {
         Contributions strengths = new Contributions(ctx.groups);
         Contributions weaknesses = new Contributions(ctx.groups);
         Contributions challenges = new Contributions(ctx.groups);
-        List<ExportBlock.TableRow> notes = new ArrayList<>();
         for (WorkGroup group : ctx.groups) {
             JsonNode content = ctx.content(group, "S03B");
             JsonUtil.strList(content, "majorStrengths").forEach(item -> strengths.add(group, item));
             JsonUtil.strList(content, "majorWeaknesses").forEach(item -> weaknesses.add(group, item));
             JsonUtil.strList(content, "priorityChallenges").forEach(item -> challenges.add(group, item));
-            String note = JsonUtil.text(content, "synthesisNote").trim();
-            if (!note.isEmpty()) {
-                notes.add(new ExportBlock.TableRow(List.of(single(group.getName(), group, ctx), single(note, group, ctx))));
-            }
         }
-        boolean lists = !(strengths.isEmpty() && weaknesses.isEmpty() && challenges.isEmpty());
-        if (!lists && notes.isEmpty()) {
+        if (strengths.isEmpty() && weaknesses.isEmpty() && challenges.isEmpty()) {
             return List.of();
         }
-        List<ExportBlock> b = new ArrayList<>();
-        b.add(new ExportBlock.Heading("Synthèse de l'analyse des ressources", 3));
-        b.add(new ExportBlock.Paragraph("De cette matrice, chaque direction retient ses forces majeures, ses faiblesses "
-                + "majeures et ses défis prioritaires."));
-        if (lists) {
-            b.add(new ExportBlock.Table(List.of("Forces majeures", "Faiblesses majeures", "Défis prioritaires"),
-                    List.of(new ExportBlock.TableRow(List.of(attributedCell(strengths), attributedCell(weaknesses),
-                            attributedCell(challenges)))), List.of(33, 33, 34)));
-        }
-        if (!notes.isEmpty()) {
-            b.add(new ExportBlock.Table(List.of("Direction", "Synthèse de l'analyse des ressources"), notes, List.of(22, 78)));
-        }
-        return b;
+        return List.of(
+                new ExportBlock.Heading("Synthèse de l'analyse des ressources", 3),
+                new ExportBlock.Table(List.of("Forces majeures", "Faiblesses majeures", "Défis prioritaires"),
+                        List.of(new ExportBlock.TableRow(List.of(attributedCell(strengths), attributedCell(weaknesses),
+                                attributedCell(challenges)))), List.of(33, 33, 34)));
     }
 
     private List<ExportBlock> pestel(Context ctx) {
@@ -680,13 +616,9 @@ class PsdBriefBuilder {
         if (!any) {
             return List.of(new ExportBlock.Paragraph("Aucune analyse PESTEL n'est encore approuvée.", true, false));
         }
-        return List.of(
-                new ExportBlock.Paragraph("L'analyse PESTEL recense, pour chaque facteur de l'environnement, les "
-                        + "menaces à anticiper, les opportunités à saisir et les actions que les directions proposent pour "
-                        + "atténuer les unes et saisir les autres."),
-                new ExportBlock.Table(List.of("Items", "Menaces", "Opportunités",
-                        "Actions pour atténuer les menaces ou saisir les opportunités"),
-                        rows, List.of(16, 28, 28, 28)));
+        return List.of(new ExportBlock.Table(List.of("Items", "Menaces", "Opportunités",
+                "Actions pour atténuer les menaces ou saisir les opportunités"),
+                rows, List.of(16, 28, 28, 28)));
     }
 
     /** SWOT de toutes les directions fondu en un seul cadran : un element cite plusieurs fois n'apparait qu'une. */
@@ -738,15 +670,9 @@ class PsdBriefBuilder {
                         attributedCell(answers.get("minimizeWeaknessesAndThreats")), none)),
                 new ExportBlock.TableRow(List.of(rowLabel("En quoi les opportunités permettent de minimiser les menaces"),
                         attributedCell(answers.get("opportunitiesMinimizeThreats")), none, none, none)));
-        return List.of(
-                new ExportBlock.Paragraph("La mise en relation du diagnostic croise les facteurs internes (forces, "
-                        + "faiblesses) et externes (opportunités, menaces). À chaque croisement figure ce que les directions "
-                        + "en tirent : utiliser les forces pour saisir les opportunités ou réduire les menaces, corriger les "
-                        + "faiblesses grâce aux opportunités, minimiser à la fois faiblesses et menaces. Ces orientations ont "
-                        + "nourri la formulation des axes stratégiques."),
-                new ExportBlock.Table(List.of("Approche externe", "Comment maximiser les opportunités / minimiser les menaces ?",
-                        "Forces : comment les maximiser et s'en servir ?", "Faiblesses : comment les minimiser et les corriger ?",
-                        "En quoi les forces permettent de maîtriser les faiblesses"), rows, List.of(15, 20, 22, 22, 21)));
+        return List.of(new ExportBlock.Table(List.of("Approche externe", "Comment maximiser les opportunités / minimiser les menaces ?",
+                "Forces : comment les maximiser et s'en servir ?", "Faiblesses : comment les minimiser et les corriger ?",
+                "En quoi les forces permettent de maîtriser les faiblesses"), rows, List.of(15, 20, 22, 22, 21)));
     }
 
     /**
@@ -772,10 +698,7 @@ class PsdBriefBuilder {
         List<ExportBlock.TableRow> rows = new ArrayList<>();
         bySource.forEach((source, items) -> rows.add(new ExportBlock.TableRow(List.of(
                 rowLabel(SectionLabels.causal(source)), attributedCell(items)))));
-        return List.of(
-                new ExportBlock.Paragraph("L'analyse causale remonte des manifestations des problèmes relevés par les "
-                        + "directions à leurs causes immédiates, sous-jacentes et profondes, puis aux solutions qu'elles appellent."),
-                new ExportBlock.Table(List.of("Sources", "Analyse"), rows, List.of(28, 72)));
+        return List.of(new ExportBlock.Table(List.of("Sources", "Analyse"), rows, List.of(28, 72)));
     }
 
     /** Inventaire du diagnostic : ce que chaque direction retient de ses analyses, dans sa couleur. */
@@ -797,6 +720,41 @@ class PsdBriefBuilder {
                         "Synthèse de l'inventaire (SWOT, PESTEL, parties prenantes, analyse causale)"), rows, List.of(22, 78)));
     }
 
+    /**
+     * Synthese des contraintes, enjeux et defis prioritaires (S06B), sur le modele du canevas : une ligne par
+     * domaine d'activites, toutes directions confondues. Deux directions qui nomment le meme domaine partagent
+     * sa ligne ; un domaine laisse vide (les domaines pre-remplis du modele) n'en occupe aucune.
+     */
+    private List<ExportBlock> constraintsSynthesis(Context ctx) {
+        Map<String, String> labels = new LinkedHashMap<>();
+        Map<String, Contributions> constraints = new LinkedHashMap<>();
+        Map<String, Contributions> challenges = new LinkedHashMap<>();
+        for (WorkGroup group : ctx.groups) {
+            for (JsonNode row : JsonUtil.arr(ctx.content(group, "S06B"), "rows")) {
+                List<String> rowConstraints = JsonUtil.strList(row, "constraints");
+                List<String> rowChallenges = JsonUtil.strList(row, "challenges");
+                if (rowConstraints.stream().allMatch(String::isBlank) && rowChallenges.stream().allMatch(String::isBlank)) {
+                    continue;
+                }
+                String domain = JsonUtil.text(row, "domain").trim();
+                String key = PsdCrossGroupMerge.normalize(domain);
+                labels.putIfAbsent(key, domain.isEmpty() ? "Autres" : domain);
+                Contributions c = constraints.computeIfAbsent(key, k -> new Contributions(ctx.groups));
+                Contributions d = challenges.computeIfAbsent(key, k -> new Contributions(ctx.groups));
+                rowConstraints.forEach(item -> c.add(group, item));
+                rowChallenges.forEach(item -> d.add(group, item));
+            }
+        }
+        if (labels.isEmpty()) {
+            return List.of(new ExportBlock.Paragraph("Aucune synthèse des contraintes n'est encore approuvée.", true, false));
+        }
+        List<ExportBlock.TableRow> rows = new ArrayList<>();
+        labels.forEach((key, label) -> rows.add(new ExportBlock.TableRow(List.of(
+                rowLabel(label), attributedCell(constraints.get(key)), attributedCell(challenges.get(key))))));
+        return List.of(new ExportBlock.Table(List.of("Domaines d'activités", "Contraintes prioritaires",
+                "Défis et enjeux prioritaires"), rows, List.of(22, 39, 39)));
+    }
+
     private static ExportBlock.Cell rowLabel(String text) {
         return new ExportBlock.Cell(text, true, ExportBlock.Align.LEFT, ExportBlock.Background.GREY);
     }
@@ -809,10 +767,7 @@ class PsdBriefBuilder {
         }
         List<Risk> high = risks.stream().filter(risk -> risk.criticality() >= 6).toList();
         List<ExportBlock> b = new ArrayList<>();
-        b.add(new ExportBlock.Paragraph("Chaque risque est coté par la direction qui l'a identifié selon son niveau "
-                + "(N, de 1 à 3) et l'importance de son impact (Q, de 1 à 3), et rapporté aux domaines d'activités "
-                + "qu'il affecterait. La criticité N × Q les classe : élevée de 6 à 9, moyenne de 3 à 4, faible de 1 "
-                + "à 2. Les risques de criticité élevée, qui appellent une action prioritaire, sont présentés ci-dessous."));
+        b.add(new ExportBlock.Paragraph("Risques de criticité élevée (N × Q de 6 à 9), qui appellent une action prioritaire."));
         if (!high.isEmpty()) {
             List<ExportBlock.TableRow> rows = new ArrayList<>();
             for (Risk risk : high) {
@@ -823,7 +778,7 @@ class PsdBriefBuilder {
                     rows, List.of(15, 23, 17, 8, 10, 27)));
         }
         b.add(analysis("les directions identifient " + risks.size() + " risques, dont " + high.size()
-                + " de criticité élevée. La matrice complète figure en annexe (Tableau 2)"
+                + " de criticité élevée. La matrice complète figure en annexe (" + annexNumber(ANNEXE_RISQUES) + ")"
                 + (absent > 0 ? ", y compris " + (absent == 1 ? "le risque examiné mais jugé absent" : "les " + absent
                         + " risques examinés mais jugés absents") : "") + "."));
         return b;
@@ -866,8 +821,6 @@ class PsdBriefBuilder {
             ctx.groups.forEach(group -> visions.add(group, JsonUtil.text(ctx.content(group, "S07B"), "vision")));
             b.add(new ExportBlock.AttributedList("Visions proposées par les directions", visions.toAttributions()));
         } else {
-            b.add(new ExportBlock.Paragraph("La vision exprime l'ambition de SENICO SA à l'horizon " + LAST_YEAR
-                    + " : elle guide les choix stratégiques du plan et le sens de sa mise en œuvre."));
             b.add(new ExportBlock.Callout("« " + unquote(vision) + " »"));
         }
 
@@ -880,8 +833,6 @@ class PsdBriefBuilder {
                     .forEach(item -> missions.add(group, item)));
             b.add(new ExportBlock.AttributedList("Missions proposées par les directions", missions.toAttributions()));
         } else {
-            b.add(new ExportBlock.Paragraph("La mission exprime la raison d'être de SENICO SA : ce qu'elle produit et "
-                    + "offre, et ceux au service de qui elle le fait."));
             List<String> lines = PsdNarrativeText.lines(mission);
             if (lines.size() == 1) {
                 b.add(new ExportBlock.Callout("« " + unquote(lines.get(0)) + " »"));
@@ -899,8 +850,6 @@ class PsdBriefBuilder {
                     .forEach(item -> proposals.add(group, item)));
             b.add(new ExportBlock.AttributedList("Valeurs proposées par les directions", proposals.toAttributions()));
         } else {
-            b.add(new ExportBlock.Paragraph("Les valeurs de SENICO SA orientent les comportements, les décisions et les "
-                    + "pratiques de ses équipes au quotidien."));
             List<String> plain = new ArrayList<>();
             for (String line : PsdNarrativeText.lines(values)) {
                 int separator = line.indexOf(':');
@@ -917,7 +866,63 @@ class PsdBriefBuilder {
         }
 
         sub(b, "IX.4 Orientations et axes stratégiques");
-        b.addAll(axesBlocks(ctx));
+        b.addAll(axesTable(ctx));
+        return b;
+    }
+
+    /**
+     * Axes strategiques de la note, sur le modele du canevas (« Axes strategiques / orientations ») : un axe par
+     * colonne, puis son objectif, ses objectifs specifiques et les axes des directions qu'il regroupe. Revue de
+     * l'auditeur (21/09/2026) : ce tableau remplace la liste des axes et leur presentation redigee, qui le repetaient.
+     * Au-dela de six axes, les colonnes deviendraient illisibles : la presentation detaillee reprend alors.
+     */
+    private List<ExportBlock> axesTable(Context ctx) {
+        AxisPlan plan = ctx.plan;
+        if (!plan.consolidated() || plan.axes().isEmpty() || plan.axes().size() > 6) {
+            return axesBlocks(ctx);
+        }
+        List<String> headers = new ArrayList<>();
+        List<ExportBlock.Cell> titles = new ArrayList<>();
+        List<ExportBlock.Cell> goals = new ArrayList<>();
+        List<ExportBlock.Cell> objectives = new ArrayList<>();
+        List<ExportBlock.Cell> members = new ArrayList<>();
+        boolean anyGoal = false;
+        for (int i = 0; i < plan.axes().size(); i++) {
+            PlanAxis axis = plan.axes().get(i);
+            headers.add("Axe " + (i + 1));
+            titles.add(rowLabel(axis.title()));
+            goals.add(new ExportBlock.Cell(JsonUtil.dash(axis.objective())));
+            anyGoal |= !axis.objective().isBlank();
+            Contributions items = new Contributions(ctx.groups);
+            Contributions directionAxes = new Contributions(ctx.groups);
+            for (DirectionAxis member : axis.members()) {
+                member.objectives().forEach(objective -> items.add(member.group(), objective));
+                directionAxes.add(member.group(), member.title());
+            }
+            objectives.add(attributedCell(items));
+            members.add(attributedCell(directionAxes));
+        }
+        List<ExportBlock.TableRow> rows = new ArrayList<>();
+        rows.add(new ExportBlock.TableRow(titles));
+        if (anyGoal) {
+            rows.add(ExportBlock.TableRow.band("Objectif de l'axe", ExportBlock.Background.PRIMARY_LIGHT));
+            rows.add(new ExportBlock.TableRow(goals));
+        }
+        rows.add(ExportBlock.TableRow.band("Objectifs spécifiques", ExportBlock.Background.PRIMARY_LIGHT));
+        rows.add(new ExportBlock.TableRow(objectives));
+        rows.add(ExportBlock.TableRow.band("Axes des directions regroupés", ExportBlock.Background.PRIMARY_LIGHT));
+        rows.add(new ExportBlock.TableRow(members));
+
+        List<ExportBlock> b = new ArrayList<>();
+        b.add(new ExportBlock.Table(headers, rows));
+        if (!plan.unlinked().isEmpty()) {
+            List<String> labels = plan.unlinked().stream()
+                    .map(axis -> axis.group().getName() + " — " + axis.title())
+                    .toList();
+            b.add(new ExportBlock.Callout("Axes de direction non rattachés à un axe stratégique de l'entreprise : "
+                    + String.join(" ; ", labels) + ". Leur budget et leurs actions sont présentés à part ; le "
+                    + "rattachement se saisit sur " + EDIT_SCREEN + ".", ExportBlock.Tone.WARNING));
+        }
         return b;
     }
 
@@ -1006,16 +1011,17 @@ class PsdBriefBuilder {
      */
     private List<ExportBlock> implementation(Context ctx) {
         List<ExportBlock> b = new ArrayList<>();
-        // Revue client du 15/09/2026 : les tableaux par axe (cadre logique, plan d'actions, budget) sont reportes en
-        // annexe ; le corps du document garde les textes qui les introduisent et la synthese du cadre logique.
+        // Revue client du 15/09/2026 : les tableaux par axe (cadre logique, plan d'actions, budget detaille) sont
+        // reportes en annexe ; le corps garde la synthese du cadre logique. Revue de l'auditeur (21/09/2026) : plus
+        // de texte d'introduction, un simple renvoi ; le budget par axe et par exercice revient dans le corps.
         sub(b, "X.1 Cadre logique");
-        b.addAll(introOnly(logicalFrameworks(ctx), "Tableau 5 : Cadre logique"));
+        b.addAll(annexReference(logicalFrameworks(ctx), ANNEXE_CADRE_LOGIQUE));
         b.addAll(logframeSyntheses(ctx));
         sub(b, "X.2 Opérationnalisation : plan d'actions " + PERIOD);
-        b.addAll(introOnly(actionPlans(ctx), "Tableau 6 : Planification"));
+        b.addAll(annexReference(actionPlans(ctx), ANNEXE_PLANIFICATION));
         sub(b, "X.3 Budget du plan");
-        b.addAll(budgetBlocks(ctx, false));
-        b.addAll(introOnly(detailedBudgets(ctx, false), "Tableau 4 : Budget du plan"));
+        b.addAll(budgetBlocks(ctx));
+        b.addAll(annexReference(detailedBudgets(ctx, false), ANNEXE_BUDGET));
         sub(b, "X.4 Plan de financement");
         b.addAll(financing(ctx));
         sub(b, "X.5 Plan d'évolution des effectifs");
@@ -1194,21 +1200,14 @@ class PsdBriefBuilder {
     }
 
     /**
-     * Texte d'une rubrique dont les tableaux sont reportes en annexe : son introduction, puis le renvoi a
-     * l'annexe. Sans tableau, la rubrique garde son seul message (« Aucun ... n'est encore approuvé »).
+     * Rubrique dont les tableaux sont reportes en annexe : le seul renvoi a l'annexe. Sans tableau, la
+     * rubrique garde son message (« Aucun ... n'est encore approuvé »).
      */
-    private static List<ExportBlock> introOnly(List<ExportBlock> blocks, String annex) {
-        List<ExportBlock> intro = new ArrayList<>();
-        for (ExportBlock block : blocks) {
-            if (!(block instanceof ExportBlock.Paragraph)) {
-                break;
-            }
-            intro.add(block);
-        }
+    private static List<ExportBlock> annexReference(List<ExportBlock> blocks, String annex) {
         if (blocks.stream().anyMatch(ExportBlock.Table.class::isInstance)) {
-            intro.add(new ExportBlock.Paragraph("Les tableaux par axe figurent en annexe (" + annex + ")."));
+            return List.of(new ExportBlock.Paragraph("Tableaux par axe en annexe (" + annex + ").", true, false));
         }
-        return intro;
+        return blocks.stream().filter(ExportBlock.Paragraph.class::isInstance).toList();
     }
 
     /** Tableaux d'une rubrique reportes en annexe, sous leurs intertitres, sans l'introduction deja lue dans le corps. */
@@ -1524,15 +1523,8 @@ class PsdBriefBuilder {
         return lines;
     }
 
+    /** Budget par axe (ou par direction) et par exercice : le tableau, son graphique et sa lecture. */
     private List<ExportBlock> budgetBlocks(Context ctx) {
-        return budgetBlocks(ctx, true);
-    }
-
-    /**
-     * @param withTable pose le tableau par exercice ; la note le reporte en annexe (Tableau 4) et garde le
-     *                  texte, le graphique et sa lecture
-     */
-    private List<ExportBlock> budgetBlocks(Context ctx, boolean withTable) {
         List<ExportBlock> b = new ArrayList<>();
         List<BudgetLine> lines = budgetLines(ctx);
         double total = lines.stream().mapToDouble(line -> sum(line.years())).sum();
@@ -1541,9 +1533,8 @@ class PsdBriefBuilder {
             return b;
         }
         String dimension = ctx.plan.consolidated() ? "axe stratégique" : "direction";
-        b.add(new ExportBlock.Paragraph("Le budget prévisionnel du plan s'élève à " + JsonUtil.formatAmountLabel(total)
-                + " sur la période " + PERIOD + ". " + (withTable ? "Il est réparti ci-dessous" : "Sa répartition est illustrée ci-dessous")
-                + " par " + dimension + " et par exercice, en millions de FCFA."));
+        b.add(new ExportBlock.Paragraph("Budget prévisionnel " + PERIOD + " : " + JsonUtil.formatAmountLabel(total)
+                + ", par " + dimension + " et par exercice (millions de FCFA)."));
 
         List<String> headers = new ArrayList<>();
         headers.add(ctx.plan.consolidated() ? "Axe stratégique" : "Direction");
@@ -1576,9 +1567,7 @@ class PsdBriefBuilder {
         totalCells.add(new ExportBlock.Cell(JsonUtil.formatMillions(total), true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
         totalCells.add(new ExportBlock.Cell("100 %", true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
         rows.add(new ExportBlock.TableRow(totalCells, true, ExportBlock.Background.PRIMARY_LIGHT));
-        if (withTable) {
-            b.add(new ExportBlock.Table(headers, rows, widths));
-        }
+        b.add(new ExportBlock.Table(headers, rows, widths));
 
         List<ExportBlock.ChartSeries> series = new ArrayList<>();
         for (BudgetLine line : lines) {
@@ -1633,9 +1622,6 @@ class PsdBriefBuilder {
         }
         double budget = f.budget();
         List<ExportBlock> b = new ArrayList<>();
-        b.add(new ExportBlock.Paragraph("Le financement identifié par les directions s'élève à "
-                + JsonUtil.formatAmountLabel(financingTotal) + ". Le tableau le détaille par source et le rapporte au "
-                + "budget du plan (montants en millions de FCFA)."));
 
         List<ExportBlock.TableRow> rows = new ArrayList<>();
         Map.Entry<String, Double> top = null;
@@ -1783,14 +1769,12 @@ class PsdBriefBuilder {
                 ? " (" + (lastTotal >= firstTotal ? "+" : "") + JsonUtil.formatPercent((lastTotal - firstTotal) * 100d / firstTotal) + ")"
                 : "";
         return List.of(
-                new ExportBlock.Paragraph("Le plan d'évolution des effectifs consolide, par hiérarchie et par statut, les "
-                        + "effectifs prévus par les directions pour conduire les actions programmées (M : hommes, F : femmes)."),
+                new ExportBlock.Paragraph("M : hommes, F : femmes."),
                 new ExportBlock.Table(headers, rows, widths, bands),
                 analysis("les effectifs prévus passeront de " + JsonUtil.formatNumber(firstTotal) + " agents en " + FIRST_YEAR
                         + " à " + JsonUtil.formatNumber(lastTotal) + " en " + LAST_YEAR + change
-                        + " ; la part des femmes passera de " + JsonUtil.formatDecimal(firstShare) + " % à "
-                        + JsonUtil.formatDecimal(lastShare) + " %. Le total suit la ventilation par hiérarchie : la "
-                        + "hiérarchie et le statut répartissent les mêmes agents."));
+                        + " ; la part des femmes, de " + JsonUtil.formatDecimal(firstShare) + " % à "
+                        + JsonUtil.formatDecimal(lastShare) + " %."));
     }
 
     private ExportBlock.TableRow staffLine(String label, int[][] values, boolean total) {
@@ -1813,11 +1797,12 @@ class PsdBriefBuilder {
         narrative(b, ctx, NarrativeBlockKey.DISPOSITIF_PILOTAGE);
 
         sub(b, "XI.2 Cadre de mesure de rendement");
-        b.addAll(introOnly(performanceFrameworks(ctx), "Tableau 7 : Cadre de mesure de rendement"));
+        b.addAll(annexReference(performanceFrameworks(ctx), ANNEXE_RENDEMENT));
 
-        // Les tableaux de suivi des indicateurs sont reportes en annexe, avec la fiche des indicateurs (Tableau 3).
+        // Revue de l'auditeur (21/09/2026) : les deux tableaux de repartition des indicateurs reviennent dans le corps ;
+        // seule la fiche detaillee de chaque indicateur reste en annexe.
         sub(b, "XI.3 Indicateurs de suivi");
-        b.addAll(indicatorFollowUp(ctx).stream().filter(block -> !(block instanceof ExportBlock.Table)).toList());
+        b.addAll(indicatorFollowUp(ctx));
         return b;
     }
 
@@ -1828,9 +1813,7 @@ class PsdBriefBuilder {
             b.add(new ExportBlock.Paragraph("Aucun indicateur de suivi n'est encore renseigné dans les sections approuvées.", true, false));
             return b;
         }
-        b.add(new ExportBlock.Paragraph("Le suivi du plan repose sur " + ctx.indicators + " indicateurs objectivement "
-                + "vérifiables, définis par les directions. Chacun est remonté selon la périodicité retenue par la "
-                + "structure qui en a la charge, puis consolidé par le comité de pilotage."));
+        b.add(new ExportBlock.Heading("Indicateurs de suivi par direction", 3));
 
         List<ExportBlock.TableRow> byDirection = new ArrayList<>();
         Map<String, String> periodicityLabels = new LinkedHashMap<>();
@@ -1882,13 +1865,13 @@ class PsdBriefBuilder {
         }
         rows.sort(Comparator.comparingInt((ExportBlock.TableRow row) -> -Integer.parseInt(row.cells().get(1).text())));
         rows.add(totalRow("TOTAL", String.valueOf(ctx.indicators), "100 %"));
+        b.add(new ExportBlock.Heading("Indicateurs par périodicité de remontée", 3));
         b.add(new ExportBlock.Table(List.of("Périodicité de remontée", "Indicateurs", "Part"), rows, List.of(50, 25, 25)));
         if (top != null) {
             b.add(analysis("la remontée " + periodicityLabels.get(top.getKey()).toLowerCase(java.util.Locale.FRENCH)
                     + " concerne " + top.getValue() + " indicateurs sur " + ctx.indicators + " ("
                     + JsonUtil.formatPercent(top.getValue() * 100d / ctx.indicators) + "). La fiche de chaque "
-                    + "indicateur — mode de calcul, moyens de collecte, sources de vérification, structure responsable — "
-                    + "figure en annexe (Tableau 3), avec la répartition des indicateurs par direction et par périodicité."));
+                    + "indicateur figure en annexe (" + annexNumber(ANNEXE_INDICATEURS) + ")."));
         }
         return b;
     }
@@ -1933,12 +1916,6 @@ class PsdBriefBuilder {
             rows.add(0, ExportBlock.TableRow.band("Vision : « " + unquote(vision) + " »", ExportBlock.Background.PRIMARY_LIGHT));
         }
         return List.of(
-                new ExportBlock.Paragraph("Le tableau présente, pour chaque axe stratégique, les orientations stratégiques "
-                        + "(OS) formulées par les directions, les actions qui les déclinent et leur budget prévisionnel "
-                        + PERIOD + " en millions de FCFA, l'objectif spécifique de l'axe de la direction qui les porte, et les "
-                        + "contraintes à lever ou les opportunités à saisir pour les conduire. Chaque ligne porte la couleur de "
-                        + "la direction qui l'a formulée ; un objectif ou une contrainte commun à plusieurs lignes voisines "
-                        + "n'est écrit qu'une fois."),
                 // Pas de ligne d'en-tete : comme dans le modele, les intitules de colonnes se repetent
                 // sous le bandeau de chaque axe, et le titre du tableau reprend en haut de chaque page.
                 new ExportBlock.Table(List.of("", "", "", "", ""), rows, List.of(20, 25, 9, 21, 25),
@@ -2048,12 +2025,7 @@ class PsdBriefBuilder {
         PsdKeyFigures f = ctx.figures;
         List<ExportBlock> b = new ArrayList<>();
         narrative(b, ctx, NarrativeBlockKey.CONCLUSION);
-        b.add(new ExportBlock.Paragraph("En chiffres, le plan prévoit un budget de " + JsonUtil.formatAmountLabel(f.budget())
-                + " sur " + YEARS.length + " exercices, réparti entre " + ctx.axisCount() + " axes stratégiques, "
-                + f.specificObjectives() + " objectifs spécifiques, " + ctx.orientationCount() + " orientations stratégiques et "
-                + f.actions() + " actions programmées, portés par les "
-                + (f.allContribute() ? f.directions() + " directions" : f.contributingDirections() + " directions contributrices")
-                + " de SENICO SA et suivis au moyen de " + ctx.indicators + " indicateurs."));
+        // Les chiffres cles du plan ne sont plus repetes ici : « L'essentiel du plan » les donne deja.
         if (f.budget() > 0 && f.financing() < f.budget()) {
             b.add(new ExportBlock.Paragraph("À ce jour, le financement identifié en couvre "
                     + JsonUtil.formatPercent(f.financing() / f.budget() * 100) + ". La mobilisation des "
@@ -2068,39 +2040,24 @@ class PsdBriefBuilder {
     // ---- Annexes ----
 
     private List<ExportBlock> annexes(Context ctx) {
+        // Dans l'ordre ou le corps y renvoie (cf. ANNEXE_*). Le budget par axe et par exercice est dans le corps (X.3) :
+        // l'annexe du budget ne porte que le budget detaille.
         List<ExportBlock> b = new ArrayList<>();
-        sub(b, "Tableau 1 : Analyse des parties prenantes");
-        b.addAll(stakeholdersTable(ctx));
-        sub(b, "Tableau 2 : Matrice d'analyse des risques");
+        sub(b, ANNEXE_RISQUES);
         b.addAll(riskTable(ctx));
-        sub(b, "Tableau 3 : Fiche des indicateurs objectivement vérifiables");
-        b.addAll(indicatorTable(ctx));
-        List<ExportBlock> followUp = indicatorFollowUp(ctx).stream().filter(ExportBlock.Table.class::isInstance).toList();
-        if (followUp.size() == 2) {
-            b.add(new ExportBlock.Heading("Indicateurs de suivi par direction", 3));
-            b.add(followUp.get(0));
-            b.add(new ExportBlock.Heading("Indicateurs par périodicité de remontée", 3));
-            b.add(followUp.get(1));
-        }
-
-        // Revue client du 15/09/2026 : les tableaux par axe du cadre de mise en oeuvre et du cadre de mesure de
-        // rendement sont reportes ici, dans l'ordre demande ; le corps du document garde leurs textes.
-        sub(b, "Tableau 4 : Budget du plan");
-        List<ExportBlock> budget = budgetBlocks(ctx, true);
-        List<ExportBlock> budgetTable = budget.stream().filter(ExportBlock.Table.class::isInstance).toList();
-        if (budgetTable.isEmpty()) {
-            b.addAll(budget);
-        } else {
-            b.add(new ExportBlock.Heading(ctx.plan.consolidated() ? "Budget par axe stratégique" : "Budget par direction", 3));
-            b.addAll(budgetTable);
-            b.addAll(withoutIntro(detailedBudgets(ctx, false)));
-        }
-        sub(b, "Tableau 5 : Cadre logique");
+        sub(b, ANNEXE_CADRE_LOGIQUE);
         b.addAll(withoutIntro(logicalFrameworks(ctx)));
-        sub(b, "Tableau 6 : Planification");
+        sub(b, ANNEXE_PLANIFICATION);
         b.addAll(withoutIntro(actionPlans(ctx)));
-        sub(b, "Tableau 7 : Cadre de mesure de rendement");
+        sub(b, ANNEXE_BUDGET);
+        List<ExportBlock> budget = detailedBudgets(ctx, false);
+        b.addAll(budget.isEmpty()
+                ? List.of(new ExportBlock.Paragraph("Aucun budget n'est encore approuvé.", true, false))
+                : withoutIntro(budget));
+        sub(b, ANNEXE_RENDEMENT);
         b.addAll(withoutIntro(performanceFrameworks(ctx)));
+        sub(b, ANNEXE_INDICATEURS);
+        b.addAll(indicatorTable(ctx));
         return b;
     }
 
@@ -2237,6 +2194,11 @@ class PsdBriefBuilder {
     private ExportBlock.Callout analysis(String text) {
         String sentence = text.isEmpty() ? text : Character.toUpperCase(text.charAt(0)) + text.substring(1);
         return new ExportBlock.Callout("Analyse : " + sentence);
+    }
+
+    /** « Tableau 1 » pour « Tableau 1 : Matrice d'analyse des risques ». */
+    private static String annexNumber(String annexTitle) {
+        return annexTitle.substring(0, annexTitle.indexOf(" :"));
     }
 
     private static String unquote(String text) {
@@ -2776,10 +2738,6 @@ class PsdBriefBuilder {
 
         private boolean isEmpty() {
             return texts.isEmpty();
-        }
-
-        private int size() {
-            return texts.size();
         }
 
         private List<ExportBlock.Attribution> toAttributions() {

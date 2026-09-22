@@ -99,7 +99,7 @@ public class PdfExportService {
             writer.setPageEvent(new DocumentFooter("Document de consolidation — Plan Stratégique 2027-2031"));
             document.open();
 
-            List<WorkGroup> groups = workGroupRepository.findAll();
+            List<WorkGroup> groups = workGroupRepository.findByEnabledTrueOrderByIdAsc();
             List<SectionDef> sections = sectionDefRepository.findAllByOrderByOrderAsc();
 
             Map<String, SectionResponse> responsesByKey = sectionResponseRepository.findAll().stream()
@@ -134,7 +134,7 @@ public class PdfExportService {
      * sommaire garde le meme nombre de lignes d'une passe a l'autre : les numeros ne bougent pas.
      */
     public byte[] exportPsdFinalDocument() {
-        List<WorkGroup> groups = workGroupRepository.findAll();
+        List<WorkGroup> groups = workGroupRepository.findByEnabledTrueOrderByIdAsc();
         List<Entry> entries = PsdDocumentStructure.entries();
 
         Map<String, SectionResponse> responsesByKey = sectionResponseRepository.findAll().stream()
@@ -212,7 +212,7 @@ public class PdfExportService {
      * passe a l'autre : le sommaire garde le meme nombre de lignes, seul le numero s'y ajoute.</p>
      */
     public byte[] exportSynthesisNote() {
-        List<WorkGroup> groups = workGroupRepository.findAll();
+        List<WorkGroup> groups = workGroupRepository.findByEnabledTrueOrderByIdAsc();
         Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
                 .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
         Map<String, SectionResponse> responsesByKey = sectionResponseRepository.findAll().stream()

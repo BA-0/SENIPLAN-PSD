@@ -82,7 +82,7 @@ public class WordExportService {
 
     public byte[] exportPsdFinalDocument() {
         try (XWPFDocument doc = new XWPFDocument(); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            List<WorkGroup> groups = workGroupRepository.findAll();
+            List<WorkGroup> groups = workGroupRepository.findByEnabledTrueOrderByIdAsc();
             List<Entry> entries = PsdDocumentStructure.entries();
 
             Map<String, SectionResponse> responsesByKey = sectionResponseRepository.findAll().stream()
@@ -130,7 +130,7 @@ public class WordExportService {
     /** Note de synthese : pendant Word de {@link PdfExportService#exportSynthesisNote()}. */
     public byte[] exportSynthesisNote() {
         try (XWPFDocument doc = new XWPFDocument(); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            List<WorkGroup> groups = workGroupRepository.findAll();
+            List<WorkGroup> groups = workGroupRepository.findByEnabledTrueOrderByIdAsc();
             Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
                     .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
             Map<String, SectionResponse> responsesByKey = sectionResponseRepository.findAll().stream()

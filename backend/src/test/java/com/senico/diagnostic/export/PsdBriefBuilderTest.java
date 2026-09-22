@@ -409,8 +409,9 @@ class PsdBriefBuilderTest {
         String note = texte(blocs);
 
         assertThat(note).as("synthèses des ressources et du cadre logique")
-                .contains("Marque connue de tous", "Une direction solide mais peu outillée",
-                        "Un impact unique : une position commerciale consolidée");
+                .contains("Marque connue de tous", "Un impact unique : une position commerciale consolidée")
+                .as("la note rédigée de chaque direction sur ses ressources reste dans son plan sectoriel")
+                .doesNotContain("Une direction solide mais peu outillée");
         assertThat(note).as("la matrice complète garde le risque jugé absent, et la méthodologie du canevas")
                 .contains("Présence (Oui/Non)", "Contentieux fournisseur", "Méthodologie d'évaluation", "6 à 9 : criticité élevée");
 
@@ -536,12 +537,14 @@ class PsdBriefBuilderTest {
         assertThat(titres).containsSubsequence("III.1 Historique", "III.2 Missions", "III.3 Gouvernance", "III.4 Organisation",
                 PsdBriefBuilder.BILAN, "V.1 Performances de l'exercice 2026", PsdBriefBuilder.DIAGNOSTIC,
                 "X.3 Budget du plan", "XII.1 Tableau de synthèse du cadre stratégique", PsdBriefBuilder.ANNEXES,
-                "Tableau 1 : Analyse des parties prenantes", "Tableau 2 : Matrice d'analyse des risques",
-                "Tableau 3 : Fiche des indicateurs objectivement vérifiables", "Tableau 4 : Budget du plan",
-                "Tableau 5 : Cadre logique", "Tableau 6 : Planification", "Tableau 7 : Cadre de mesure de rendement");
-        assertThat(titres).as("inventaire du diagnostic, synthèse des contraintes et récapitulatif des axes retirés")
-                .noneMatch(titre -> titre.contains("Inventaire") || titre.contains("Synthèse des contraintes")
-                        || titre.contains("Récapitulatif"));
+                "Tableau 1 : Matrice d'analyse des risques", "Tableau 2 : Cadre logique", "Tableau 3 : Planification",
+                "Tableau 4 : Budget du plan", "Tableau 5 : Cadre de mesure de rendement",
+                "Tableau 6 : Fiche des indicateurs objectivement vérifiables");
+        assertThat(titres).as("inventaire du diagnostic et récapitulatif des axes retirés")
+                .noneMatch(titre -> titre.contains("Inventaire") || titre.contains("Récapitulatif"));
+        assertThat(titres).as("revue de l'auditeur : la synthèse des contraintes du canevas ouvre la partie VII")
+                .containsSubsequence(PsdBriefBuilder.ENJEUX, "VII.1 Synthèse des contraintes, enjeux et défis prioritaires",
+                        "VII.2 Enjeux", "VII.3 Défis à relever");
 
         int annexes = titres.isEmpty() ? -1 : blocs.indexOf(blocs.stream()
                 .filter(bloc -> bloc instanceof ExportBlock.Heading heading && heading.text().equals(PsdBriefBuilder.ANNEXES))
@@ -552,9 +555,52 @@ class PsdBriefBuilderTest {
                         && (table.columnHeaders().contains("Logique d'intervention")
                         || table.columnHeaders().contains("Activités pour atteindre les résultats")));
         assertThat(texte(corps)).as("le texte de la synthèse du cadre logique reste dans le corps, avec le renvoi à l'annexe")
-                .contains("Un impact unique : une position commerciale consolidée", "(Tableau 5 : Cadre logique)");
+                .contains("Un impact unique : une position commerciale consolidée", "(Tableau 2 : Cadre logique)");
         assertThat(blocs.subList(annexes, blocs.size())).as("le cadre logique par axe est en annexe")
                 .anyMatch(bloc -> bloc instanceof ExportBlock.Table table && table.columnHeaders().contains("Logique d'intervention"));
+    }
+
+    @Test
+    @DisplayName("Synthèse des contraintes : une ligne par domaine, partagée entre directions, sans domaine vide")
+    void fusionneLaSyntheseDesContraintesParDomaine() {
+        WorkGroup commerciale = group(1, "Direction commerciale");
+        WorkGroup technique = group(2, "Direction technique");
+        saisie(commerciale, "S06B", """
+                {"rows":[{"domain":"Distribution","constraints":["Délais de livraison"],"challenges":["Fiabiliser les livraisons"]},
+                         {"domain":"Agence maritime","constraints":[],"challenges":[]}]}""");
+        saisie(technique, "S06B", """
+                {"rows":[{"domain":"distribution ","constraints":["Parc vieillissant"],"challenges":[]}]}""");
+
+        ExportBlock.Table synthese = build(commerciale, technique).stream()
+                .filter(ExportBlock.Table.class::isInstance).map(ExportBlock.Table.class::cast)
+                .filter(table -> table.columnHeaders().contains("Contraintes prioritaires"))
+                .findFirst().orElseThrow();
+
+        assertThat(synthese.rows()).as("« Distribution » des deux directions sur une ligne ; le domaine vide écarté").hasSize(1);
+        assertThat(contientTexte(synthese.rows().get(0), "Délais de livraison")).isTrue();
+        assertThat(contientTexte(synthese.rows().get(0), "Parc vieillissant")).isTrue();
+        assertThat(contientTexte(synthese.rows().get(0), "Fiabiliser les livraisons")).isTrue();
+    }
+
+    @Test
+    @DisplayName("Revue de l'auditeur : parties prenantes en tableau dans le corps, sans matrice intérêt / pouvoir")
+    void presenteLesPartiesPrenantesEnTableauSansMatrice() {
+        WorkGroup commerciale = group(1, "Direction commerciale");
+        saisie(commerciale, "S01", """
+                {"rows":[{"actor":"Ministère de tutelle","roles":"Tutelle","importance":"FORT","influence":"FORT"}]}""");
+
+        List<ExportBlock> blocs = build(commerciale);
+        int annexes = blocs.indexOf(blocs.stream()
+                .filter(bloc -> bloc instanceof ExportBlock.Heading heading && heading.text().equals(PsdBriefBuilder.ANNEXES))
+                .findFirst().orElseThrow());
+
+        assertThat(blocs).as("la matrice intérêt / pouvoir, absente du canevas, est retirée")
+                .noneMatch(bloc -> bloc instanceof ExportBlock.AttributedQuadrant quadrant
+                        && quadrant.cells().stream().anyMatch(cell -> cell.title().startsWith("INTÉRÊT")));
+        assertThat(blocs.subList(0, annexes)).as("le tableau du canevas est dans la partie IV")
+                .anyMatch(bloc -> bloc instanceof ExportBlock.Table table && table.columnHeaders().contains("Acteur (PP)"));
+        assertThat(blocs.subList(annexes, blocs.size())).as("et n'est plus répété en annexe")
+                .noneMatch(bloc -> bloc instanceof ExportBlock.Table table && table.columnHeaders().contains("Acteur (PP)"));
     }
 
     @Test
@@ -632,7 +678,7 @@ class PsdBriefBuilderTest {
                          {"category":"STATUT","staffKey":"CDI","years":{"2027":{"male":8,"female":4}}}]}""");
 
         List<ExportBlock> blocs = build(commerciale);
-        assertThat(texte(blocs)).contains("Hiérarchie", "Cadre", "Statut", "CDI", "Expatrié", "Stagiaire", "TOTAUX")
+        assertThat(texte(blocs)).contains("Hiérarchie", "Cadre", "Statut", "CDI", "TOTAUX")
                 .as("la ligne « Fonctionnaire » a été retirée du modèle").doesNotContain("Fonctionnaire");
 
         ExportBlock.Table effectifs = blocs.stream()

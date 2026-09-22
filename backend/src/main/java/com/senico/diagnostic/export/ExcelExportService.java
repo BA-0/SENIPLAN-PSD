@@ -52,7 +52,7 @@ public class ExcelExportService {
             CellStyle headerStyle = buildHeaderStyle(workbook);
             CellStyle wrapStyle = buildWrapStyle(workbook);
 
-            List<WorkGroup> groups = workGroupRepository.findAll();
+            List<WorkGroup> groups = workGroupRepository.findByEnabledTrueOrderByIdAsc();
             List<SectionDef> sections = sectionDefRepository.findAllByOrderByOrderAsc();
 
             Map<Long, CellStyle> groupStyles = new HashMap<>();
@@ -126,7 +126,7 @@ public class ExcelExportService {
             CellStyle wrapStyle = buildWrapStyle(workbook);
             CellStyle titleStyle = buildPeriodStyle(workbook);
 
-            List<WorkGroup> groups = workGroupRepository.findAll();
+            List<WorkGroup> groups = workGroupRepository.findByEnabledTrueOrderByIdAsc();
             List<SectionDef> sections = sectionDefRepository.findAllByOrderByOrderAsc();
 
             Map<Long, CellStyle> groupStyles = new HashMap<>();

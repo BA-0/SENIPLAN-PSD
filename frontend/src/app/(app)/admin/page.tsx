@@ -2,20 +2,54 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Users, TrendingUp, Send, CheckCircle2, RotateCcw, ArrowRight, AlertTriangle } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Users, TrendingUp, Send, CheckCircle2, RotateCcw, ArrowRight, AlertTriangle, Trash2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/kpi-card";
 import { GroupProgressChart } from "@/components/charts/group-progress-chart";
 import { StatusHeatmap } from "@/components/charts/status-heatmap";
 import { ActivityFeed } from "@/components/activity-feed";
-import { getAdminActivity, getAdminDashboard, getAdminMatrix } from "@/lib/api/admin";
+import { clearAdminActivity, deleteAdminActivity, getAdminActivity, getAdminDashboard, getAdminMatrix } from "@/lib/api/admin";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { extractErrorMessage } from "@/lib/api-client";
+import { canAdminister } from "@/lib/roles";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useRealtimeAdmin } from "@/hooks/use-realtime-admin";
 import { useIsGroupTyping } from "@/store/presence-store";
 
 export default function AdminDashboardPage() {
   useRealtimeAdmin();
+  const { user } = useCurrentUser();
+  // Effacer le fil d'activité : l'admin seul (la DG consulte).
+  const peutEffacer = canAdminister(user?.role);
+  const queryClient = useQueryClient();
+  const retirerActivite = useMutation({
+    mutationFn: (id: number) => deleteAdminActivity(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "activity"] }),
+    onError: (error) => toast.error(extractErrorMessage(error, "L'activité n'a pas pu être retirée")),
+  });
+  const effacerActivite = useMutation({
+    mutationFn: clearAdminActivity,
+    onSuccess: () => {
+      toast.success("Le fil d'activité a été vidé");
+      queryClient.invalidateQueries({ queryKey: ["admin", "activity"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Le fil d'activité n'a pas pu être vidé")),
+  });
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin", "dashboard"],
@@ -129,15 +163,37 @@ export default function AdminDashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
             <CardTitle>Activité en direct</CardTitle>
+            {peutEffacer && (activity?.length ?? 0) > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructiveGhost" size="sm" disabled={effacerActivite.isPending}>
+                    <Trash2 className="h-3.5 w-3.5" /> Tout effacer
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Vider le fil « Activité en direct » ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Toutes les activités affichées ici seront supprimées définitivement. Les saisies des directions, leurs
+                      statuts et leurs versions ne sont pas touchés.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => effacerActivite.mutate()}>Tout effacer</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </CardHeader>
           <CardContent className="max-h-[340px] overflow-y-auto scrollbar-thin">
             {isActivityError ? (
               <InlineError message="Impossible de charger l'activité récente." />
             ) : (
               <>
-                <ActivityFeed entries={activity ?? []} />
+                <ActivityFeed entries={activity ?? []} onDelete={peutEffacer ? (id) => retirerActivite.mutate(id) : undefined} />
                 {(activity?.length ?? 0) >= activityLimit && activityLimit < ACTIVITY_MAX && (
                   <button
                     type="button"

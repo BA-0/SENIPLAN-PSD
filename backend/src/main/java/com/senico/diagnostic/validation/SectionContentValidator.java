@@ -5,6 +5,8 @@ import com.senico.diagnostic.domain.SectionType;
 import com.senico.diagnostic.exception.InvalidSectionContentException;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 /**
  * Validation structurelle du JSON de chaque section, par type.
  * En mode brouillon (strict=false) : on exige seulement la presence des cles racine
@@ -14,6 +16,11 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class SectionContentValidator {
+
+    /** Les huit cases de la grille SWOT : chaque categorie, en environnement interne et externe. */
+    public static final List<String> SWOT_FIELDS = List.of(
+            "strengths", "weaknesses", "strengthsExternal", "weaknessesExternal",
+            "opportunitiesInternal", "threatsInternal", "opportunities", "threats");
 
     public void validate(SectionType type, JsonNode content, boolean strict) {
         if (content == null || !content.isObject()) {
@@ -34,15 +41,19 @@ public class SectionContentValidator {
                 requireArray(content, "weaknesses", false);
                 requireArray(content, "opportunities", false);
                 requireArray(content, "threats", false);
-                if (strict) {
-                    boolean anyFilled = content.get("strengths").size() > 0
-                            || content.get("weaknesses").size() > 0
-                            || content.get("opportunities").size() > 0
-                            || content.get("threats").size() > 0;
-                    if (!anyFilled) {
-                        throw new InvalidSectionContentException(
-                                "La matrice SWOT doit contenir au moins un element avant soumission");
+                // Cases ajoutees a la grille (forces/faiblesses externes, opportunites/menaces internes) :
+                // absentes des saisies anterieures, elles restent facultatives.
+                boolean anyFilled = false;
+                for (String field : SWOT_FIELDS) {
+                    JsonNode list = content.get(field);
+                    if (list != null && !list.isNull() && !list.isArray()) {
+                        throw new InvalidSectionContentException("Le champ '" + field + "' doit etre une liste");
                     }
+                    anyFilled |= list != null && list.size() > 0;
+                }
+                if (strict && !anyFilled) {
+                    throw new InvalidSectionContentException(
+                            "La matrice SWOT doit contenir au moins un element avant soumission");
                 }
             }
             case TOWS_MATRIX -> {

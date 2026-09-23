@@ -18,19 +18,19 @@ const COLUMNS = [
   "Indicateur",
   "Résultat attendu",
   "Écart",
-  "Cause sous-jacente",
-  "Cause profonde",
-  "Action à entreprendre",
+  "Causes sous-jacentes",
+  "Causes profondes",
+  "Actions à entreprendre",
 ] as const;
-/** Exercices ecoules : les memes colonnes, le resultat y est celui obtenu et l'action celle deja entreprise. */
+/** Exercices ecoules : les memes colonnes, le resultat y est celui obtenu ; causes et actions au pluriel. */
 const PAST_COLUMNS = [
   "Objectif",
   "Indicateur",
   "Résultat obtenu",
   "Écart",
-  "Cause sous-jacente",
-  "Cause profonde",
-  "Action entreprise",
+  "Causes sous-jacentes",
+  "Causes profondes",
+  "Actions entreprises",
 ] as const;
 
 const TREND_STYLES: Record<PerformanceTrend, { text: string; cell: string; Icon: typeof TrendingUp }> = {

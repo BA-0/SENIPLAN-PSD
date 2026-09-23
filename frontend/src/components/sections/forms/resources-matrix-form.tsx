@@ -21,7 +21,7 @@ export function ResourcesMatrixForm({ content, onChange, readOnly }: SectionForm
     onChange((prev) => ({
       rows: insertInModelOrder(
         prev.rows,
-        { resourceKey, strengths: "", weaknesses: "", challenges: "" },
+        { resourceKey, strengths: "", weaknesses: "", challenges: "", recommendations: "" },
         (r) => r.resourceKey,
         RESOURCE_KEYS
       ),
@@ -40,6 +40,7 @@ export function ResourcesMatrixForm({ content, onChange, readOnly }: SectionForm
             <TableHead className="min-w-[220px]">Forces / Acquis</TableHead>
             <TableHead className="min-w-[220px]">Faiblesses</TableHead>
             <TableHead className="min-w-[220px]">Défis à relever</TableHead>
+            <TableHead className="min-w-[220px]">Recommandations</TableHead>
             {!readOnly && <TableHead className="w-10" />}
           </TableRow>
         </TableHeader>
@@ -76,6 +77,15 @@ export function ResourcesMatrixForm({ content, onChange, readOnly }: SectionForm
                   multiline
                 />
               </TableCell>
+              <TableCell className="py-2.5 align-top">
+                <EditableCell
+                  value={row.recommendations ?? ""}
+                  onChange={(v) => updateRow(index, { recommendations: v })}
+                  readOnly={readOnly}
+                  placeholder="Ajouter une recommandation…"
+                  multiline
+                />
+              </TableCell>
               {!readOnly && (
                 <TableCell className="py-2.5 align-top">
                   <RemoveRowButton onConfirm={() => removeRow(index)} />
@@ -85,7 +95,7 @@ export function ResourcesMatrixForm({ content, onChange, readOnly }: SectionForm
           ))}
           {content.rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={readOnly ? 4 : 5} className="py-8 text-center text-muted-foreground">
+              <TableCell colSpan={readOnly ? 5 : 6} className="py-8 text-center text-muted-foreground">
                 Aucune ressource renseignée
               </TableCell>
             </TableRow>

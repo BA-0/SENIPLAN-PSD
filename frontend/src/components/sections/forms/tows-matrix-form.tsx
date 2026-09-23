@@ -40,12 +40,7 @@ export function TowsMatrixForm({ content, onChange, readOnly }: SectionFormProps
           <span className="ml-2 text-[12px] font-normal text-muted-foreground">lecture seule — se saisit dans la section SWOT</span>
         </h3>
         <SwotTable
-          swot={{
-            strengths: content.strengths ?? [],
-            weaknesses: content.weaknesses ?? [],
-            opportunities: content.opportunities ?? [],
-            threats: content.threats ?? [],
-          }}
+          swot={content}
           readOnly
         />
       </section>

@@ -1,4 +1,5 @@
 import type { SectionType } from "@/types/common";
+import { SWOT_FIELDS } from "@/types/sections";
 
 /** Message affiche quand un tableau a lignes est encore vide, par type de section. */
 const EMPTY_ROWS_MESSAGES: Partial<Record<SectionType, string>> = {
@@ -38,8 +39,7 @@ export function getSubmitBlockedReason(type: SectionType, content: unknown): str
         : null;
     }
     case "SWOT": {
-      const quadrants = ["strengths", "weaknesses", "opportunities", "threats"] as const;
-      const anyFilled = quadrants.some((k) => Array.isArray(c[k]) && (c[k] as unknown[]).length > 0);
+      const anyFilled = SWOT_FIELDS.some((k) => Array.isArray(c[k]) && (c[k] as unknown[]).length > 0);
       return anyFilled ? null : "Ajoutez au moins un élément dans une des quatre catégories avant de soumettre.";
     }
     default:

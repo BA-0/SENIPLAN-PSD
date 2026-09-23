@@ -5,81 +5,83 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TagListEditor } from "@/components/data-table/tag-list-editor";
 import type { SwotContent } from "@/types/sections";
 
-type Quadrant = { key: keyof SwotContent; label: string; dot: string };
+type SwotKey = keyof SwotContent;
+/** `key` recoit la saisie ; `legacy` garde les elements d'anciennes saisies ventilees en interne/externe. */
+type Category = { label: string; dot: string; key: SwotKey; legacy: SwotKey };
 
-const INTERNAL: Quadrant[] = [
-  { key: "strengths", label: "Forces", dot: "bg-primary-500" },
-  { key: "weaknesses", label: "Faiblesses", dot: "bg-accent-500" },
+const INTERNAL: Category[] = [
+  { label: "Forces", dot: "bg-primary-500", key: "strengths", legacy: "strengthsExternal" },
+  { label: "Faiblesses", dot: "bg-accent-500", key: "weaknesses", legacy: "weaknessesExternal" },
 ];
-const EXTERNAL: Quadrant[] = [
-  { key: "opportunities", label: "Opportunités", dot: "bg-blue-500" },
-  { key: "threats", label: "Menaces", dot: "bg-amber-500" },
+const EXTERNAL: Category[] = [
+  { label: "Opportunités", dot: "bg-blue-500", key: "opportunities", legacy: "opportunitiesInternal" },
+  { label: "Menaces", dot: "bg-amber-500", key: "threats", legacy: "threatsInternal" },
 ];
 
 interface SwotTableProps {
   swot: Partial<SwotContent> | null | undefined;
-  onChange?: (key: keyof SwotContent, items: string[]) => void;
+  onChange?: (key: SwotKey, items: string[]) => void;
   readOnly?: boolean;
 }
 
 /**
- * Le tableau SWOT (FFOM) du canevas : une colonne « Environnement » ; la ligne INTERNE porte les forces et
- * les faiblesses, la ligne EXTERNE, sous l'intitulé « Opportunités | Menaces », les opportunités et les
- * menaces. Sert a la saisie (S04) comme au rappel en lecture seule (S05, S07).
+ * Le tableau SWOT (FFOM) du canevas : l'environnement INTERNE coiffe l'intitule « Forces | Faiblesses »
+ * puis leurs elements, l'environnement EXTERNE l'intitule « Opportunités | Menaces » puis leurs elements. Sert a la saisie
+ * (S04) comme au rappel en lecture seule (S05, S07).
  */
 export function SwotTable({ swot, onChange, readOnly }: SwotTableProps) {
   const editable = !readOnly && !!onChange;
 
-  const label = (q: Quadrant) => (
+  const label = (c: Category) => (
     <>
-      <span className={cn("mr-2 inline-block h-2 w-2 rounded-full align-middle", q.dot)} aria-hidden />
-      {q.label}
+      <span className={cn("mr-2 inline-block h-2 w-2 rounded-full align-middle", c.dot)} aria-hidden />
+      {c.label}
     </>
   );
-  const cell = (q: Quadrant) => (
-    <TableCell key={q.key} className="w-[44%] py-3 align-top">
+  const items = (c: Category) => [...new Set([...(swot?.[c.key] ?? []), ...(swot?.[c.legacy] ?? [])])];
+  const change = (c: Category, next: string[]) => {
+    onChange?.(c.key, next);
+    if (swot?.[c.legacy]?.length) onChange?.(c.legacy, []);
+  };
+  const cell = (c: Category) => (
+    <TableCell key={c.key} className="w-[44%] py-3 align-top">
       <TagListEditor
-        items={swot?.[q.key] ?? []}
-        onChange={(items) => onChange?.(q.key, items)}
+        items={items(c)}
+        onChange={(next) => change(c, next)}
         readOnly={!editable}
-        placeholder={`Ajouter ${q.label.toLowerCase()}…`}
+        placeholder={`Ajouter ${c.label.toLowerCase()}…`}
       />
     </TableCell>
   );
-  const environment = "w-[12%] text-center align-middle text-[12px] font-semibold uppercase tracking-wide";
+  const environment = "w-[12%] bg-background text-center align-middle text-[12px] font-semibold uppercase tracking-wide";
+  const block = (name: string, categories: Category[]) => (
+    <>
+      <TableRow className="bg-muted/60 hover:bg-muted/60">
+        <TableCell label rowSpan={2} className={environment}>
+          {name}
+        </TableCell>
+        {categories.map((c) => (
+          <TableCell key={c.label} className="h-11 text-center text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {label(c)}
+          </TableCell>
+        ))}
+      </TableRow>
+      <TableRow className="hover:bg-transparent">{categories.map(cell)}</TableRow>
+    </>
+  );
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead className="text-center">Environnement</TableHead>
-          {INTERNAL.map((q) => (
-            <TableHead key={q.key} className="text-center">
-              {label(q)}
-            </TableHead>
-          ))}
+          <TableHead aria-hidden />
+          <TableHead aria-hidden />
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow className="hover:bg-transparent">
-          <TableCell label rowSpan={2} className={environment}>
-            Interne
-          </TableCell>
-          {INTERNAL.map(cell)}
-        </TableRow>
-        <TableRow className="bg-muted/60 hover:bg-muted/60">
-          {EXTERNAL.map((q) => (
-            <TableCell key={q.key} className="h-11 text-center text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {label(q)}
-            </TableCell>
-          ))}
-        </TableRow>
-        <TableRow className="hover:bg-transparent">
-          <TableCell label className={environment}>
-            Externe
-          </TableCell>
-          {EXTERNAL.map(cell)}
-        </TableRow>
+        {block("Interne", INTERNAL)}
+        {block("Externe", EXTERNAL)}
       </TableBody>
     </Table>
   );

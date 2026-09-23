@@ -75,17 +75,18 @@ public final class PsdDocumentStructure {
                 new SectionEntry("Performances des années passées et de l'année 2026", "S01B"),
                 new SectionEntry("Analyse des parties prenantes", "S01"),
                 new SectionEntry("Matrice d'analyse de ressources et de compétences", "S02"),
-                new SectionEntry("Synthèse de l'analyse des ressources", "S03B"),
+                // Demande client du 23/09/2026 : la synthese de l'analyse des ressources (S03B) n'est plus reprise.
                 new SectionEntry("Contexte : SWOT / PESTEL", List.of("S04", "S03")),
-                new SectionEntry("Mise en relation du diagnostic stratégique externe", "S05"),
+                new SectionEntry("Mise en relation du diagnostic stratégique", "S05"),
                 // Ordre du canevas : l'analyse causale suit la confrontation, et l'inventaire recapitule ce
                 // qui precede (parties prenantes, PESTEL, SWOT, analyse causale).
                 new SectionEntry("Analyse causale", "S06"),
-                new SectionEntry("Inventaire", "S07"),
+                new SectionEntry("Synthèse des recommandations stratégiques", "S07"),
                 new SectionEntry("Matrice d'analyse des risques liés aux domaines d'intervention (ou activités)", "S14"),
-                new SectionEntry("Synthèse des contraintes, enjeux, défis et priorités identifiés", "S06B"),
-                new NarrativeEntry("Défis à relever", NarrativeBlockKey.DEFIS_A_RELEVER),
+                // Demande client du 23/09/2026 : enjeux, puis defis, puis la synthese des contraintes.
                 new NarrativeEntry("Enjeux", NarrativeBlockKey.ENJEUX),
+                new NarrativeEntry("Défis à relever", NarrativeBlockKey.DEFIS_A_RELEVER),
+                new SectionEntry("Synthèse des contraintes, enjeux, défis et priorités identifiés", "S06B"),
                 new NarrativeEntry("Facteurs clés de réussite et d'échec", NarrativeBlockKey.FACTEURS_CLES),
 
                 new MajorHeading("Cadre stratégique"),

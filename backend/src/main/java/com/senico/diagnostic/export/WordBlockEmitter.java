@@ -205,6 +205,7 @@ public class WordBlockEmitter {
                 writeBullet(tableCell.addParagraph(), item, 9);
             }
         }
+        keepTogether(table);
         doc.createParagraph().setSpacingAfter(80);
     }
 
@@ -412,7 +413,10 @@ public class WordBlockEmitter {
                     default -> ParagraphAlignment.LEFT;
                 };
                 if (cell.attributions().isEmpty()) {
-                    setCell(tableRow.getCell(c), cell.text(), cell.bold() || row.emphasized(), align, DARK_HEX, bg, bodyFont);
+                    // Ligne sur fond fonce (rangee des axes de la note de synthese) : texte blanc, comme un en-tete.
+                    String ink = cell.background() == ExportBlock.Background.NONE
+                            && row.rowBackground() == ExportBlock.Background.PRIMARY_DARK ? "FFFFFF" : DARK_HEX;
+                    setCell(tableRow.getCell(c), cell.text(), cell.bold() || row.emphasized(), align, ink, bg, bodyFont);
                 } else {
                     XWPFTableCell tableCell = tableRow.getCell(c);
                     if (bg != null) {
@@ -435,7 +439,42 @@ public class WordBlockEmitter {
                 }
             }
         }
+        if (fitsOnOnePage(t)) {
+            keepTogether(table);
+        }
         doc.createParagraph().setSpacingAfter(80);
+    }
+
+    /** Au-dela, un tableau garde d'un seul tenant risquerait d'etre plus haut qu'une page : Word le coupe alors. */
+    private static final int MAX_ROWS_KEPT_TOGETHER = 20;
+    private static final int MAX_CHARS_KEPT_TOGETHER = 2500;
+
+    /** Estimation, faute de pouvoir mesurer les hauteurs comme dans le PDF : peu de lignes et peu de texte. */
+    private static boolean fitsOnOnePage(ExportBlock.Table t) {
+        int chars = t.rows().stream().flatMap(row -> row.cells().stream())
+                .mapToInt(cell -> (cell.text() == null ? 0 : cell.text().length())
+                        + cell.attributions().stream().mapToInt(a -> a.text().length() + 40).sum())
+                .sum();
+        return t.rows().size() <= MAX_ROWS_KEPT_TOGETHER && chars <= MAX_CHARS_KEPT_TOGETHER;
+    }
+
+    /**
+     * Un tableau qui tient sur une page ne se partage plus entre deux : aucune ligne ne se coupe, et chacune
+     * reste avec la suivante, de sorte que Word renvoie le tableau entier a la page suivante.
+     */
+    static void keepTogether(XWPFTable table) {
+        List<XWPFTableRow> rows = table.getRows();
+        for (int r = 0; r < rows.size(); r++) {
+            rows.get(r).setCantSplitRow(true);
+            if (r == rows.size() - 1) {
+                continue;
+            }
+            for (XWPFTableCell cell : rows.get(r).getTableCells()) {
+                for (XWPFParagraph p : cell.getParagraphs()) {
+                    p.setKeepNext(true);
+                }
+            }
+        }
     }
 
     private void quadrant(XWPFDocument doc, ExportBlock.Quadrant q) {
@@ -461,6 +500,7 @@ public class WordBlockEmitter {
                 }
             }
         }
+        keepTogether(table);
         doc.createParagraph().setSpacingAfter(80);
     }
 

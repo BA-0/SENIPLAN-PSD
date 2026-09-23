@@ -133,6 +133,7 @@ public class SectionExportRenderer {
     private List<JsonUtil.Column> pestelColumns() {
         return List.of(
                 new JsonUtil.Column("Items", n -> SectionLabels.pestel(JsonUtil.text(n, "axis"))),
+                new JsonUtil.Column("Analyses", n -> JsonUtil.text(n, "analysis")),
                 new JsonUtil.Column("Menaces", n -> JsonUtil.text(n, "threats")),
                 new JsonUtil.Column("Opportunités", n -> JsonUtil.text(n, "opportunities")),
                 new JsonUtil.Column("Actions pour atténuer les menaces ou saisir les opportunités", n -> JsonUtil.text(n, "actions"))
@@ -145,19 +146,18 @@ public class SectionExportRenderer {
                 new JsonUtil.Column("Ressources", n -> SectionLabels.resource(JsonUtil.text(n, "resourceKey"))),
                 new JsonUtil.Column("Forces / Acquis", n -> JsonUtil.text(n, "strengths")),
                 new JsonUtil.Column("Faiblesses", n -> JsonUtil.text(n, "weaknesses")),
-                new JsonUtil.Column("Défis à relever", n -> JsonUtil.text(n, "challenges"))
+                new JsonUtil.Column("Défis à relever", n -> JsonUtil.text(n, "challenges")),
+                new JsonUtil.Column("Recommandations", n -> JsonUtil.text(n, "recommendations"))
         );
         return List.of(RowsTableRenderer.render(JsonUtil.arr(content, "rows"), columns));
     }
 
     // ---- S04 ----
-    /** Grille SWOT (FFOM) du canevas : Environnement, INTERNE (forces, faiblesses), EXTERNE (opportunites, menaces). */
+    /** Grille SWOT (FFOM) du canevas : forces et faiblesses, puis opportunites et menaces, chacune INTERNE et EXTERNE. */
     private ExportBlock.Table swotQuadrant(JsonNode content) {
-        return SwotGridTable.build(
-                SwotGridTable.list(JsonUtil.strList(content, "strengths")),
-                SwotGridTable.list(JsonUtil.strList(content, "weaknesses")),
-                SwotGridTable.list(JsonUtil.strList(content, "opportunities")),
-                SwotGridTable.list(JsonUtil.strList(content, "threats")));
+        return SwotGridTable.build(SwotGridTable.FIELDS.stream()
+                .map(field -> SwotGridTable.list(JsonUtil.strList(content, field)))
+                .toList());
     }
 
     // ---- S05 ----
@@ -225,17 +225,18 @@ public class SectionExportRenderer {
             rows.add(new ExportBlock.TableRow(List.of(new ExportBlock.Cell("—"), new ExportBlock.Cell("—"),
                     new ExportBlock.Cell("—"), new ExportBlock.Cell("—"))));
         }
-        blocks.add(new ExportBlock.Table(List.of("SWOT", "PESTEL", "Analyse des parties prenantes", "Analyse causale"),
+        blocks.add(new ExportBlock.Table(List.of("SWOT", "PESTEL", "Analyse des parties prenantes", "Analyse causale et autres"),
                 rows, List.of(25, 25, 25, 25)));
         return blocks;
     }
 
     private static List<String> swotItems(JsonNode swot) {
         List<String> items = new ArrayList<>();
-        JsonUtil.strList(swot, "strengths").forEach(s -> items.add("Force : " + s));
-        JsonUtil.strList(swot, "weaknesses").forEach(s -> items.add("Faiblesse : " + s));
-        JsonUtil.strList(swot, "opportunities").forEach(s -> items.add("Opportunité : " + s));
-        JsonUtil.strList(swot, "threats").forEach(s -> items.add("Menace : " + s));
+        for (SwotGridTable.Category category : SwotGridTable.CATEGORIES) {
+            for (String field : category.fields()) {
+                JsonUtil.strList(swot, field).forEach(s -> items.add(category.singular() + " : " + s));
+            }
+        }
         return items;
     }
 
@@ -243,8 +244,12 @@ public class SectionExportRenderer {
         List<String> items = new ArrayList<>();
         for (JsonNode row : JsonUtil.arr(content, "pestel")) {
             String item = SectionLabels.pestel(JsonUtil.text(row, "axis"));
+            String analysis = flatten(JsonUtil.text(row, "analysis"));
             String threats = flatten(JsonUtil.text(row, "threats"));
             String opportunities = flatten(JsonUtil.text(row, "opportunities"));
+            if (!analysis.isEmpty()) {
+                items.add(item + " — analyses : " + analysis);
+            }
             if (!threats.isEmpty()) {
                 items.add(item + " — menaces : " + threats);
             }
@@ -327,7 +332,7 @@ public class SectionExportRenderer {
         List<ExportBlock.TableRow> rows = List.of(
                 ExportBlock.TableRow.band("Orientation stratégique", ExportBlock.Background.GREY),
                 new ExportBlock.TableRow(titles),
-                ExportBlock.TableRow.band("Objectif de l'axe", ExportBlock.Background.GREY),
+                ExportBlock.TableRow.band("Objectif de l'axe (Orientation stratégique)", ExportBlock.Background.GREY),
                 new ExportBlock.TableRow(objectives),
                 ExportBlock.TableRow.band("Objectifs spécifiques", ExportBlock.Background.GREY),
                 new ExportBlock.TableRow(specifics));
@@ -435,7 +440,7 @@ public class SectionExportRenderer {
     private List<JsonUtil.Column> constraintsSynthesisColumns() {
         return List.of(
                 new JsonUtil.Column("Domaines d'activités", n -> JsonUtil.text(n, "domain")),
-                new JsonUtil.Column("Contraintes prioritaires", n -> String.join("\n", JsonUtil.strList(n, "constraints"))),
+                new JsonUtil.Column("Contraintes", n -> String.join("\n", JsonUtil.strList(n, "constraints"))),
                 new JsonUtil.Column("Défis et enjeux prioritaires", n -> String.join("\n", JsonUtil.strList(n, "challenges")))
         );
     }
@@ -625,9 +630,9 @@ public class SectionExportRenderer {
                 new JsonUtil.Column("Catégorie de risque", n -> JsonUtil.text(n, "category")),
                 new JsonUtil.Column("Présence (Oui/Non)", n -> JsonUtil.bool(n, "present") ? "Oui" : "Non"),
                 new JsonUtil.Column("Quels risques (nature détaillée)", n -> JsonUtil.text(n, "riskDetails")),
-                new JsonUtil.Column("Niveau de risque", n -> String.valueOf((int) JsonUtil.num(n, "levelN"))),
+                new JsonUtil.Column("Niveau de risque (Fréquence)", n -> String.valueOf((int) JsonUtil.num(n, "levelN"))),
                 new JsonUtil.Column("Impact sur les domaines d'activités", n -> JsonUtil.text(n, "impactAreas")),
-                new JsonUtil.Column("Quotation", n -> String.valueOf((int) JsonUtil.num(n, "quotationQ"))),
+                new JsonUtil.Column("Quotation (Gravité)", n -> String.valueOf((int) JsonUtil.num(n, "quotationQ"))),
                 new JsonUtil.Column("Criticité (N × Q)", n -> SectionLabels.criticality(JsonUtil.text(n, "criticalityLabel")),
                         n -> SectionLabels.criticalityBackground(JsonUtil.text(n, "criticalityLabel"))),
                 new JsonUtil.Column("Actions de mitigation ou de contingence", n -> JsonUtil.text(n, "mitigationActions"))

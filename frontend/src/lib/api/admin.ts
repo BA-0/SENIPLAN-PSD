@@ -30,6 +30,17 @@ export async function getAdminActivity(limit = 50): Promise<ActivityEntryDto[]> 
   return data;
 }
 
+/** Retire une entrée du fil « Activité en direct » (admin seul). */
+export async function deleteAdminActivity(id: number): Promise<void> {
+  await apiClient.delete(`/admin/activity/${id}`);
+}
+
+/** Vide le fil « Activité en direct » (admin seul) ; les saisies des directions ne sont pas touchées. */
+export async function clearAdminActivity(): Promise<{ deleted: number }> {
+  const { data } = await apiClient.delete<{ deleted: number }>("/admin/activity");
+  return data;
+}
+
 export async function getAdminSubmissions(): Promise<SubmissionSummaryDto[]> {
   const { data } = await apiClient.get<SubmissionSummaryDto[]>("/admin/submissions");
   return data;

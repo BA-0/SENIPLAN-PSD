@@ -57,7 +57,10 @@ public class PdfBlockEmitter {
             if (writer != null && block instanceof ExportBlock.Heading h && h.level() > 1) {
                 keepWithTable(document, writer, blocks, i);
             }
-            if (writer != null && block instanceof ExportBlock.Table t) {
+            PdfPTable whole = writer != null ? wholeOnOnePage(document, block) : null;
+            if (whole != null) {
+                emitWhole(document, writer, whole, next instanceof ExportBlock.Callout analysis ? analysis : null);
+            } else if (writer != null && block instanceof ExportBlock.Table t) {
                 emitTable(document, writer, t, next instanceof ExportBlock.Callout analysis ? analysis : null);
             } else {
                 emitOne(document, writer, block);
@@ -65,8 +68,57 @@ public class PdfBlockEmitter {
         }
     }
 
+    /** Jeu laisse aux arrondis de hauteur : OpenPDF ne doit pas couper la ou le calcul voyait de la place. */
+    private static final float FIT_SLACK = 2;
+
     /**
-     * Tableau pose en connaissant la position sur la page. Il est coupe a chaque bandeau
+     * Tableau ou matrice (SWOT, TOWS) d'un seul tenant, s'il tient sur une page ; null sinon. Un tableau
+     * qui tient sur une page ne se partage plus entre deux : il passe entier a la suivante. Seul un
+     * tableau plus haut qu'une page se coupe encore (cf. emitTable).
+     */
+    private PdfPTable wholeOnOnePage(Document document, ExportBlock block) {
+        float width = document.right() - document.left();
+        PdfPTable pdf;
+        if (block instanceof ExportBlock.Table t && !t.rows().isEmpty()) {
+            pdf = measured(table(t), width, true, true);
+        } else if (block instanceof ExportBlock.Quadrant q) {
+            pdf = keepCellsWhole(quadrant(q), document);
+        } else if (block instanceof ExportBlock.AttributedQuadrant a) {
+            pdf = keepCellsWhole(attributedQuadrant(a), document);
+        } else {
+            return null;
+        }
+        return wholeHeight(pdf) <= document.top() - document.bottom() - FIT_SLACK ? pdf : null;
+    }
+
+    private static float wholeHeight(PdfPTable pdf) {
+        return pdf.spacingBefore() + pdf.getTotalHeight();
+    }
+
+    /**
+     * Pose un tableau qui tient sur une page, en ouvrant la suivante s'il ne tient plus sous la position
+     * courante. L'encadre d'analyse qui le suit l'accompagne quand les deux tiennent ensemble sur une page.
+     */
+    private void emitWhole(Document document, PdfWriter writer, PdfPTable pdf, ExportBlock.Callout analysis)
+            throws DocumentException {
+        float pageBody = document.top() - document.bottom();
+        float needed = wholeHeight(pdf);
+        if (analysis != null) {
+            float withAnalysis = needed + pdf.spacingAfter() + calloutHeight(analysis, document.right() - document.left());
+            if (withAnalysis <= pageBody - FIT_SLACK) {
+                needed = withAnalysis;
+            }
+        }
+        boolean atPageTop = writer.getVerticalPosition(true) >= document.top() - 0.5f;
+        if (!atPageTop && writer.getVerticalPosition(true) - document.bottom() < needed + FIT_SLACK) {
+            document.newPage();
+        }
+        pdf.setKeepTogether(true);
+        document.add(pdf);
+    }
+
+    /**
+     * Tableau plus haut qu'une page, pose en connaissant la position sur la page. Il est coupe a chaque bandeau
      * (« AXE 2 : ... », « Statut ») en tableaux accoles : un bandeau qui ne tient plus en bas de
      * page avec sa premiere ligne passe a la suivante, au lieu d'y rester seul. Et ses dernieres
      * lignes accompagnent l'encadre d'analyse qui le suit, plutot que de le laisser seul sur une
@@ -405,7 +457,12 @@ public class PdfBlockEmitter {
             needed += text.getSpacingBefore() + height(text, width) + text.getSpacingAfter();
         }
         ExportBlock target = j < blocks.size() ? blocks.get(j) : null;
-        if (target instanceof ExportBlock.Quadrant || target instanceof ExportBlock.AttributedQuadrant) {
+        float pageBody = document.top() - document.bottom();
+        PdfPTable whole = target == null ? null : wholeOnOnePage(document, target);
+        if (whole != null && needed + wholeHeight(whole) <= pageBody - FIT_SLACK) {
+            // Le tableau passera entier a la page suivante s'il ne tient pas ici : l'intertitre part avec lui.
+            needed += wholeHeight(whole);
+        } else if (target instanceof ExportBlock.Quadrant || target instanceof ExportBlock.AttributedQuadrant) {
             // Une matrice SWOT ne coupe pas ses cases : si la premiere rangee ne tient pas sous « V.4 Analyse
             // SWOT », le titre restait seul au pied de la page et la matrice ouvrait la suivante.
             PdfPTable pdf = keepCellsWhole(target instanceof ExportBlock.Quadrant q ? quadrant(q)
@@ -422,7 +479,7 @@ public class PdfBlockEmitter {
             return;
         }
         float available = writer.getVerticalPosition(true) - document.bottom();
-        if (available < needed && needed < document.top() - document.bottom()) {
+        if (available < needed && needed < pageBody) {
             document.newPage();
         }
     }
@@ -904,7 +961,11 @@ public class PdfBlockEmitter {
                         ? awtColor(cell.background())
                         : (row.rowBackground() != ExportBlock.Background.NONE ? awtColor(row.rowBackground())
                         : (row.emphasized() ? awtColor(ExportBlock.Background.GREY) : defaultBg));
-                Font font = PdfFonts.font(fontSize, (cell.bold() || row.emphasized()) ? Font.BOLD : Font.NORMAL, INK);
+                // Ligne sur fond fonce (rangee des axes de la note de synthese) : texte blanc, comme un en-tete.
+                boolean dark = cell.background() == ExportBlock.Background.NONE
+                        && row.rowBackground() == ExportBlock.Background.PRIMARY_DARK;
+                Font font = PdfFonts.font(fontSize, (cell.bold() || row.emphasized()) ? Font.BOLD : Font.NORMAL,
+                        dark ? Color.WHITE : INK);
                 int align = switch (cell.align()) {
                     case CENTER -> Element.ALIGN_CENTER;
                     case RIGHT -> Element.ALIGN_RIGHT;

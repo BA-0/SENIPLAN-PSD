@@ -3,7 +3,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { NoteTable } from "@/components/data-table/note-table";
 import { CAUSAL_LABELS, PESTEL_LABELS, STAKEHOLDER_CATEGORY_LABELS } from "@/types/sections";
-import type { InventoryContent, Level, StakeholderCategory } from "@/types/sections";
+import type { InventoryContent, Level, StakeholderCategory, SwotContent } from "@/types/sections";
 import type { SectionFormProps } from "./types";
 
 const LEVEL_LABELS: Record<Level, string> = { FORT: "fort", MOYEN: "moyen", FAIBLE: "faible" };
@@ -14,16 +14,17 @@ function clean(value: string | null | undefined): string {
 
 /** Les quatre colonnes du canevas, chacune la liste de ce que la direction a retenu dans l'analyse. */
 function inventoryColumns(content: InventoryContent): string[][] {
-  const swot = content.swot ?? { strengths: [], weaknesses: [], opportunities: [], threats: [] };
+  const swot: Partial<SwotContent> = content.swot ?? {};
   const swotItems = [
-    ...(swot.strengths ?? []).map((s) => `Force : ${s}`),
-    ...(swot.weaknesses ?? []).map((s) => `Faiblesse : ${s}`),
-    ...(swot.opportunities ?? []).map((s) => `Opportunité : ${s}`),
-    ...(swot.threats ?? []).map((s) => `Menace : ${s}`),
+    ...[...(swot.strengths ?? []), ...(swot.strengthsExternal ?? [])].map((s) => `Force : ${s}`),
+    ...[...(swot.weaknesses ?? []), ...(swot.weaknessesExternal ?? [])].map((s) => `Faiblesse : ${s}`),
+    ...[...(swot.opportunitiesInternal ?? []), ...(swot.opportunities ?? [])].map((s) => `Opportunité : ${s}`),
+    ...[...(swot.threatsInternal ?? []), ...(swot.threats ?? [])].map((s) => `Menace : ${s}`),
   ];
   const pestelItems = (content.pestel ?? []).flatMap((p) => {
     const item = PESTEL_LABELS[p.axis] ?? p.axis;
     return [
+      clean(p.analysis) && `${item} — analyses : ${clean(p.analysis)}`,
       clean(p.threats) && `${item} — menaces : ${clean(p.threats)}`,
       clean(p.opportunities) && `${item} — opportunités : ${clean(p.opportunities)}`,
     ].filter(Boolean) as string[];
@@ -42,7 +43,7 @@ function inventoryColumns(content: InventoryContent): string[][] {
   return [swotItems, pestelItems, stakeholderItems, causalItems];
 }
 
-const HEADERS = ["SWOT", "PESTEL", "Analyse des parties prenantes", "Analyse causale"];
+const HEADERS = ["SWOT", "PESTEL", "Analyse des parties prenantes", "Analyse causale et autres"];
 
 /**
  * S07 — inventaire, sur l'agencement du canevas : un seul tableau à quatre colonnes (SWOT, PESTEL, analyse
@@ -65,7 +66,7 @@ export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<
 
       <section className="space-y-2">
         <h3>
-          Inventaire
+          Synthèse des recommandations stratégiques
           <span className="ml-2 text-[12px] font-normal text-muted-foreground">lecture seule — repris des sections</span>
         </h3>
         <Table>

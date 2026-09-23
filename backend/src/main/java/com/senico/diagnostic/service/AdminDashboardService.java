@@ -158,6 +158,14 @@ public class AdminDashboardService {
                 .toList();
     }
 
+    public void deleteActivity(Long id) {
+        activityLogService.delete(id);
+    }
+
+    public long clearActivity() {
+        return activityLogService.deleteAll();
+    }
+
     private ActivityEntryDto toActivityDto(ActivityLog log) {
         return ActivityEntryDto.builder()
                 .id(log.getId())

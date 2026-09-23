@@ -102,15 +102,16 @@ class PsdFinalDocumentCompletenessIT {
     }
 
     @Test
-    @DisplayName("Les cinq sections ajoutees en revue client sont reprises dans le document")
+    @DisplayName("Les sections ajoutees en revue client sont reprises dans le document")
     void sectionsDeRevueClientReprises() throws Exception {
         String contenu = document();
         assertThat(contenu).contains(
                 "Performances des années passées et de l'année 2026",
-                "Synthèse de l'analyse des ressources",
                 "Synthèse des contraintes, enjeux, défis et priorités identifiés",
                 "Synthèse du cadre logique",
                 "Plan d'évolution des effectifs");
+        assertThat(contenu).as("demande client du 23/09/2026 : la synthèse de l'analyse des ressources est retirée")
+                .doesNotContain("Synthèse de l'analyse des ressources");
     }
 
     @Test

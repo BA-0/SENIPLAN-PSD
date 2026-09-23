@@ -27,12 +27,15 @@ final class PerformanceReviewTables {
     static final String PAST_TITLE = "Performances des années passées";
     static final String CURRENT_TITLE = "Performances de l'année " + REVIEW_YEAR + " et tendances";
 
-    static final List<String> HEADERS = List.of("Objectif", "Indicateur", "Résultat attendu en décembre", "Écart",
-            "Cause sous-jacente", "Cause profonde", "Action à entreprendre");
+    static final List<String> HEADERS = List.of("Objectif", "Indicateur", "Résultat attendu", "Écart",
+            "Causes sous-jacentes", "Causes profondes", "Actions à entreprendre");
     static final List<Integer> WIDTHS = List.of(15, 16, 12, 12, 15, 15, 15);
-    /** Exercices ecoules : les memes colonnes, le resultat y est celui obtenu. */
+    /**
+     * Exercices ecoules : les memes colonnes, le resultat y est celui obtenu ; causes et actions au pluriel
+     * (demande client du 23/09/2026), un exercice en porte souvent plusieurs.
+     */
     static final List<String> PAST_HEADERS = List.of("Objectif", "Indicateur", "Résultat obtenu", "Écart",
-            "Cause sous-jacente", "Cause profonde", "Action entreprise");
+            "Causes sous-jacentes", "Causes profondes", "Actions entreprises");
 
     /** Une ligne du bilan et la cellule de son indicateur (attribuee a sa direction dans la note, simple ailleurs). */
     record Line(JsonNode row, ExportBlock.Cell indicator) {

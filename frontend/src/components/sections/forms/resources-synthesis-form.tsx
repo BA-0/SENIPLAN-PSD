@@ -77,6 +77,7 @@ export function ResourcesSynthesisForm({ content, onChange, readOnly }: SectionF
               <TableHead className="min-w-[180px]">Forces / Acquis</TableHead>
               <TableHead className="min-w-[180px]">Faiblesses</TableHead>
               <TableHead className="min-w-[180px]">Défis à relever</TableHead>
+              <TableHead className="min-w-[180px]">Recommandations</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -86,10 +87,11 @@ export function ResourcesSynthesisForm({ content, onChange, readOnly }: SectionF
                 <TableCell className="whitespace-pre-wrap align-top text-[13px] text-foreground/90">{row.strengths || "—"}</TableCell>
                 <TableCell className="whitespace-pre-wrap align-top text-[13px] text-foreground/90">{row.weaknesses || "—"}</TableCell>
                 <TableCell className="whitespace-pre-wrap align-top text-[13px] text-foreground/90">{row.challenges || "—"}</TableCell>
+                <TableCell className="whitespace-pre-wrap align-top text-[13px] text-foreground/90">{row.recommendations || "—"}</TableCell>
               </TableRow>
             ))}
             {resources.length === 0 && (
-              <TableEmptyRow colSpan={4}>La matrice des ressources et compétences n&apos;est pas encore renseignée.</TableEmptyRow>
+              <TableEmptyRow colSpan={5}>La matrice des ressources et compétences n&apos;est pas encore renseignée.</TableEmptyRow>
             )}
           </TableBody>
         </Table>

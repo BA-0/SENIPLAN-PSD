@@ -664,6 +664,7 @@ public class PdfExportService {
         }
 
         PdfPTable table = new PdfPTable(headers.length);
+        table.setKeepTogether(true);
         table.setWidthPercentage(100);
         table.setWidths(widths);
         table.setSpacingBefore(4);
@@ -690,8 +691,7 @@ public class PdfExportService {
 
     private void addPsdMergedSwot(Document document, SectionDef section, List<WorkGroup> groups,
                                    Map<String, SectionResponse> responsesByKey) throws DocumentException {
-        String[] fields = {"strengths", "weaknesses", "opportunities", "threats"};
-        String[] labels = {"Forces", "Faiblesses", "Opportunités", "Menaces"};
+        List<SwotGridTable.Category> categories = SwotGridTable.CATEGORIES;
         Color[] tints = {
                 new Color(0xDC, 0xFC, 0xE7), new Color(0xFF, 0xED, 0xD5),
                 new Color(0xDB, 0xEA, 0xFE), new Color(0xFE, 0xE2, 0xE2)
@@ -703,21 +703,24 @@ public class PdfExportService {
         }
 
         PdfPTable table = new PdfPTable(2);
+        table.setKeepTogether(true);
         table.setWidthPercentage(100);
         table.setSpacingBefore(4);
         table.setSpacingAfter(4);
 
-        for (int i = 0; i < fields.length; i++) {
+        for (int i = 0; i < categories.size(); i++) {
             List<Map.Entry<WorkGroup, String>> entries = new ArrayList<>();
             for (WorkGroup group : groups) {
-                for (String item : JsonUtil.strList(contentByGroup.get(group), fields[i])) {
-                    entries.add(Map.entry(group, item));
+                for (String field : categories.get(i).fields()) {
+                    for (String item : JsonUtil.strList(contentByGroup.get(group), field)) {
+                        entries.add(Map.entry(group, item));
+                    }
                 }
             }
             List<PsdCrossGroupMerge.MergedItem> merged = PsdCrossGroupMerge.merge(entries, false);
 
             Paragraph cellContent = new Paragraph();
-            cellContent.add(new Chunk(labels[i] + "\n", PdfFonts.font(10, Font.BOLD, Color.DARK_GRAY)));
+            cellContent.add(new Chunk(categories.get(i).plural() + "\n", PdfFonts.font(10, Font.BOLD, Color.DARK_GRAY)));
             if (merged.isEmpty()) {
                 cellContent.add(new Chunk("Aucun élément.", PdfFonts.font(9, Font.NORMAL, Color.DARK_GRAY)));
             } else {
@@ -744,14 +747,15 @@ public class PdfExportService {
             contentByGroup.put(group, contentFor(group, section, responsesByKey));
         }
 
-        PdfPTable table = new PdfPTable(4);
+        PdfPTable table = new PdfPTable(5);
+        table.setKeepTogether(true);
         table.setWidthPercentage(100);
-        table.setWidths(new float[]{15, 28, 28, 29});
+        table.setWidths(new float[]{12, 22, 22, 22, 22});
         table.setSpacingBefore(4);
         table.setSpacingAfter(4);
-        addTableHeaderRow(table, "Axe", "Menaces", "Opportunités", "Actions");
+        addTableHeaderRow(table, "Axe", "Analyses", "Menaces", "Opportunités", "Actions");
 
-        String[] columns = {"threats", "opportunities", "actions"};
+        String[] columns = {"analysis", "threats", "opportunities", "actions"};
         for (String axisCode : PESTEL_AXES) {
             PdfPCell axisCell = bodyCell(SectionLabels.pestel(axisCode), Element.ALIGN_LEFT, Color.WHITE);
             axisCell.setVerticalAlignment(Element.ALIGN_TOP);

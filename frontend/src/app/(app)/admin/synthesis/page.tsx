@@ -27,15 +27,16 @@ const PARTS: { title: string; description: string }[] = [
   {
     title: "VI. Diagnostic stratégique",
     description:
-      "ressources et compétences et leur synthèse, PESTEL, SWOT, mise en relation du diagnostic, analyse causale, risques de criticité élevée.",
+      "matrice des ressources et compétences avec leurs recommandations, PESTEL avec ses analyses, SWOT (chaque catégorie en interne et en externe), mise en relation du diagnostic stratégique, analyse causale, risques de criticité élevée (fréquence × gravité).",
   },
   {
     title: "VII. Principaux enjeux et défis — VIII. Facteurs clés de réussite et d'échec",
-    description: "synthèse des contraintes, enjeux et défis par domaine d'activités, puis les enjeux et défis arrêtés par la Direction Générale.",
+    description: "enjeux, puis défis à relever, puis le tableau de synthèse des contraintes, enjeux, défis et priorités par domaine d'activités.",
   },
   {
     title: "IX. Cadre stratégique",
-    description: "vision, mission, valeurs et le tableau des axes : objectif, objectifs spécifiques et axes des directions regroupés.",
+    description:
+      "la synthèse des recommandations stratégiques (SWOT, PESTEL, parties prenantes, analyse causale et autres), puis le tableau des axes : objectif et objectifs spécifiques.",
   },
   {
     title: "X. Cadre de mise en œuvre",
@@ -58,7 +59,8 @@ const PARTS: { title: string; description: string }[] = [
  * (page de garde, parties numérotées, tableaux du canevas, graphiques), à partir des contributions des
  * directions et des textes arrêtés par la Direction Générale. Plus courte que le Plan Stratégique
  * de SENICO, qui reprend en détail les tableaux de chaque direction. Sans page de sommaire et avec
- * chaque tableau présent même vide, depuis la revue de l'auditeur du 22/09/2026.
+ * chaque tableau présent même vide, depuis la revue de l'auditeur du 22/09/2026. Depuis la demande client du
+ * 23/09/2026, la note ne garde que ses titres, sous-titres et tableaux.
  *
  * Même périmètre que ce dernier depuis la validation à deux niveaux : seules les sections
  * approuvées par le DG y figurent.
@@ -89,7 +91,8 @@ export default function SynthesisPage() {
           Le Plan Stratégique 2027-2031 présenté comme un plan stratégique publié — page de garde, parties
           numérotées, graphiques — avec tous les tableaux du canevas consolidés axe par axe (cadre logique, plan
           d&apos;actions, budget, cadre de mesure de rendement…), présents même vides, chaque ligne à la couleur
-          de sa direction. Pour le Conseil d&apos;Administration et le comité de pilotage.
+          de sa direction. La note ne reprend que les titres, sous-titres et tableaux : paragraphes, listes à puces
+          et encadrés n&apos;y figurent pas. Pour le Conseil d&apos;Administration et le comité de pilotage.
         </p>
       </div>
 
@@ -109,7 +112,7 @@ export default function SynthesisPage() {
             <Link href="/admin/psd-final" className="font-medium text-primary-600 underline-offset-2 hover:underline">
               Plan Stratégique de SENICO
             </Link>
-            . Tant qu&apos;un de ces textes manque, la note le signale à l&apos;endroit concerné.
+            . Ces textes rédigés figurent dans le Plan Stratégique de SENICO ; la note n&apos;en garde que les tableaux.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button variant="primary" onClick={() => handleExport("pdf")} loading={exportingPdf}>

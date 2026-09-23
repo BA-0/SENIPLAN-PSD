@@ -5,15 +5,17 @@ import { EditableCell } from "@/components/data-table/editable-cell";
 import { AddRowButton, RemoveRowButton } from "@/components/data-table/row-actions";
 import { NativeSelect } from "@/components/ui/native-select";
 import { LevelSelect } from "./level-select";
-import { SelectWithOther } from "./select-with-other";
 import type { SectionFormProps } from "./types";
-import {
-  STAKEHOLDER_CATEGORIES,
-  STAKEHOLDER_CATEGORY_LABELS,
-  STAKEHOLDER_SCOPES,
-  STAKEHOLDER_SCOPE_LABELS,
-} from "@/types/sections";
-import type { StakeholderRow, StakeholdersContent } from "@/types/sections";
+import { STAKEHOLDER_CATEGORY_LABELS, STAKEHOLDER_SCOPES, STAKEHOLDER_SCOPE_LABELS } from "@/types/sections";
+import type { StakeholderCategory, StakeholderRow, StakeholdersContent } from "@/types/sections";
+
+/**
+ * L'acteur se saisit librement (demande client du 23/09/2026). Une ancienne saisie faite avec la liste
+ * (« BANQUE », « ETAT »…) s'affiche sous son libellé et devient du texte libre dès qu'on la modifie.
+ */
+function actorText(category: string): string {
+  return STAKEHOLDER_CATEGORY_LABELS[category as StakeholderCategory] ?? category;
+}
 
 const EMPTY_ROW: StakeholderRow = {
   category: "",
@@ -61,15 +63,12 @@ export function StakeholdersForm({ content, onChange, readOnly }: SectionFormPro
           {content.rows.map((row, index) => (
             <TableRow key={index}>
               <TableCell>
-                <SelectWithOther
-                  value={row.category}
+                <EditableCell
+                  value={actorText(row.category)}
                   onChange={(v) => updateRow(index, { category: v })}
-                  options={STAKEHOLDER_CATEGORIES}
-                  labels={STAKEHOLDER_CATEGORY_LABELS}
-                  otherValue="AUTRE"
-                  customValues={content.rows.map((r) => r.category)}
                   readOnly={readOnly}
-                  placeholder="Préciser la partie prenante…"
+                  placeholder="Nom de la partie prenante…"
+                  multiline
                 />
               </TableCell>
               <TableCell>

@@ -86,7 +86,7 @@ export const RESOURCE_LABELS: Record<string, string> = {
   SYSTEME_INFORMATION_GESTION: "Système d'information et de gestion",
   SUIVI_EVALUATION: "Suivi évaluation",
   COMMUNICATION: "Communication",
-  AUTRES_ACHATS_EXPLOITATION_TECHNIQUE_RH: "Autres (Achats, Exploitation commerciale, Technique et armement, RH)",
+  AUTRES_ACHATS_EXPLOITATION_TECHNIQUE_RH: "Autres (Achats, Exploitation commerciale, Technique, RH)",
   COMPETENCES: "Compétences",
   PRODUITS_SERVICES:
     "Produits et services à délivrer (portefeuille, qualité, production, marque, tarification, force de vente, compétitivité…)",
@@ -98,6 +98,7 @@ export interface ResourceRow {
   strengths: string;
   weaknesses: string;
   challenges: string;
+  recommendations?: string;
 }
 export interface ResourcesMatrixContent {
   rows: ResourceRow[];
@@ -115,6 +116,7 @@ export const PESTEL_LABELS: Record<string, string> = {
 };
 export interface PestelRow {
   axis: string;
+  analysis?: string;
   threats: string;
   opportunities: string;
   actions: string;
@@ -133,12 +135,28 @@ export interface ResourcesSynthesisContent {
 }
 
 // ---- S04 : Analyse SWOT (FFOM) ----
+// Chaque categorie se saisit en environnement interne et externe ; les quatre champs historiques gardent
+// leur environnement naturel, les quatre autres (absents des saisies anterieures) sont facultatifs.
 export interface SwotContent {
-  strengths: string[];
-  weaknesses: string[];
-  opportunities: string[];
-  threats: string[];
+  strengths: string[]; // forces internes
+  weaknesses: string[]; // faiblesses internes
+  opportunities: string[]; // opportunites externes
+  threats: string[]; // menaces externes
+  strengthsExternal?: string[];
+  weaknessesExternal?: string[];
+  opportunitiesInternal?: string[];
+  threatsInternal?: string[];
 }
+export const SWOT_FIELDS = [
+  "strengths",
+  "weaknesses",
+  "strengthsExternal",
+  "weaknessesExternal",
+  "opportunitiesInternal",
+  "threatsInternal",
+  "opportunities",
+  "threats",
+] as const satisfies readonly (keyof SwotContent)[];
 
 // ---- S05 : Matrice de confrontation SWOT / TOWS ----
 export interface TowsActions {
@@ -153,12 +171,7 @@ export interface TowsActions {
   minimizeWeaknessesAndThreats: string;
   opportunitiesMinimizeThreats: string;
 }
-export interface TowsMatrixContent extends TowsActions {
-  strengths: string[]; // lecture seule, synchronise depuis S04
-  weaknesses: string[]; // lecture seule
-  opportunities: string[]; // lecture seule
-  threats: string[]; // lecture seule
-}
+export interface TowsMatrixContent extends TowsActions, SwotContent {} // listes SWOT : lecture seule, synchronisees depuis S04
 
 // ---- S06 : Analyse causale ----
 export const CAUSAL_SOURCES = ["MANIFESTATION", "CAUSES_IMMEDIATES", "CAUSES_SOUS_JACENTES", "CAUSES_PROFONDES", "SOLUTIONS"] as const;

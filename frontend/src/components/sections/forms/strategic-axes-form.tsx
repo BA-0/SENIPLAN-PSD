@@ -59,7 +59,7 @@ export function StrategicAxesForm({ content, onChange, readOnly }: SectionFormPr
             </TableCell>
           ))}
         </TableRow>
-        {band("Objectif de l'axe")}
+        {band("Objectif de l'axe (Orientation stratégique)")}
         <TableRow className="hover:bg-transparent">
           {axes.map((axis, index) => (
             <TableCell key={axis.axisCode} className="py-3 align-top">

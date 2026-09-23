@@ -98,6 +98,20 @@ public class ActivityLogService {
         return activityLogRepository.countByTimestampGreaterThanEqual(since);
     }
 
+    /** Retire une entree du fil « Activite en direct » (admin). Sans effet si elle n'existe plus. */
+    @Transactional
+    public void delete(Long id) {
+        activityLogRepository.deleteById(id);
+    }
+
+    /** Vide le fil « Activite en direct » (admin) ; les saisies des directions ne sont pas touchees. */
+    @Transactional
+    public long deleteAll() {
+        long count = activityLogRepository.count();
+        activityLogRepository.deleteAllInBatch();
+        return count;
+    }
+
     @Transactional(readOnly = true)
     public List<ActivityLog> recentForGroup(Long groupId, int limit) {
         return activityLogRepository.findByGroupIdWithDetailsOrderByTimestampDesc(groupId, PageRequest.of(0, limit));

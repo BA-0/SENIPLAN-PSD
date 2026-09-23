@@ -17,7 +17,7 @@ export function PestelForm({ content, onChange, readOnly }: SectionFormProps<Pes
   }
   function addRow(axis: string) {
     onChange((prev) => ({
-      rows: insertInModelOrder(prev.rows, { axis, threats: "", opportunities: "", actions: "" }, (r) => r.axis, PESTEL_AXES),
+      rows: insertInModelOrder(prev.rows, { axis, analysis: "", threats: "", opportunities: "", actions: "" }, (r) => r.axis, PESTEL_AXES),
     }));
   }
   function removeRow(index: number) {
@@ -30,6 +30,7 @@ export function PestelForm({ content, onChange, readOnly }: SectionFormProps<Pes
         <TableHeader>
           <TableRow>
             <TableHead className="min-w-[160px]">Items</TableHead>
+            <TableHead className="min-w-[240px]">Analyses</TableHead>
             <TableHead className="min-w-[240px]">Menaces</TableHead>
             <TableHead className="min-w-[240px]">Opportunités</TableHead>
             <TableHead className="min-w-[240px]">Actions pour atténuer les menaces ou saisir les opportunités</TableHead>
@@ -40,6 +41,14 @@ export function PestelForm({ content, onChange, readOnly }: SectionFormProps<Pes
           {content.rows.map((row, index) => (
             <TableRow key={row.axis}>
               <TableCell className="font-medium text-foreground/90 text-[13px]">{PESTEL_LABELS[row.axis] ?? row.axis}</TableCell>
+              <TableCell>
+                <EditableCell
+                  value={row.analysis ?? ""}
+                  onChange={(v) => updateRow(index, { analysis: v })}
+                  readOnly={readOnly}
+                  multiline
+                />
+              </TableCell>
               <TableCell>
                 <EditableCell value={row.threats} onChange={(v) => updateRow(index, { threats: v })} readOnly={readOnly} multiline />
               </TableCell>
@@ -63,7 +72,7 @@ export function PestelForm({ content, onChange, readOnly }: SectionFormProps<Pes
           ))}
           {content.rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={readOnly ? 4 : 5} className="py-8 text-center text-muted-foreground">
+              <TableCell colSpan={readOnly ? 5 : 6} className="py-8 text-center text-muted-foreground">
                 Aucun item renseigné
               </TableCell>
             </TableRow>

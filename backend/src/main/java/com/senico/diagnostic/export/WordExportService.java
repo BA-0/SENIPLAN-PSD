@@ -518,14 +518,16 @@ public class WordExportService {
             }
             setDotsCell(row.getCell(headers.length - 1), contributorsByKey.get(entry.getKey()), groups);
         }
+        if (rowValuesByKey.size() <= 20) {
+            WordBlockEmitter.keepTogether(table);
+        }
         doc.createParagraph().setSpacingAfter(80);
         addMergeCaption(doc);
     }
 
     private void addPsdMergedSwot(XWPFDocument doc, SectionDef section, List<WorkGroup> groups,
                                    Map<String, SectionResponse> responsesByKey) {
-        String[] fields = {"strengths", "weaknesses", "opportunities", "threats"};
-        String[] labels = {"Forces", "Faiblesses", "Opportunités", "Menaces"};
+        List<SwotGridTable.Category> categories = SwotGridTable.CATEGORIES;
         String[] tints = {"DCFCE7", "FFEDD5", "DBEAFE", "FEE2E2"};
 
         Map<WorkGroup, JsonNode> contentByGroup = new LinkedHashMap<>();
@@ -536,11 +538,13 @@ public class WordExportService {
         XWPFTable table = doc.createTable(2, 2);
         table.setWidth("100%");
 
-        for (int i = 0; i < fields.length; i++) {
+        for (int i = 0; i < categories.size(); i++) {
             List<Map.Entry<WorkGroup, String>> entries = new ArrayList<>();
             for (WorkGroup group : groups) {
-                for (String item : JsonUtil.strList(contentByGroup.get(group), fields[i])) {
-                    entries.add(Map.entry(group, item));
+                for (String field : categories.get(i).fields()) {
+                    for (String item : JsonUtil.strList(contentByGroup.get(group), field)) {
+                        entries.add(Map.entry(group, item));
+                    }
                 }
             }
             List<PsdCrossGroupMerge.MergedItem> merged = PsdCrossGroupMerge.merge(entries, false);
@@ -549,7 +553,7 @@ public class WordExportService {
             cell.setColor(tints[i]);
             XWPFParagraph titleParagraph = cell.getParagraphs().get(0);
             XWPFRun titleRun = titleParagraph.createRun();
-            titleRun.setText(labels[i]);
+            titleRun.setText(categories.get(i).plural());
             titleRun.setBold(true);
             titleRun.setFontSize(10);
             titleRun.setColor(DARK_HEX);
@@ -570,6 +574,7 @@ public class WordExportService {
                 }
             }
         }
+        WordBlockEmitter.keepTogether(table);
         doc.createParagraph().setSpacingAfter(80);
         addMergeCaption(doc);
     }
@@ -581,14 +586,14 @@ public class WordExportService {
             contentByGroup.put(group, contentFor(group, section, responsesByKey));
         }
 
-        XWPFTable table = doc.createTable(PESTEL_AXES.length + 1, 4);
+        XWPFTable table = doc.createTable(PESTEL_AXES.length + 1, 5);
         table.setWidth("100%");
-        String[] headers = {"Axe", "Menaces", "Opportunités", "Actions"};
+        String[] headers = {"Axe", "Analyses", "Menaces", "Opportunités", "Actions"};
         for (int c = 0; c < headers.length; c++) {
             setCell(table.getRow(0).getCell(c), headers[c], true, ParagraphAlignment.LEFT, "FFFFFF", PRIMARY_HEX, 9);
         }
 
-        String[] columns = {"threats", "opportunities", "actions"};
+        String[] columns = {"analysis", "threats", "opportunities", "actions"};
         for (int a = 0; a < PESTEL_AXES.length; a++) {
             String axisCode = PESTEL_AXES[a];
             XWPFTableRow row = table.getRow(a + 1);

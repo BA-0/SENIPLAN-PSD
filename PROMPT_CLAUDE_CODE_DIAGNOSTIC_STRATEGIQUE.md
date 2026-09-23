@@ -49,7 +49,7 @@ Tableau à **lignes fixes** (les ressources sont prédéfinies), colonnes : Forc
 8. Système d'information et de gestion
 9. Suivi évaluation
 10. Communication
-11. Autres (Achats, Exploitation commerciale, Technique et armement, RH)
+11. Autres (Achats, Exploitation commerciale, Technique, RH)
 12. Compétences
 
 ### Section 3 — Analyse PESTEL

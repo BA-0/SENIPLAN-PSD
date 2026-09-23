@@ -75,7 +75,7 @@ record PsdKeyFigures(int directions, int contributingDirections, int sectionsCov
     }
 
     /** Sections du canevas : une direction contribue au plan des que l'une d'elles entre dans le perimetre retenu. */
-    private static final List<String> SECTION_CODES = List.of("S01", "S01B", "S02", "S03", "S03B", "S04", "S05", "S06",
+    private static final List<String> SECTION_CODES = List.of("S01", "S01B", "S02", "S03", "S04", "S05", "S06",
             "S06B", "S07", "S07B", "S08", "S09", "S09B", "S10", "S11", "S12", "S13", "S14", "S14B", "S15", "S17");
 
     /**

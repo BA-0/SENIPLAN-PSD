@@ -112,10 +112,7 @@ public class DefaultSectionContentFactory {
 
     private ObjectNode swot() {
         ObjectNode n = F.objectNode();
-        n.set("strengths", F.arrayNode());
-        n.set("weaknesses", F.arrayNode());
-        n.set("opportunities", F.arrayNode());
-        n.set("threats", F.arrayNode());
+        SectionContentValidator.SWOT_FIELDS.forEach(field -> n.set(field, F.arrayNode()));
         return n;
     }
 

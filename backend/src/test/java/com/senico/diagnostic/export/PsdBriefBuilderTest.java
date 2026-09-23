@@ -255,16 +255,15 @@ class PsdBriefBuilderTest {
                 "Lancer l'offre grands comptes",            // XII.1 synthese du cadre strategique
                 "Perte de parts de marché",                 // V.5 risques de criticite elevee
                 "1 000 FCFA",                               // budget global (600 + 400)
-                "Trimestrielle",                            // XI. pilotage
-                "Analyse :");                               // lecture sous les tableaux
+                "Trimestrielle");                           // XI. pilotage
+        assertThat(blocs).as("demande client du 23/09/2026 : la note ne garde que titres, sous-titres et tableaux")
+                .noneMatch(bloc -> bloc instanceof ExportBlock.Paragraph || bloc instanceof ExportBlock.BulletList
+                        || bloc instanceof ExportBlock.Callout);
 
         assertThat(note.split("Réseau national", -1).length - 1)
-                .as("une force citée par deux directions ne doit apparaître qu'une fois")
-                .isEqualTo(1);
-
-        assertThat(note)
-                .as("l'écart entre budget et financement identifié est la question du comité")
-                .contains("600 FCFA reste à mobiliser");
+                .as("une force citée par deux directions n'apparaît qu'une fois au SWOT, une fois à l'inventaire")
+                .isEqualTo(2);
+        assertThat(note.split("Force : Réseau national", -1).length - 1).isEqualTo(1);
 
         assertThat(blocs)
                 .as("le budget s'accompagne de son graphique")
@@ -411,10 +410,8 @@ class PsdBriefBuilderTest {
         List<ExportBlock> blocs = build(commerciale);
         String note = texte(blocs);
 
-        assertThat(note).as("synthèses des ressources et du cadre logique")
-                .contains("Marque connue de tous", "Un impact unique : une position commerciale consolidée")
-                .as("la note rédigée de chaque direction sur ses ressources reste dans son plan sectoriel")
-                .doesNotContain("Une direction solide mais peu outillée");
+        assertThat(note).as("demande client du 23/09/2026 : plus de synthèse de l'analyse des ressources")
+                .doesNotContain("Marque connue de tous", "Une direction solide mais peu outillée");
         assertThat(note).as("demande client du 23/09/2026 : plus de matrice complète des risques en annexe ; "
                         + "la méthodologie du canevas suit la cartographie")
                 .doesNotContain("Présence (Oui/Non)", "Contentieux fournisseur")
@@ -549,11 +546,14 @@ class PsdBriefBuilderTest {
                 .noneMatch(titre -> titre.contains("Matrice d'analyse des risques") || titre.startsWith("Tableau 5"));
         assertThat(titres).as("revue du 22/09/2026 : plus de XI.3 ni de tableau 6, la fiche des indicateurs ouvre le tableau 5")
                 .noneMatch(titre -> titre.startsWith("XI.3") || titre.startsWith("Tableau 6"));
-        assertThat(titres).as("inventaire du diagnostic et récapitulatif des axes retirés")
-                .noneMatch(titre -> titre.contains("Inventaire") || titre.contains("Récapitulatif"));
-        assertThat(titres).as("revue de l'auditeur : la synthèse des contraintes du canevas ouvre la partie VII")
-                .containsSubsequence(PsdBriefBuilder.ENJEUX, "VII.1 Synthèse des contraintes, enjeux, défis et priorités identifiés",
-                        "VII.2 Enjeux", "VII.3 Défis à relever");
+        assertThat(titres).as("récapitulatif des axes retiré")
+                .noneMatch(titre -> titre.contains("Récapitulatif"));
+        assertThat(titres).as("demande client du 23/09/2026 : l'inventaire précède les orientations stratégiques")
+                .containsSubsequence("IX.3 Valeurs", "IX.4 Synthèse des recommandations stratégiques",
+                        "IX.5 Orientations et axes stratégiques");
+        assertThat(titres).as("demande client du 23/09/2026 : enjeux, défis, puis la synthèse des contraintes du canevas")
+                .containsSubsequence(PsdBriefBuilder.ENJEUX, "VII.1 Enjeux", "VII.2 Défis à relever",
+                        "VII.3 Synthèse des contraintes, enjeux, défis et priorités identifiés");
 
         int annexes = titres.isEmpty() ? -1 : blocs.indexOf(blocs.stream()
                 .filter(bloc -> bloc instanceof ExportBlock.Heading heading && heading.text().equals(PsdBriefBuilder.ANNEXES))
@@ -563,24 +563,19 @@ class PsdBriefBuilderTest {
                 .noneMatch(bloc -> bloc instanceof ExportBlock.Table table
                         && (table.columnHeaders().contains("Logique d'intervention")
                         || table.columnHeaders().contains("Activités pour atteindre les résultats")));
-        assertThat(texte(corps)).as("le texte de la synthèse du cadre logique reste dans le corps, avec le renvoi à l'annexe")
-                .contains("Un impact unique : une position commerciale consolidée", "(Tableau 1 : Cadre logique)");
         assertThat(blocs.subList(annexes, blocs.size())).as("le cadre logique par axe est en annexe")
                 .anyMatch(bloc -> bloc instanceof ExportBlock.Table table && table.columnHeaders().contains("Logique d'intervention"));
 
         List<ExportBlock> annexe = blocs.subList(annexes, blocs.size());
-        int tableau5 = annexe.indexOf(annexe.stream().filter(bloc -> bloc instanceof ExportBlock.Heading heading
-                && heading.text().equals(PsdBriefBuilder.ANNEXE_RENDEMENT)).findFirst().orElseThrow());
         int fiche = annexe.indexOf(annexe.stream().filter(bloc -> bloc instanceof ExportBlock.Heading heading
                 && heading.text().equals(PsdBriefBuilder.FICHE_INDICATEURS)).findFirst().orElseThrow());
         int ficheTable = annexe.indexOf(annexe.stream().filter(bloc -> bloc instanceof ExportBlock.Table table
                 && table.columnHeaders().contains("Sources et moyens de collecte")).findFirst().orElseThrow());
-        int rendement = annexe.indexOf(annexe.stream().filter(bloc -> bloc instanceof ExportBlock.Table table
-                && table.columnHeaders().contains("Réf. 2026")).findFirst().orElseThrow());
-        assertThat(tableau5).as("la fiche des indicateurs ouvre le tableau 5, devant les tableaux par axe du rendement")
-                .isLessThan(fiche);
+        int tableau1 = annexe.indexOf(annexe.stream().filter(bloc -> bloc instanceof ExportBlock.Heading heading
+                && heading.text().equals(PsdBriefBuilder.ANNEXE_CADRE_LOGIQUE)).findFirst().orElseThrow());
+        assertThat(fiche).as("la fiche des indicateurs ouvre les annexes, devant le tableau 1").isEqualTo(1);
         assertThat(fiche).isLessThan(ficheTable);
-        assertThat(ficheTable).isLessThan(rendement);
+        assertThat(ficheTable).isLessThan(tableau1);
     }
 
     @Test
@@ -596,7 +591,7 @@ class PsdBriefBuilderTest {
 
         ExportBlock.Table synthese = build(commerciale, technique).stream()
                 .filter(ExportBlock.Table.class::isInstance).map(ExportBlock.Table.class::cast)
-                .filter(table -> table.columnHeaders().contains("Contraintes prioritaires"))
+                .filter(table -> table.columnHeaders().contains("Contraintes"))
                 .findFirst().orElseThrow();
 
         assertThat(synthese.rows()).as("« Distribution » des deux directions sur une ligne ; le domaine vide écarté").hasSize(1);
@@ -643,22 +638,6 @@ class PsdBriefBuilderTest {
     }
 
     @Test
-    @DisplayName("Tant que 2026 n'est pas clos, ses résultats de décembre sont présentés comme des projections")
-    void presenteLesResultats2026CommeDesProjectionsAvantLaCloture() {
-        WorkGroup commerciale = group(1, "Direction commerciale");
-        saisie(commerciale, "S01B", """
-                {"rows":[{"year":2026,"objective":"Ventes","indicator":"Chiffre d'affaires","expectedResult":"4 200",
-                          "gap":"-220","trend":"DEFAVORABLE"}]}""");
-
-        assertThat(texte(build(LocalDate.of(2026, 9, 22), commerciale)))
-                .contains("sont des projections à date")
-                .doesNotContain("se lisent comme des réalisations");
-        assertThat(texte(build(LocalDate.of(2027, 3, 1), commerciale)))
-                .contains("se lisent comme des réalisations")
-                .doesNotContain("sont des projections à date");
-    }
-
-    @Test
     @DisplayName("Le bilan : les cinq exercices écoulés dans un seul tableau, 2026 dans le sien avec ses tendances")
     void regroupeLesExercicesEcoulesEtIsoleLExerciceEnCours() {
         WorkGroup technique = group(2, "Direction Technique");
@@ -673,9 +652,9 @@ class PsdBriefBuilderTest {
         ExportBlock.Table courante = tableauApres(blocs, "V.2 " + PerformanceReviewTables.CURRENT_TITLE);
 
         assertThat(passees.columnHeaders()).as("exercices écoulés : le résultat est celui obtenu")
-                .containsExactly("Objectif", "Indicateur", "Résultat obtenu", "Écart", "Cause sous-jacente", "Cause profonde", "Action entreprise");
-        assertThat(courante.columnHeaders()).containsExactly("Objectif", "Indicateur", "Résultat attendu en décembre", "Écart",
-                "Cause sous-jacente", "Cause profonde", "Action à entreprendre");
+                .containsExactly("Objectif", "Indicateur", "Résultat obtenu", "Écart", "Causes sous-jacentes", "Causes profondes", "Actions entreprises");
+        assertThat(courante.columnHeaders()).containsExactly("Objectif", "Indicateur", "Résultat attendu", "Écart",
+                "Causes sous-jacentes", "Causes profondes", "Actions à entreprendre");
         assertThat(passees.rows().stream().filter(ExportBlock.TableRow::band).map(row -> row.cells().get(0).text()))
                 .as("un bandeau par exercice écoulé, du plus ancien au plus récent")
                 .containsExactly("Exercice 2021", "Exercice 2022", "Exercice 2023", "Exercice 2024", "Exercice 2025");
@@ -692,7 +671,6 @@ class PsdBriefBuilderTest {
         assertThat(cellules.get(3).text()).isEqualTo("+0,8 (tendance défavorable)");
         assertThat(cellules.get(3).background()).isEqualTo(ExportBlock.Background.ORANGE);
         assertThat(cellules.get(4).text()).isEqualTo("Pannes");
-        assertThat(texte(blocs)).contains("tendances 2026", "1 à tendance défavorable");
     }
 
     /** Le premier tableau qui suit l'intertitre donne. */
@@ -815,7 +793,7 @@ class PsdBriefBuilderTest {
                 .doesNotContain("aucun ne relève d'une seule direction");
         assertThat(note)
                 .as("un axe de direction non rattaché doit être signalé, pas perdu")
-                .contains("Axe oublié", "Axes non rattachés", "Action orpheline");
+                .contains("Axes non rattachés", "Action orpheline");
 
         ExportBlock.Chart chart = blocs.stream()
                 .filter(ExportBlock.Chart.class::isInstance).map(ExportBlock.Chart.class::cast)
@@ -830,10 +808,14 @@ class PsdBriefBuilderTest {
     }
 
     @Test
-    @DisplayName("Un texte de la Direction Générale non rédigé est signalé à sa place")
-    void signaleUnTexteNonRedige() {
+    @DisplayName("Un texte de la Direction Générale, rédigé ou non, ne laisse que son titre")
+    void neGardeQueLeTitreDesTextes() {
+        narratives.put(NarrativeBlockKey.FACTEURS_CLES, """
+                Facteurs clés de réussite :
+                - un pilotage stratégique effectif""");
         String note = texte(build(group(1, "Direction commerciale")));
-        assertThat(note).contains("« Mot du DG » n'est pas encore rédigé");
+        assertThat(note).contains(PsdBriefBuilder.MOT_DU_DG, PsdBriefBuilder.FACTEURS, "Facteurs clés de réussite")
+                .doesNotContain("n'est pas encore rédigé", "un pilotage stratégique effectif");
     }
 
     @Test
@@ -861,14 +843,13 @@ class PsdBriefBuilderTest {
                 .map(ExportBlock.Table::columnHeaders).toList();
         assertThat(entetes).as("les tableaux du canevas, vides, sont tous là")
                 .anySatisfy(h -> assertThat(h).contains("Acteur (PP)"))                              // parties prenantes
-                .anySatisfy(h -> assertThat(h).contains("Résultat attendu en décembre"))             // bilan des performances
+                .anySatisfy(h -> assertThat(h).contains("Résultat attendu"))             // bilan des performances
                 .anySatisfy(h -> assertThat(h).contains("Défis à relever"))                          // ressources et compétences
-                .anySatisfy(h -> assertThat(h).contains("Forces majeures"))                          // synthèse des ressources
-                .anySatisfy(h -> assertThat(h).contains("Menaces", "Opportunités"))                  // PESTEL
+                .anySatisfy(h -> assertThat(h).containsSubsequence("Items", "Analyses", "Menaces", "Opportunités")) // PESTEL
                 .anySatisfy(h -> assertThat(h).contains("Liste des forces", "Liste des faiblesses"))  // mise en relation
                 .anySatisfy(h -> assertThat(h).contains("Sources", "Analyse"))                       // analyse causale
                 .anySatisfy(h -> assertThat(h).contains("Actions d'atténuation"))                    // risques élevés
-                .anySatisfy(h -> assertThat(h).contains("Contraintes prioritaires"))                 // contraintes / défis
+                .anySatisfy(h -> assertThat(h).contains("Contraintes"))                 // contraintes / défis
                 .anySatisfy(h -> assertThat(h).contains("Total (M FCFA)"))                           // budget par axe
                 .anySatisfy(h -> assertThat(h).contains("Sources de financement"))                   // plan de financement
                 .anySatisfy(h -> assertThat(h).contains("Années", "M", "F", "Total"))                // effectifs
@@ -885,7 +866,7 @@ class PsdBriefBuilderTest {
                 .anyMatch(row -> row.cells().get(0).text().equals("Orientation stratégique (OS)"));
         assertThat(note).as("le plan des effectifs vide garde les lignes du modèle client, sans zéro trompeur")
                 .contains("Agents de maîtrise", "Employé", "Journalier", "CDI", "Expatrié", "Stagiaire", "TOTAUX");
-        assertThat(note).as("IX.4 : sans axe consolidé, un tableau vide plutôt que des listes vides")
+        assertThat(note).as("IX.5 : sans axe consolidé, un tableau vide plutôt que des listes vides")
                 .contains("Axe d'intervention proposé")
                 .doesNotContain("Axes proposés par les directions");
     }
@@ -950,6 +931,31 @@ class PsdBriefBuilderTest {
     }
 
     @Test
+    @DisplayName("Le SWOT range forces et faiblesses en interne, opportunites et menaces en externe")
+    void rendLeSwotEnInterneEtExterne() {
+        WorkGroup commerciale = group(1, "Direction commerciale", "#2563EB");
+        saisie(commerciale, "S04", """
+                {"strengths":["Reseau national"],"strengthsExternal":["Soutien de l'Etat"],
+                 "opportunitiesInternal":["Savoir-faire logistique"],"threats":["Concurrence privee"]}""");
+
+        List<ExportBlock> blocs = build(commerciale);
+        ExportBlock.Table swot = blocs.stream()
+                .filter(b -> b instanceof ExportBlock.Table t && t.columnHeaders().contains("Environnement"))
+                .map(ExportBlock.Table.class::cast)
+                .findFirst().orElseThrow();
+
+        assertThat(swot.rows()).as("INTERNE puis EXTERNE, chacun fusionne sur son intitule et ses elements")
+                .extracting(row -> row.cells().get(0).text())
+                .containsExactly("INTERNE", "", "EXTERNE", "");
+        assertThat(swot.rows()).extracting(row -> row.cells().get(1).text())
+                .startsWith("FORCES").contains("OPPORTUNITÉS");
+        assertThat(swot.rows().get(0).cells().get(0).rowSpan()).isEqualTo(2);
+        assertThat(swot.rows().get(1).cells().get(0).isCovered()).isTrue();
+        assertThat(attributions(blocs)).extracting(ExportBlock.Attribution::text)
+                .contains("Soutien de l'Etat", "Savoir-faire logistique");
+    }
+
+    @Test
     @DisplayName("Un constat partage porte les couleurs de toutes les directions qui le citent")
     void attribueUnConstatPartageATousSesAuteurs() {
         WorkGroup commerciale = group(1, "Direction commerciale", "#2563EB");
@@ -994,24 +1000,6 @@ class PsdBriefBuilderTest {
                 .singleElement()
                 .satisfies(item -> assertThat(item.colorHexes())
                         .singleElement().asString().matches("#[0-9A-F]{6}"));
-    }
-
-    @Test
-    @DisplayName("Rien d'approuvé : la note l'annonce en tete plutot que d'aligner des zeros muets")
-    void annonceUnPerimetreVide() {
-        WorkGroup commerciale = group(1, "Direction commerciale");
-        saisie(commerciale, "S11", "{\"grandTotal\":900}", false);
-        saisie(commerciale, "S08", "{\"axes\":[{\"title\":\"Axe non approuvé\"}]}", false);
-
-        assertThat(build(commerciale))
-                .as("une note vide doit expliquer pourquoi elle l'est")
-                .anySatisfy(bloc -> assertThat(bloc)
-                        .isInstanceOfSatisfying(ExportBlock.Callout.class, callout -> {
-                            assertThat(callout.tone()).isEqualTo(ExportBlock.Tone.WARNING);
-                            assertThat(callout.text())
-                                    .contains("Aucune section n'a encore été approuvée")
-                                    .contains("2 section(s)");
-                        }));
     }
 
     @Test

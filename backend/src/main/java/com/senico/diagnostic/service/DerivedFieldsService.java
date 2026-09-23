@@ -9,6 +9,7 @@ import com.senico.diagnostic.domain.SectionResponse;
 import com.senico.diagnostic.domain.SectionType;
 import com.senico.diagnostic.repository.SectionResponseRepository;
 import com.senico.diagnostic.validation.DefaultSectionContentFactory;
+import com.senico.diagnostic.validation.SectionContentValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -46,6 +47,7 @@ public class DerivedFieldsService {
             "minimizeThreats", "strengthsReduceThreats", "minimizeWeaknessesAndThreats",
             "opportunitiesMinimizeThreats"
     };
+    private static final List<String> SWOT_FIELDS = SectionContentValidator.SWOT_FIELDS;
     private static final int SECTION_AXES_ID = 8;
     private static final int SECTION_ACTION_PLAN_ID = 10;
     private static final int SECTION_RESOURCES_MATRIX_ID = 2;
@@ -84,15 +86,9 @@ public class DerivedFieldsService {
 
         if (swotResponse.isPresent()) {
             JsonNode parsed = readTree(swotResponse.get());
-            content.set("strengths", arrayOrEmpty(parsed, "strengths"));
-            content.set("weaknesses", arrayOrEmpty(parsed, "weaknesses"));
-            content.set("opportunities", arrayOrEmpty(parsed, "opportunities"));
-            content.set("threats", arrayOrEmpty(parsed, "threats"));
+            SWOT_FIELDS.forEach(field -> content.set(field, arrayOrEmpty(parsed, field)));
         } else {
-            content.set("strengths", F.arrayNode());
-            content.set("weaknesses", F.arrayNode());
-            content.set("opportunities", F.arrayNode());
-            content.set("threats", F.arrayNode());
+            SWOT_FIELDS.forEach(field -> content.set(field, F.arrayNode()));
         }
         return content;
     }
@@ -127,8 +123,10 @@ public class DerivedFieldsService {
             if (!(rowNode instanceof ObjectNode row)) {
                 continue;
             }
+            // L'acteur se saisit librement (demande client du 23/09/2026) : une case vide reste vide. Seule une
+            // ancienne saisie, qui nommait l'acteur dans un champ « actor », en reprend le nom.
             if (!row.has("category") || row.path("category").asText("").isBlank()) {
-                row.put("category", "AUTRE");
+                row.put("category", row.path("actor").asText("").trim());
             }
             if (!row.has("scope")) {
                 row.put("scope", "");
@@ -176,17 +174,11 @@ public class DerivedFieldsService {
                 .ifPresentOrElse(r -> {
                     JsonNode swot = readTree(r);
                     ObjectNode swotNode = F.objectNode();
-                    swotNode.set("strengths", arrayOrEmpty(swot, "strengths"));
-                    swotNode.set("weaknesses", arrayOrEmpty(swot, "weaknesses"));
-                    swotNode.set("opportunities", arrayOrEmpty(swot, "opportunities"));
-                    swotNode.set("threats", arrayOrEmpty(swot, "threats"));
+                    SWOT_FIELDS.forEach(field -> swotNode.set(field, arrayOrEmpty(swot, field)));
                     content.set("swot", swotNode);
                 }, () -> {
                     ObjectNode emptySwot = F.objectNode();
-                    emptySwot.set("strengths", F.arrayNode());
-                    emptySwot.set("weaknesses", F.arrayNode());
-                    emptySwot.set("opportunities", F.arrayNode());
-                    emptySwot.set("threats", F.arrayNode());
+                    SWOT_FIELDS.forEach(field -> emptySwot.set(field, F.arrayNode()));
                     content.set("swot", emptySwot);
                 });
 

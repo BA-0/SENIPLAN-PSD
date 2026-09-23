@@ -54,7 +54,7 @@ final class SectionLabels {
             Map.entry("SYSTEME_INFORMATION_GESTION", "Système d'information et de gestion"),
             Map.entry("SUIVI_EVALUATION", "Suivi évaluation"),
             Map.entry("COMMUNICATION", "Communication"),
-            Map.entry("AUTRES_ACHATS_EXPLOITATION_TECHNIQUE_RH", "Autres (Achats, Exploitation commerciale, Technique et armement, RH)"),
+            Map.entry("AUTRES_ACHATS_EXPLOITATION_TECHNIQUE_RH", "Autres (Achats, Exploitation commerciale, Technique, RH)"),
             Map.entry("COMPETENCES", "Compétences"),
             Map.entry("PRODUITS_SERVICES", "Produits et services à délivrer (portefeuille, qualité, production, marque, tarification, force de vente, compétitivité…)"),
             Map.entry("CLIENTELE_BENEFICIAIRES", "Clientèle ou bénéficiaires des prestations (taille, fidélité, …)"),

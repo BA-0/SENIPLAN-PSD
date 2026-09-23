@@ -37,9 +37,9 @@ export function RiskMatrixForm({ content, onChange, readOnly }: SectionFormProps
             <TableHead className="min-w-[160px]">Catégorie de risque</TableHead>
             <TableHead className="min-w-[110px]">Présence (Oui/Non)</TableHead>
             <TableHead className="min-w-[200px]">Quels risques (nature détaillée)</TableHead>
-            <TableHead className="min-w-[140px]">Niveau de risque</TableHead>
+            <TableHead className="min-w-[140px]">Niveau de risque (Fréquence)</TableHead>
             <TableHead className="min-w-[180px]">Impact sur les domaines d&apos;activités</TableHead>
-            <TableHead className="min-w-[140px]">Quotation</TableHead>
+            <TableHead className="min-w-[140px]">Quotation (Gravité)</TableHead>
             <TableHead className="min-w-[140px]">Criticité (N × Q)</TableHead>
             <TableHead className="min-w-[200px]">Actions de mitigation ou de contingence</TableHead>
             {!readOnly && <TableHead className="w-10" />}
@@ -103,8 +103,8 @@ export function RiskMatrixForm({ content, onChange, readOnly }: SectionFormProps
 /** « Méthodologie d'évaluation », sous la matrice comme dans le canevas. */
 function RiskMethodology() {
   const columns = [
-    { title: "Niveau de risque (N)", items: ["Élevé = 3", "Moyen = 2", "Faible = 1"] },
-    { title: "Quotation / impact (Q)", items: ["Élevé = 3 (impact majeur)", "Moyen = 2 (impact modéré)", "Faible = 1 (impact mineur)"] },
+    { title: "Niveau de risque (Fréquence)", items: ["Élevé = 3", "Moyen = 2", "Faible = 1"] },
+    { title: "Quotation (Gravité) / impact (Q)", items: ["Élevé = 3 (impact majeur)", "Moyen = 2 (impact modéré)", "Faible = 1 (impact mineur)"] },
     {
       title: "Criticité = N × Q",
       items: [

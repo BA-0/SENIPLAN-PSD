@@ -1,4 +1,4 @@
-import { Activity, CheckCircle2, RotateCcw, Send, LogIn, ShieldCheck, ShieldX, Undo2, Trash2, Pencil } from "lucide-react";
+import { Activity, CheckCircle2, RotateCcw, Send, LogIn, ShieldCheck, ShieldX, Undo2, Trash2, Pencil, X } from "lucide-react";
 import { timeAgo } from "@/lib/utils";
 import type { ActivityEntryDto } from "@/types/api";
 
@@ -76,7 +76,8 @@ const ACTION_CONFIG: Record<string, { label: (a: ActivityEntryDto) => string; ic
   },
 };
 
-export function ActivityFeed({ entries }: { entries: ActivityEntryDto[] }) {
+/** `onDelete` : fourni pour l'admin seul, affiche au survol une croix qui retire l'entrée du fil. */
+export function ActivityFeed({ entries, onDelete }: { entries: ActivityEntryDto[]; onDelete?: (id: number) => void }) {
   if (entries.length === 0) {
     return <p className="text-[13px] text-muted-foreground italic py-6 text-center">Aucune activité récente</p>;
   }
@@ -87,12 +88,23 @@ export function ActivityFeed({ entries }: { entries: ActivityEntryDto[] }) {
         const config = ACTION_CONFIG[entry.action] ?? ACTION_CONFIG.SAVE_DRAFT;
         const Icon = config.icon;
         return (
-          <li key={entry.id} className="flex items-start gap-3">
+          <li key={entry.id} className="group flex items-start gap-3">
             <Icon aria-hidden="true" className={`h-4 w-4 mt-0.5 shrink-0 ${config.color}`} />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-[13px] text-foreground">{config.label(entry)}</p>
               <p className="text-[12px] text-muted-foreground">{timeAgo(entry.timestamp)}</p>
             </div>
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(entry.id)}
+                title="Retirer cette activité"
+                aria-label="Retirer cette activité"
+                className="mt-0.5 shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-red-600 focus-visible:opacity-100 group-hover:opacity-100"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </li>
         );
       })}

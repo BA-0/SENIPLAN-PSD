@@ -24,6 +24,7 @@ public final class JsonContentRenderer {
             Map.entry("axes", "Axes"),
             // Colonne « Items » du canevas PESTEL (S03), stockee sous la cle « axis ».
             Map.entry("axis", "Items"),
+            Map.entry("analysis", "Analyses"),
             Map.entry("effects", "Effets"),
             Map.entry("groups", "Groupes"),
             Map.entry("items", "Éléments"),
@@ -32,6 +33,10 @@ public final class JsonContentRenderer {
             Map.entry("weaknesses", "Faiblesses"),
             Map.entry("opportunities", "Opportunités"),
             Map.entry("threats", "Menaces"),
+            Map.entry("strengthsExternal", "Forces (externe)"),
+            Map.entry("weaknessesExternal", "Faiblesses (externe)"),
+            Map.entry("opportunitiesInternal", "Opportunités (interne)"),
+            Map.entry("threatsInternal", "Menaces (interne)"),
             Map.entry("orientations", "Orientations stratégiques"),
             Map.entry("actions", "Actions")
     );

@@ -1,5 +1,6 @@
 package com.senico.diagnostic.controller;
 
+import com.senico.diagnostic.dto.group.ResetPasswordRequest;
 import com.senico.diagnostic.dto.group.ResetPasswordResponse;
 import com.senico.diagnostic.dto.user.CreateUserAccountRequest;
 import com.senico.diagnostic.dto.user.UpdateUsernameRequest;
@@ -42,10 +43,11 @@ public class AdminUserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(userAccountService.create(request));
     }
 
-    /** Genere un nouveau mot de passe et le renvoie une seule fois. */
+    /** Remplace le mot de passe par celui saisi par l'admin, qui le transmet lui-meme au titulaire. */
     @PostMapping("/{id}/reset-password")
-    public ResponseEntity<ResetPasswordResponse> resetPassword(@PathVariable Long id) {
-        return ResponseEntity.ok(userAccountService.resetPassword(id));
+    public ResponseEntity<ResetPasswordResponse> resetPassword(@PathVariable Long id,
+                                                               @Valid @RequestBody ResetPasswordRequest request) {
+        return ResponseEntity.ok(userAccountService.resetPassword(id, request.password()));
     }
 
     /** Change l'identifiant de connexion ; le titulaire se reconnecte avec le nouveau, meme mot de passe. */

@@ -3,6 +3,7 @@ package com.senico.diagnostic.repository;
 import com.senico.diagnostic.domain.ActivityLog;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDateTime;
@@ -13,6 +14,11 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> 
     List<ActivityLog> findAllByOrderByTimestampDesc(Pageable pageable);
     /** Compte indexe (idx_al_timestamp) - evite de charger les entrees pour ne compter que celles du jour. */
     long countByTimestampGreaterThanEqual(LocalDateTime since);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("delete from ActivityLog x where x.group.id = :groupId")
+    int deleteAllByGroupId(Long groupId);
+
     List<ActivityLog> findByGroupIdOrderByTimestampDesc(Long groupId, Pageable pageable);
     Optional<ActivityLog> findFirstByGroupIdAndSectionIdAndUserIdAndActionOrderByTimestampDesc(
             Long groupId, Integer sectionId, Long userId, String action);

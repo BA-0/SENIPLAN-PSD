@@ -37,6 +37,8 @@ public class ActivityLogService {
     /** Emis lorsque l'admin cloture un cycle de saisie complet et en demarre un nouveau pour la direction. */
     public static final String ACTION_START_NEW_CYCLE = "START_NEW_CYCLE";
     public static final String ACTION_LOGIN = "LOGIN";
+    /** Emis lorsque l'admin efface definitivement les saisies d'une direction (donnees d'essai). */
+    public static final String ACTION_PURGE_DATA = "PURGE_DATA";
 
     /** Autosaves on the same group+section within this window update the existing entry instead of creating a new one. */
     private static final Duration DRAFT_COALESCE_WINDOW = Duration.ofMinutes(5);

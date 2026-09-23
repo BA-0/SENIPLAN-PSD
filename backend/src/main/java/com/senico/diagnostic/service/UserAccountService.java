@@ -85,19 +85,18 @@ public class UserAccountService {
     }
 
     /**
-     * Nouveau mot de passe, renvoye une seule fois : c'est ainsi qu'un compte recoit son acces,
-     * sans qu'aucun mot de passe n'ait ete ecrit dans le code ni transmis par un autre canal.
+     * Remplace le mot de passe par celui que l'admin a choisi et qu'il transmettra lui-meme au
+     * titulaire ; celui-ci devra le changer a sa prochaine connexion.
      *
      * <p>Vaut aussi pour les chefs de groupe. L'ecran des directions garde son propre bouton,
      * qui ne touche que le titulaire de la direction ; depuis qu'une direction peut compter
      * plusieurs comptes, lui seul ne suffit plus.</p>
      */
     @Transactional
-    public ResetPasswordResponse resetPassword(Long userId) {
+    public ResetPasswordResponse resetPassword(Long userId, String rawPassword) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable : " + userId));
 
-        String rawPassword = passwordGeneratorService.generate();
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
         user.setMustChangePassword(true);
         userRepository.save(user);

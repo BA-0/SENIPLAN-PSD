@@ -68,6 +68,7 @@ public class SecurityConfig {
                         // Ces regles precedent celle de /admin/** : la premiere qui correspond gagne.
                         .requestMatchers("/api/v1/groups/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/v1/admin/users/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/v1/admin/data-purge/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/groups/*/cycles/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/admin/groups/*/sections/*/content").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/groups/*/sections/**").hasAuthority("ROLE_ADMIN")

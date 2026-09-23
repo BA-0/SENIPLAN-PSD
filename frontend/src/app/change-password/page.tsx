@@ -16,6 +16,7 @@ import { changePassword } from "@/lib/api/auth";
 import { extractErrorMessage } from "@/lib/api-client";
 import { useAuthStore } from "@/store/auth-store";
 import { homePathFor } from "@/lib/roles";
+import { clearReceivedPassword, peekReceivedPassword } from "@/lib/received-password";
 
 const schema = z
   .object({
@@ -47,6 +48,8 @@ export default function ChangePasswordPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showPasswords, setShowPasswords] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  // Repris de l'ecran de connexion : affiche grise, non modifiable.
+  const [received] = useState(() => (user?.mustChangePassword ? peekReceivedPassword() : null));
 
   useEffect(() => {
     setHydrated(true);
@@ -62,13 +65,17 @@ export default function ChangePasswordPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: received ? { currentPassword: received } : undefined,
+  });
 
   async function onSubmit(values: FormValues) {
     setServerError(null);
     setSubmitting(true);
     try {
       const auth = await changePassword(values.currentPassword, values.newPassword);
+      clearReceivedPassword();
       setAuth(auth.accessToken, auth.refreshToken, auth.user);
       toast.success("Mot de passe modifié");
       router.replace(homePathFor(auth.user.role));
@@ -124,14 +131,26 @@ export default function ChangePasswordPage() {
               </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="currentPassword"
-                  type={showPasswords ? "text" : "password"}
-                  autoComplete="current-password"
-                  className="pl-9"
-                  error={!!errors.currentPassword}
-                  {...register("currentPassword")}
-                />
+                {received ? (
+                  // Non enregistre aupres du formulaire : un champ desactive y vaudrait undefined,
+                  // la valeur vient des defaultValues.
+                  <Input
+                    id="currentPassword"
+                    type={showPasswords ? "text" : "password"}
+                    value={received}
+                    disabled
+                    className="pl-9"
+                  />
+                ) : (
+                  <Input
+                    id="currentPassword"
+                    type={showPasswords ? "text" : "password"}
+                    autoComplete="current-password"
+                    className="pl-9"
+                    error={!!errors.currentPassword}
+                    {...register("currentPassword")}
+                  />
+                )}
               </div>
               {errors.currentPassword && (
                 <p className="text-[13px] text-accent-700 dark:text-accent-300">{errors.currentPassword.message}</p>

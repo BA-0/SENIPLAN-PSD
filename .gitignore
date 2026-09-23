@@ -36,3 +36,6 @@ Thumbs.db
 
 # Cache incremental de tsc, regenere a chaque build
 frontend/tsconfig.tsbuildinfo
+
+# Configuration locale du serveur (CORS, etc.)
+backend/config/application.properties

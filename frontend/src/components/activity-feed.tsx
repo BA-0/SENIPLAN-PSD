@@ -59,6 +59,11 @@ const ACTION_CONFIG: Record<string, { label: (a: ActivityEntryDto) => string; ic
     icon: Trash2,
     color: "text-red-500 dark:text-red-400",
   },
+  PURGE_DATA: {
+    label: (a) => `L'administrateur a effacé toutes les saisies de ${a.groupName}`,
+    icon: Trash2,
+    color: "text-red-500 dark:text-red-400",
+  },
   ADMIN_EDIT: {
     label: (a) => `L'administrateur a modifié ${laSection(a)} pour ${a.groupName}`,
     icon: Pencil,

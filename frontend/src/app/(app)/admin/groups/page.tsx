@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Archive, CheckCheck, FileDown, FileText, KeyRound, Pencil, Plus, Power, RotateCcw, ShieldCheck, UserPlus } from "lucide-react";
+import { Archive, CheckCheck, FileDown, FileText, KeyRound, Pencil, Plus, Power, RotateCcw, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,7 @@ import {
 import { downloadConsolidatedExcel, downloadGroupPdf, downloadGroupWord } from "@/lib/api/exports";
 import { canAdminister, canApproveAsDg } from "@/lib/roles";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { createUserAccount, listUserAccounts, resetUserPassword, updateUserUsername } from "@/lib/api/admin";
+import { createUserAccount, listUserAccounts, purgeGroupData, resetUserPassword, updateUserUsername } from "@/lib/api/admin";
 import type { UserAccount } from "@/lib/api/admin";
 import { extractErrorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
@@ -95,6 +95,28 @@ const usernameSchema = z.object({ username: usernameField });
 
 type UsernameFormValues = z.infer<typeof usernameSchema>;
 
+/** Reinitialisation : l'admin choisit le mot de passe et le transmet lui-meme au titulaire. */
+const resetPasswordSchema = z
+  .object({
+    password: z.string().min(8, "Au moins 8 caractères").max(100, "100 caractères au maximum"),
+    confirmation: z.string(),
+  })
+  .refine((v) => v.password === v.confirmation, {
+    path: ["confirmation"],
+    message: "Les deux saisies ne correspondent pas",
+  });
+
+type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
+
+/** Compte vise par la reinitialisation : titulaire d'une direction, ou compte de la liste. */
+type PasswordTarget = { kind: "leader" | "account"; id: number; username: string; label: string };
+
+/** Mot a recopier pour confirmer un effacement : un clic ne suffit pas a tout perdre. */
+const PURGE_CONFIRMATION_WORD = "EFFACER";
+
+/** Effacement des saisies : une direction, ou toutes (groupId absent). */
+type PurgeTarget = { groupId?: number; label: string };
+
 const editSchema = z.object({
   name: z.string().min(1, "Le nom du groupe est requis"),
   description: z.string().optional(),
@@ -118,6 +140,9 @@ export default function AdminGroupsPage() {
   const [archiveGroup, setArchiveGroup] = useState<WorkGroupDto | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [renamingAccount, setRenamingAccount] = useState<UserAccount | null>(null);
+  const [passwordTarget, setPasswordTarget] = useState<PasswordTarget | null>(null);
+  const [purgeTarget, setPurgeTarget] = useState<PurgeTarget | null>(null);
+  const [purgeConfirmation, setPurgeConfirmation] = useState("");
 
   async function handleExportExcel() {
     setExportingExcel(true);
@@ -168,6 +193,18 @@ export default function AdminGroupsPage() {
     formState: { errors: usernameErrors },
   } = useForm<UsernameFormValues>({ resolver: zodResolver(usernameSchema) });
 
+  const {
+    register: registerResetPassword,
+    handleSubmit: handleResetPasswordSubmit,
+    reset: resetResetPassword,
+    formState: { errors: resetPasswordErrors },
+  } = useForm<ResetPasswordFormValues>({ resolver: zodResolver(resetPasswordSchema) });
+
+  function openPasswordDialog(target: PasswordTarget) {
+    setPasswordTarget(target);
+    resetResetPassword({ password: "", confirmation: "" });
+  }
+
   function openUsernameDialog(account: UserAccount) {
     setRenamingAccount(account);
     resetUsername({ username: account.username });
@@ -217,8 +254,13 @@ export default function AdminGroupsPage() {
   });
 
   const resetPasswordMutation = useMutation({
-    mutationFn: resetLeaderPassword,
-    onSuccess: (data) => setNewCredentials({ username: data.username, password: data.temporaryPassword }),
+    mutationFn: ({ target, password }: { target: PasswordTarget; password: string }) =>
+      target.kind === "leader" ? resetLeaderPassword(target.id, password) : resetUserPassword(target.id, password),
+    onSuccess: (data) => {
+      setPasswordTarget(null);
+      toast.success(`Mot de passe de ${data.username} réinitialisé — communiquez-le à son titulaire`);
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la réinitialisation")),
   });
 
@@ -226,15 +268,6 @@ export default function AdminGroupsPage() {
     queryKey: ["admin", "users"],
     queryFn: listUserAccounts,
     enabled: peutAdministrer,
-  });
-
-  const resetUserPasswordMutation = useMutation({
-    mutationFn: resetUserPassword,
-    onSuccess: (data) => {
-      setNewCredentials({ username: data.username, password: data.temporaryPassword });
-      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-    },
-    onError: (error) => toast.error(extractErrorMessage(error, "Échec de la réinitialisation")),
   });
 
   const createAccountMutation = useMutation({
@@ -301,6 +334,26 @@ export default function AdminGroupsPage() {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
     },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'approbation en masse")),
+  });
+
+  function openPurgeDialog(target: PurgeTarget) {
+    setPurgeTarget(target);
+    setPurgeConfirmation("");
+  }
+
+  const purgeMutation = useMutation({
+    mutationFn: (target: PurgeTarget) => purgeGroupData(target.groupId),
+    onSuccess: (result) => {
+      setPurgeTarget(null);
+      toast.success(
+        result.groupsCount > 1
+          ? `Saisies effacées pour ${result.groupsCount} directions`
+          : "Saisies de la direction effacées"
+      );
+      // Tableau de bord, soumissions, activité : tout ce qui lit les saisies est a recharger.
+      queryClient.invalidateQueries();
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'effacement des saisies")),
   });
 
   const newCycleMutation = useMutation({
@@ -473,26 +526,22 @@ export default function AdminGroupsPage() {
 <Button variant="ghost" size="icon" title="Archives des cycles précédents" onClick={() => setArchiveGroup(g)}>
                     <Archive className="h-4 w-4" />
                   </Button>
-                  {peutAdministrer && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" title="Réinitialiser le mot de passe">
-                        <KeyRound className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Réinitialiser le mot de passe ?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Un nouveau mot de passe temporaire sera généré pour {g.leaderUsername}.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => resetPasswordMutation.mutate(g.id)}>Réinitialiser</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  {peutAdministrer && g.leaderUsername && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Réinitialiser le mot de passe"
+                      onClick={() =>
+                        openPasswordDialog({
+                          kind: "leader",
+                          id: g.id,
+                          username: g.leaderUsername!,
+                          label: g.leaderFullName ?? g.leaderUsername!,
+                        })
+                      }
+                    >
+                      <KeyRound className="h-4 w-4" />
+                    </Button>
                   )}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -567,6 +616,16 @@ export default function AdminGroupsPage() {
                       onClick={() => toggleMutation.mutate({ id: g.id, enabled: !g.enabled })}
                     >
                       <Power className={g.enabled ? "h-4 w-4 text-primary-500" : "h-4 w-4 text-muted-foreground"} />
+                    </Button>
+                  )}
+                  {peutAdministrer && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Effacer toutes les saisies de la direction"
+                      onClick={() => openPurgeDialog({ groupId: g.id, label: g.name })}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500 dark:text-red-400" />
                     </Button>
                   )}
                 </div>
@@ -743,29 +802,20 @@ export default function AdminGroupsPage() {
                     <Button variant="secondary" size="sm" onClick={() => openUsernameDialog(account)}>
                       <Pencil className="h-4 w-4" /> Modifier l&apos;identifiant
                     </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="secondary" size="sm">
-                          <KeyRound className="h-4 w-4" /> Réinitialiser le mot de passe
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Réinitialiser le mot de passe ?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Un nouveau mot de passe sera généré pour {account.fullName} ({account.username}) et affiché
-                            une seule fois. L&apos;ancien cessera immédiatement de fonctionner, et la personne devra
-                            choisir le sien à sa prochaine connexion.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annuler</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => resetUserPasswordMutation.mutate(account.id)}>
-                            Réinitialiser
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() =>
+                        openPasswordDialog({
+                          kind: "account",
+                          id: account.id,
+                          username: account.username,
+                          label: account.fullName,
+                        })
+                      }
+                    >
+                      <KeyRound className="h-4 w-4" /> Réinitialiser le mot de passe
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -773,6 +823,73 @@ export default function AdminGroupsPage() {
           </CardContent>
         </Card>
       )}
+
+      {peutAdministrer && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Données d&apos;essai</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <p className="text-[13px] text-muted-foreground">
+              Efface les saisies de toutes les directions pour repartir d&apos;une base propre avant le lancement
+              réel. Les directions, les comptes et les textes du plan stratégique sont conservés. Pour une seule
+              direction, utilisez l&apos;icône corbeille sur sa ligne.
+            </p>
+            <Button
+              variant="secondary"
+              className="sm:shrink-0"
+              onClick={() => openPurgeDialog({ label: "toutes les directions" })}
+            >
+              <Trash2 className="h-4 w-4 text-red-500 dark:text-red-400" /> Effacer toutes les saisies
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog open={!!purgeTarget} onOpenChange={(open) => !open && setPurgeTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Effacer les saisies — {purgeTarget?.label}</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (purgeTarget && purgeConfirmation.trim() === PURGE_CONFIRMATION_WORD) {
+                purgeMutation.mutate(purgeTarget);
+              }
+            }}
+            className="space-y-4"
+          >
+            <p className="text-[13px] text-muted-foreground">
+              Seront supprimés définitivement, sans archive : le contenu de toutes les sections, leur historique
+              de versions, les cycles archivés et le journal d&apos;activité
+              {purgeTarget?.groupId === undefined ? " de chaque direction" : " de la direction"}. Chaque section
+              repart à « non commencée », au cycle 1. Les directions, les comptes et les textes du plan
+              stratégique ne sont pas touchés.
+            </p>
+            <div className="space-y-1.5">
+              <Label required>
+                Tapez {PURGE_CONFIRMATION_WORD} pour confirmer
+              </Label>
+              <Input
+                autoComplete="off"
+                value={purgeConfirmation}
+                onChange={(e) => setPurgeConfirmation(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="submit"
+                variant="primary"
+                loading={purgeMutation.isPending}
+                disabled={purgeConfirmation.trim() !== PURGE_CONFIRMATION_WORD}
+              >
+                <Trash2 className="h-4 w-4" /> Effacer définitivement
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!renamingAccount} onOpenChange={(open) => !open && setRenamingAccount(null)}>
         <DialogContent>
@@ -805,6 +922,60 @@ export default function AdminGroupsPage() {
             <DialogFooter>
               <Button type="submit" variant="primary" loading={changeUsernameMutation.isPending}>
                 Enregistrer
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!passwordTarget} onOpenChange={(open) => !open && setPasswordTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={handleResetPasswordSubmit((values) => {
+              if (!passwordTarget) return;
+              resetPasswordMutation.mutate({ target: passwordTarget, password: values.password });
+            })}
+            className="space-y-4"
+          >
+            <p className="text-[13px] text-muted-foreground">
+              Saisissez le nouveau mot de passe de {passwordTarget?.label} ({passwordTarget?.username}), puis
+              communiquez-le lui. L&apos;ancien cessera immédiatement de fonctionner, et la personne devra choisir le
+              sien à sa prochaine connexion.
+            </p>
+            <div className="space-y-1.5">
+              <Label required>Nouveau mot de passe</Label>
+              <Input
+                type="text"
+                autoComplete="off"
+                {...registerResetPassword("password")}
+                error={!!resetPasswordErrors.password}
+              />
+              {resetPasswordErrors.password && (
+                <p className="text-[13px] text-accent-700 dark:text-accent-300">
+                  {resetPasswordErrors.password.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label required>Confirmation</Label>
+              <Input
+                type="text"
+                autoComplete="off"
+                {...registerResetPassword("confirmation")}
+                error={!!resetPasswordErrors.confirmation}
+              />
+              {resetPasswordErrors.confirmation && (
+                <p className="text-[13px] text-accent-700 dark:text-accent-300">
+                  {resetPasswordErrors.confirmation.message}
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="submit" variant="primary" loading={resetPasswordMutation.isPending}>
+                Réinitialiser
               </Button>
             </DialogFooter>
           </form>

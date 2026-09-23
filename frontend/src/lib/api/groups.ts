@@ -42,7 +42,8 @@ export async function setGroupEnabled(id: number, enabled: boolean): Promise<voi
   await apiClient.patch(`/groups/${id}/enabled`, { enabled });
 }
 
-export async function resetLeaderPassword(id: number): Promise<ResetPasswordResponse> {
-  const { data } = await apiClient.post<ResetPasswordResponse>(`/groups/${id}/reset-password`);
+/** Mot de passe choisi par l'admin, qui le transmet lui-même au chef de groupe. */
+export async function resetLeaderPassword(id: number, password: string): Promise<ResetPasswordResponse> {
+  const { data } = await apiClient.post<ResetPasswordResponse>(`/groups/${id}/reset-password`, { password });
   return data;
 }

@@ -1,6 +1,7 @@
 package com.senico.diagnostic.controller;
 
 import com.senico.diagnostic.dto.group.CreateWorkGroupRequest;
+import com.senico.diagnostic.dto.group.ResetPasswordRequest;
 import com.senico.diagnostic.dto.group.ResetPasswordResponse;
 import com.senico.diagnostic.dto.group.UpdateWorkGroupRequest;
 import com.senico.diagnostic.dto.group.WorkGroupDto;
@@ -51,7 +52,8 @@ public class WorkGroupController {
     }
 
     @PostMapping("/{id}/reset-password")
-    public ResponseEntity<ResetPasswordResponse> resetPassword(@PathVariable Long id) {
-        return ResponseEntity.ok(workGroupService.resetLeaderPassword(id));
+    public ResponseEntity<ResetPasswordResponse> resetPassword(@PathVariable Long id,
+                                                               @Valid @RequestBody ResetPasswordRequest request) {
+        return ResponseEntity.ok(workGroupService.resetLeaderPassword(id, request.password()));
     }
 }

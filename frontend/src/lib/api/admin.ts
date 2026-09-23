@@ -188,10 +188,31 @@ export async function createUserAccount(payload: CreateUserAccountPayload): Prom
   return data;
 }
 
-export async function resetUserPassword(userId: number): Promise<{ username: string; temporaryPassword: string }> {
+/** Mot de passe choisi par l'admin, qui le transmet lui-même ; le titulaire devra le changer à sa prochaine connexion. */
+export async function resetUserPassword(
+  userId: number,
+  password: string
+): Promise<{ username: string; temporaryPassword: string }> {
   const { data } = await apiClient.post<{ username: string; temporaryPassword: string }>(
-    `/admin/users/${userId}/reset-password`
+    `/admin/users/${userId}/reset-password`,
+    { password }
   );
+  return data;
+}
+
+/** Directions touchées et sections remises à zéro par un effacement des saisies. */
+export interface DataPurgeResult {
+  groupsCount: number;
+  sectionsCount: number;
+}
+
+/**
+ * Efface définitivement les saisies d'une direction (contenus, historique, cycles archivés, journal) —
+ * ou de toutes si `groupId` est omis. Directions et comptes restent en place.
+ */
+export async function purgeGroupData(groupId?: number): Promise<DataPurgeResult> {
+  const url = groupId === undefined ? "/admin/data-purge/groups" : `/admin/data-purge/groups/${groupId}`;
+  const { data } = await apiClient.delete<DataPurgeResult>(url);
   return data;
 }
 

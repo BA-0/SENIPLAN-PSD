@@ -17,6 +17,7 @@ import { extractErrorMessage } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import { homePathFor } from "@/lib/roles";
+import { rememberReceivedPassword } from "@/lib/received-password";
 
 const schema = z.object({
   username: z.string().min(1, "L'identifiant est requis"),
@@ -55,6 +56,7 @@ export default function LoginPage() {
       toast.success(`Bienvenue, ${auth.user.fullName}`);
       // Premiere connexion avec un mot de passe remis par l'admin : rien d'autre n'est
       // accessible tant qu'il n'a pas ete remplace.
+      if (auth.user.mustChangePassword) rememberReceivedPassword(values.password);
       router.push(auth.user.mustChangePassword ? "/change-password" : homePathFor(auth.user.role));
     } catch (error) {
       setServerError(extractErrorMessage(error, "Identifiant ou mot de passe incorrect"));
@@ -98,7 +100,8 @@ export default function LoginPage() {
                 l'identifiant et le mot de passe à chaque rechargement de la
                 page, qui restaient donc lisibles pour le suivant à ouvrir le
                 poste. */}
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
+            {/* method="post" : soumis avant le chargement du JavaScript, le formulaire ne met pas les identifiants dans l'URL. */}
+            <form method="post" onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
               <div className="space-y-1.5">
                 <Label htmlFor="username" required className="text-white/90">
                   Identifiant

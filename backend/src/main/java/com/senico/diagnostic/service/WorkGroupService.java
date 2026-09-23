@@ -133,12 +133,11 @@ public class WorkGroupService {
     }
 
     @Transactional
-    public ResetPasswordResponse resetLeaderPassword(Long id) {
+    public ResetPasswordResponse resetLeaderPassword(Long id, String rawPassword) {
         WorkGroup group = findGroupOrThrow(id);
         if (group.getLeader() == null) {
             throw new ResourceNotFoundException("Ce groupe n'a pas de chef de groupe associe");
         }
-        String rawPassword = passwordGeneratorService.generate();
         group.getLeader().setPasswordHash(passwordEncoder.encode(rawPassword));
         group.getLeader().setMustChangePassword(true);
         userRepository.save(group.getLeader());

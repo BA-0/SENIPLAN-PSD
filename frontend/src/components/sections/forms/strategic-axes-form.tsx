@@ -4,39 +4,51 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EditableCell } from "@/components/data-table/editable-cell";
 import { TagListEditor } from "@/components/data-table/tag-list-editor";
 import { directionAxisLabel } from "@/lib/utils";
-import type { StrategicAxesContent } from "@/types/sections";
+import type { StrategicAxesContent, StrategicAxis } from "@/types/sections";
 import type { SectionFormProps } from "./types";
 
 /**
- * S08 — axes strategiques et orientations, sur le modele du canevas : un axe par ligne, avec son
- * orientation strategique (l'intitule repris par toutes les sections suivantes), son objectif et
- * ses objectifs specifiques.
+ * S08 — axes stratégiques / orientations, sur l'agencement du canevas : une colonne par axe (Axe 1 à Axe 4).
+ * Sous chaque axe, en bandeaux : l'orientation stratégique (l'intitulé repris par toutes les sections
+ * suivantes), l'objectif de l'axe, puis ses objectifs spécifiques.
  */
 export function StrategicAxesForm({ content, onChange, readOnly }: SectionFormProps<StrategicAxesContent>) {
-  function updateAxis(index: number, patch: Partial<StrategicAxesContent["axes"][number]>) {
+  const axes = content.axes ?? [];
+  const columnCount = Math.max(axes.length, 1);
+
+  function updateAxis(index: number, patch: Partial<StrategicAxis>) {
     onChange((prev) => ({ axes: prev.axes.map((a, i) => (i === index ? { ...a, ...patch } : a)) }));
   }
+
+  const band = (label: string, required = false) => (
+    <TableRow band>
+      <TableCell colSpan={columnCount}>
+        {label}
+        {required && (
+          <span className="ml-0.5 text-accent-500" aria-hidden>
+            *
+          </span>
+        )}
+      </TableCell>
+    </TableRow>
+  );
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[110px]">Axe</TableHead>
-          <TableHead className="min-w-[240px]">
-            Orientation stratégique
-            <span className="ml-0.5 text-accent-500" aria-hidden>
-              *
-            </span>
-          </TableHead>
-          <TableHead className="min-w-[240px]">Objectif de l&apos;axe</TableHead>
-          <TableHead className="min-w-[280px]">Objectifs spécifiques</TableHead>
+          {axes.map((axis) => (
+            <TableHead key={axis.axisCode} className="min-w-[220px] text-center">
+              {directionAxisLabel(axis.axisCode, "")}
+            </TableHead>
+          ))}
         </TableRow>
       </TableHeader>
       <TableBody>
-        {content.axes.map((axis, index) => (
-          <TableRow key={axis.axisCode} className="hover:bg-transparent">
-            <TableCell label>{directionAxisLabel(axis.axisCode, "")}</TableCell>
-            <TableCell className="py-3 align-top">
+        {band("Orientation stratégique", true)}
+        <TableRow className="hover:bg-transparent">
+          {axes.map((axis, index) => (
+            <TableCell key={axis.axisCode} className="py-3 align-top">
               <EditableCell
                 value={axis.title}
                 onChange={(v) => updateAxis(index, { title: v })}
@@ -45,7 +57,12 @@ export function StrategicAxesForm({ content, onChange, readOnly }: SectionFormPr
                 multiline
               />
             </TableCell>
-            <TableCell className="py-3 align-top">
+          ))}
+        </TableRow>
+        {band("Objectif de l'axe")}
+        <TableRow className="hover:bg-transparent">
+          {axes.map((axis, index) => (
+            <TableCell key={axis.axisCode} className="py-3 align-top">
               <EditableCell
                 value={axis.objective ?? ""}
                 onChange={(v) => updateAxis(index, { objective: v })}
@@ -54,7 +71,12 @@ export function StrategicAxesForm({ content, onChange, readOnly }: SectionFormPr
                 multiline
               />
             </TableCell>
-            <TableCell className="py-3 align-top">
+          ))}
+        </TableRow>
+        {band("Objectifs spécifiques")}
+        <TableRow className="hover:bg-transparent">
+          {axes.map((axis, index) => (
+            <TableCell key={axis.axisCode} className="py-3 align-top">
               <TagListEditor
                 items={axis.specificObjectives}
                 onChange={(items) => updateAxis(index, { specificObjectives: items })}
@@ -62,8 +84,8 @@ export function StrategicAxesForm({ content, onChange, readOnly }: SectionFormPr
                 placeholder="Saisir un objectif spécifique…"
               />
             </TableCell>
-          </TableRow>
-        ))}
+          ))}
+        </TableRow>
       </TableBody>
     </Table>
   );

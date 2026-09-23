@@ -70,7 +70,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/admin/users/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/v1/admin/data-purge/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/groups/*/cycles/**").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/admin/groups/*/sections/*/content").hasAuthority("ROLE_ADMIN")
+                        // Modifier une soumission : l'admin et la direction generale (demande client du 23/09/2026).
+                        // Effacer le contenu d'une section (DELETE, juste en dessous) reste a l'admin.
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/admin/groups/*/sections/*/content")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_DIRECTEUR_GENERAL")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/groups/*/sections/**").hasAuthority("ROLE_ADMIN")
                         // Second niveau de validation : le DG seul approuve ce qui entre dans les
                         // documents consolides, l'admin ne pouvant pas se l'accorder a lui-meme.

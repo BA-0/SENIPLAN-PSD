@@ -7,8 +7,8 @@ import type { Role } from "@/types/common";
  *   « qui voit l'espace de pilotage ? »  -> l'admin et la direction generale
  *   « qui peut administrer ? »           -> l'admin seul
  *
- * Le DG consulte tout et arbitre tout, mais ne cree pas de groupe, ne reinitialise pas de
- * mot de passe, ne demarre pas de cycle et ne modifie pas les saisies des directions. Ces
+ * Le DG consulte tout, arbitre tout et peut corriger une soumission, mais ne cree pas de groupe,
+ * ne reinitialise pas de mot de passe, ne demarre pas de cycle et n'efface pas les saisies des directions. Ces
  * memes frontieres sont posees cote serveur dans SecurityConfig : l'interface ne fait que
  * les refleter, elle ne les garantit pas.
  *
@@ -22,12 +22,12 @@ export function canPilot(role: Role | undefined): boolean {
   return role === "ADMIN" || role === "DIRECTEUR_GENERAL";
 }
 
-/** Administration technique : groupes, comptes, cycles, edition directe des saisies. */
+/** Administration technique : groupes, comptes, cycles, effacement des saisies. */
 export function canAdminister(role: Role | undefined): boolean {
   return role === "ADMIN";
 }
 
-/** Validation et revision des sections soumises : premier niveau, comite de pilotage. */
+/** Validation, refus et modification des sections soumises : l'admin et la direction generale. */
 export function canReview(role: Role | undefined): boolean {
   return canPilot(role);
 }

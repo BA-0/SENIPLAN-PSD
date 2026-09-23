@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -140,9 +141,18 @@ class DirectionGeneraleAccessIT {
         mockMvc.perform(get("/api/v1/admin/users").with(dg)).andExpect(status().isForbidden());
         mockMvc.perform(post("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/cycles/new").with(dg))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(put("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/S01/content")
-                        .contentType("application/json").content("{}").with(dg))
+        // Effacer le contenu d'une section reste a l'admin.
+        mockMvc.perform(delete("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/S01").with(dg))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Le DG peut modifier une soumission (demande client du 23/09/2026)")
+    void leDgModifieUneSoumission() throws Exception {
+        // Direction inexistante : le 404 prouve l'acces sans rien ecrire en base.
+        mockMvc.perform(put("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/S01/content")
+                        .contentType("application/json").content("{\"rows\":[]}").with(compte("m.dia")))
+                .andExpect(status().isNotFound());
     }
 
     @Test

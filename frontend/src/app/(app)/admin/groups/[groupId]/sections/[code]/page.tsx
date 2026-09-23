@@ -34,7 +34,7 @@ import {
   reviewSection,
 } from "@/lib/api/admin";
 import { listGroups } from "@/lib/api/groups";
-import { canApproveAsDg } from "@/lib/roles";
+import { canAdminister, canApproveAsDg } from "@/lib/roles";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { extractErrorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
@@ -54,6 +54,8 @@ export default function AdminSectionReviewPage() {
   const { user } = useCurrentUser();
   // Second niveau : le DG seul approuve ce qui entre dans les documents consolides.
   const peutApprouver = canApproveAsDg(user?.role);
+  // Effacer le contenu d'une section reste a l'admin ; le DG valide, refuse et modifie.
+  const peutEffacer = canAdminister(user?.role);
 
   const { data: groups } = useQuery({ queryKey: ["admin", "groups"], queryFn: listGroups });
   const { data: sections } = useQuery({
@@ -78,7 +80,7 @@ export default function AdminSectionReviewPage() {
     onSuccess: (_, decision) => {
       const messages: Record<string, string> = {
         VALIDATE: "Section validée",
-        REQUEST_REVISION: "Révision demandée",
+        REQUEST_REVISION: "Section refusée et renvoyée pour révision",
         RETURN_TO_GROUP: "La main a été redonnée au groupe",
       };
       toast.success(messages[decision]);
@@ -172,6 +174,7 @@ export default function AdminSectionReviewPage() {
                 <Button variant="secondary" size="sm" onClick={() => setEditContent(data.content)}>
                   <Pencil className="h-4 w-4" /> Modifier
                 </Button>
+                {peutEffacer && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructiveGhost" size="sm">
@@ -192,6 +195,7 @@ export default function AdminSectionReviewPage() {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+                )}
               </div>
             )}
           </div>
@@ -254,7 +258,7 @@ export default function AdminSectionReviewPage() {
                         onClick={() => reviewMutation.mutate("REQUEST_REVISION")}
                         loading={reviewMutation.isPending}
                       >
-                        <RotateCcw className="h-4 w-4" /> Renvoyer pour révision
+                        <RotateCcw className="h-4 w-4" /> Refuser (renvoyer pour révision)
                       </Button>
                     </>
                   )}

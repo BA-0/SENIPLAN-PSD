@@ -14,7 +14,7 @@ import { extractErrorMessage } from "@/lib/api-client";
 
 /** Les parties de la note, dans l'ordre du document (cf. PsdBriefBuilder côté serveur). */
 const PARTS: { title: string; description: string }[] = [
-  { title: "Sigles, mot du Directeur Général, l'essentiel du plan", description: "chiffres clés et budget par axe en une page." },
+  { title: "Sigles, mot du Directeur Général, l'essentiel du plan", description: "chiffres clés du plan en une page." },
   { title: "I. Contexte et justification", description: "introduction, objet et périmètre, code couleur des directions." },
   { title: "II. Approche méthodologique", description: "les phases d'élaboration du plan." },
   { title: "III. Présentation de SENICO", description: "historique, missions, gouvernance, organisation, ressources." },
@@ -41,15 +41,15 @@ const PARTS: { title: string; description: string }[] = [
     title: "X. Cadre de mise en œuvre",
     description: "synthèse du cadre logique, budget par axe et par exercice, plan de financement, effectifs par hiérarchie, statut et genre.",
   },
-  { title: "XI. Cadre de pilotage et de suivi-évaluation", description: "dispositif de pilotage et renvoi au cadre de mesure de rendement (annexe 5)." },
+  { title: "XI. Cadre de pilotage et de suivi-évaluation", description: "dispositif de pilotage et renvoi au cadre de mesure de rendement (annexe 4)." },
   {
     title: "XII. Synthèse du cadre stratégique",
     description: "le tableau du modèle client : OS, actions, budget, objectif, contraintes ou opportunités, par axe.",
   },
   {
-    title: "XIII. Conclusion, puis cinq annexes par axe",
+    title: "XIII. Conclusion, puis quatre annexes par axe",
     description:
-      "1. matrice des risques, 2. cadre logique, 3. planification, 4. budget détaillé, 5. fiche des indicateurs puis cadre de mesure de rendement.",
+      "1. cadre logique, 2. planification, 3. budget détaillé, 4. fiche des indicateurs puis cadre de mesure de rendement.",
   },
 ];
 

@@ -80,9 +80,9 @@ export interface SectionRevisionContentResponse<T = unknown> {
   content: T;
 }
 
-// Dans l'ordre d'affichage du canevas (sections.display_order, cf. migration V10).
+// Dans l'ordre d'affichage du canevas (sections.display_order, cf. migrations V10 et V40).
 export const SECTION_CODES = [
   "S01", "S01B", "S02", "S03", "S03B", "S04", "S05", "S06", "S06B", "S07",
-  "S07B", "S08", "S09", "S09B", "S11", "S10", "S13", "S12", "S14", "S14B",
+  "S07B", "S08", "S09", "S09B", "S10", "S11", "S12", "S13", "S14", "S14B",
   "S15", "S17",
 ] as const;

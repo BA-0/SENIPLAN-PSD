@@ -72,6 +72,7 @@ public class DerivedFieldsService {
             case RESOURCES_SYNTHESIS -> applyResourcesSynthesisSync(groupId, content);
             case LOGFRAME_SYNTHESIS -> applyLogframeSynthesisSync(groupId, content);
             case STAFF_EVOLUTION -> applyStaffTotals(normalizeStaffRows(content));
+            case INDICATOR_SHEET -> applyIndicatorAxisTitles(groupId, content);
             default -> content;
         };
     }
@@ -220,6 +221,27 @@ public class DerivedFieldsService {
                 }
             }
         }
+        return content;
+    }
+
+    /**
+     * S13 : intitules des axes de la direction (S08), en lecture seule, pour les bandeaux « AXE n : ... »
+     * sous lesquels la fiche range ses indicateurs (modele client, fiche des indicateurs par axe).
+     */
+    private ObjectNode applyIndicatorAxisTitles(Long groupId, ObjectNode content) {
+        ObjectNode titles = F.objectNode();
+        sectionResponseRepository.findByGroupIdAndSectionId(groupId, SECTION_AXES_ID).ifPresent(response -> {
+            JsonNode axes = readTree(response).get("axes");
+            if (axes != null && axes.isArray()) {
+                for (JsonNode axis : axes) {
+                    String code = axis.path("axisCode").asText("");
+                    if (!code.isEmpty()) {
+                        titles.put(code, axis.path("title").asText(""));
+                    }
+                }
+            }
+        });
+        content.set("axisTitles", titles);
         return content;
     }
 

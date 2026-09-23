@@ -74,16 +74,16 @@ public final class PsdDocumentStructure {
                 // Les cinq exercices ecoules dans un tableau, l'exercice 2026 et ses tendances dans le sien.
                 new SectionEntry("Performances des années passées et de l'année 2026", "S01B"),
                 new SectionEntry("Analyse des parties prenantes", "S01"),
-                new SectionEntry("Matrice d'analyse des ressources et des compétences", "S02"),
+                new SectionEntry("Matrice d'analyse de ressources et de compétences", "S02"),
                 new SectionEntry("Synthèse de l'analyse des ressources", "S03B"),
                 new SectionEntry("Contexte : SWOT / PESTEL", List.of("S04", "S03")),
-                new SectionEntry("Orientations stratégiques croisées (matrice SWOT / TOWS)", "S05"),
+                new SectionEntry("Mise en relation du diagnostic stratégique externe", "S05"),
                 // Ordre du canevas : l'analyse causale suit la confrontation, et l'inventaire recapitule ce
                 // qui precede (parties prenantes, PESTEL, SWOT, analyse causale).
                 new SectionEntry("Analyse causale", "S06"),
-                new SectionEntry("Inventaire du diagnostic", "S07"),
-                new SectionEntry("Matrice d'analyse des risques", "S14"),
-                new SectionEntry("Synthèse des enjeux et des contraintes", "S06B"),
+                new SectionEntry("Inventaire", "S07"),
+                new SectionEntry("Matrice d'analyse des risques liés aux domaines d'intervention (ou activités)", "S14"),
+                new SectionEntry("Synthèse des contraintes, enjeux, défis et priorités identifiés", "S06B"),
                 new NarrativeEntry("Défis à relever", NarrativeBlockKey.DEFIS_A_RELEVER),
                 new NarrativeEntry("Enjeux", NarrativeBlockKey.ENJEUX),
                 new NarrativeEntry("Facteurs clés de réussite et d'échec", NarrativeBlockKey.FACTEURS_CLES),
@@ -106,7 +106,7 @@ public final class PsdDocumentStructure {
                 new NarrativeEntry("Dispositif de pilotage et de suivi-évaluation", NarrativeBlockKey.DISPOSITIF_PILOTAGE),
                 new SectionEntry("Dispositif de suivi évaluation", "S13"),
                 new SectionEntry("Cadre de mesure de rendement", "S12"),
-                new SectionEntry("Plan d'évolution des effectifs", "S14B"),
+                new SectionEntry("Plan d'évolution des effectifs (statut, hiérarchie, genre)", "S14B"),
                 new SectionEntry("Plan de financement", "S15"),
 
                 new NarrativeEntry("Conclusion", NarrativeBlockKey.CONCLUSION)

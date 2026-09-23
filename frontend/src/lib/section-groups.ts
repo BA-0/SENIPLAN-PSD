@@ -6,8 +6,8 @@ import type { SectionStatus } from "@/types/common";
  * diagnostic, la plus longue). Sert a raccourcir les listes plates de sections :
  * navigation laterale et checklist du tableau de bord.
  *
- * Les parties suivent exactement l'ordre d'affichage valide par le client
- * (migration V10__client_review_sections_and_order.sql) : chacune est un bloc
+ * Les parties suivent exactement l'ordre d'affichage du canevas (migrations V10 puis
+ * V40__ordre_et_titres_du_canevas.sql) : chacune est un bloc
  * contigu de cet ordre, si bien que grouper ne reordonne jamais les sections.
  * Toute nouvelle section du canevas doit etre ajoutee ici, faute de quoi elle
  * atterrit dans la partie "Autres sections" en fin de liste.
@@ -49,13 +49,13 @@ export const SECTION_PARTS = [
     id: "programmation",
     numeral: "III",
     title: "Programmation et budgétisation",
-    subParts: [{ title: null, codes: ["S09", "S09B", "S11", "S10"] }],
+    subParts: [{ title: null, codes: ["S09", "S09B", "S10", "S11"] }],
   },
   {
     id: "suivi-evaluation",
     numeral: "IV",
     title: "Suivi, évaluation et risques",
-    subParts: [{ title: null, codes: ["S13", "S12", "S14"] }],
+    subParts: [{ title: null, codes: ["S12", "S13", "S14"] }],
   },
   {
     id: "moyens-financement",

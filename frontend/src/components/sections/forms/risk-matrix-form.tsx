@@ -95,6 +95,50 @@ export function RiskMatrixForm({ content, onChange, readOnly }: SectionFormProps
         </TableBody>
       </Table>
       {!readOnly && <AddRowButton onAdd={addRow} label="Ajouter un risque" />}
+      <RiskMethodology />
     </div>
+  );
+}
+
+/** « Méthodologie d'évaluation », sous la matrice comme dans le canevas. */
+function RiskMethodology() {
+  const columns = [
+    { title: "Niveau de risque (N)", items: ["Élevé = 3", "Moyen = 2", "Faible = 1"] },
+    { title: "Quotation / impact (Q)", items: ["Élevé = 3 (impact majeur)", "Moyen = 2 (impact modéré)", "Faible = 1 (impact mineur)"] },
+    {
+      title: "Criticité = N × Q",
+      items: [
+        "6 à 9 : Criticité ÉLEVÉE — action prioritaire",
+        "3 à 4 : Criticité MOYENNE — à surveiller",
+        "1 à 2 : Criticité FAIBLE — sous contrôle",
+      ],
+    },
+  ];
+  return (
+    <section className="space-y-2 pt-2">
+      <h3>Méthodologie d&apos;évaluation</h3>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {columns.map((c) => (
+              <TableHead key={c.title} className="w-1/3">
+                {c.title}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow className="hover:bg-transparent">
+            {columns.map((c) => (
+              <TableCell key={c.title} className="align-top text-[13px] leading-relaxed">
+                {c.items.map((item) => (
+                  <div key={item}>▪ {item}</div>
+                ))}
+              </TableCell>
+            ))}
+          </TableRow>
+        </TableBody>
+      </Table>
+    </section>
   );
 }

@@ -134,8 +134,8 @@ public class SectionEngineService {
     }
 
     /**
-     * Correction directe par l'admin : contourne le verrouillage (SUBMITTED/VALIDATED)
-     * sans changer le statut de la section, pour de simples corrections ponctuelles.
+     * Correction directe par l'admin ou la direction generale : contourne le verrouillage
+     * (SUBMITTED/VALIDATED) sans changer le statut de la section, pour de simples corrections ponctuelles.
      */
     @Transactional
     public SectionContentResponse adminUpdateContent(Long groupId, String sectionCode, JsonNode rawContent, User adminUser) {
@@ -148,8 +148,9 @@ public class SectionEngineService {
 
         // Le DG approuve un texte, pas une case a cocher : si l'admin le corrige apres coup,
         // l'approbation ne couvre plus ce qui serait consolide. Elle tombe donc, et il faut la
-        // redemander — sans quoi l'admin contournerait a lui seul le second niveau.
-        boolean approvalRevoked = status.isDgApproved();
+        // redemander — sans quoi l'admin contournerait a lui seul le second niveau. Corrigee par
+        // le DG lui-meme, la section garde son approbation : c'est son propre texte qu'il approuve.
+        boolean approvalRevoked = status.isDgApproved() && adminUser.getRole() != Role.DIRECTEUR_GENERAL;
         if (approvalRevoked) {
             clearDgApproval(status);
         }

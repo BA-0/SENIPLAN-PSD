@@ -108,7 +108,7 @@ class PsdFinalDocumentCompletenessIT {
         assertThat(contenu).contains(
                 "Performances des années passées et de l'année 2026",
                 "Synthèse de l'analyse des ressources",
-                "Synthèse des enjeux et des contraintes",
+                "Synthèse des contraintes, enjeux, défis et priorités identifiés",
                 "Synthèse du cadre logique",
                 "Plan d'évolution des effectifs");
     }

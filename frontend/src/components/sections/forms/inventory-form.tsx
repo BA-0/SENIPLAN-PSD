@@ -1,30 +1,57 @@
 "use client";
 
-import { Table, TableBody, TableCell, TableEmptyRow, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { NoteTable } from "@/components/data-table/note-table";
-import { TagListEditor } from "@/components/data-table/tag-list-editor";
-import { CAUSAL_LABELS, PESTEL_LABELS, STAKEHOLDER_CATEGORY_LABELS, STAKEHOLDER_SCOPE_LABELS } from "@/types/sections";
-import type { InventoryContent, Level, StakeholderCategory, StakeholderScope } from "@/types/sections";
+import { CAUSAL_LABELS, PESTEL_LABELS, STAKEHOLDER_CATEGORY_LABELS } from "@/types/sections";
+import type { InventoryContent, Level, StakeholderCategory } from "@/types/sections";
 import type { SectionFormProps } from "./types";
-import { SwotTable } from "./swot-table";
 
-const LEVEL_LABELS: Record<Level, string> = { FORT: "Fort", MOYEN: "Moyen", FAIBLE: "Faible" };
+const LEVEL_LABELS: Record<Level, string> = { FORT: "fort", MOYEN: "moyen", FAIBLE: "faible" };
 
-function text(value: string | null | undefined) {
-  return value?.trim() || "—";
+function clean(value: string | null | undefined): string {
+  return (value ?? "").replace(/^•\s*/gm, "").replace(/\s*\n\s*/g, " ; ").trim();
 }
 
+/** Les quatre colonnes du canevas, chacune la liste de ce que la direction a retenu dans l'analyse. */
+function inventoryColumns(content: InventoryContent): string[][] {
+  const swot = content.swot ?? { strengths: [], weaknesses: [], opportunities: [], threats: [] };
+  const swotItems = [
+    ...(swot.strengths ?? []).map((s) => `Force : ${s}`),
+    ...(swot.weaknesses ?? []).map((s) => `Faiblesse : ${s}`),
+    ...(swot.opportunities ?? []).map((s) => `Opportunité : ${s}`),
+    ...(swot.threats ?? []).map((s) => `Menace : ${s}`),
+  ];
+  const pestelItems = (content.pestel ?? []).flatMap((p) => {
+    const item = PESTEL_LABELS[p.axis] ?? p.axis;
+    return [
+      clean(p.threats) && `${item} — menaces : ${clean(p.threats)}`,
+      clean(p.opportunities) && `${item} — opportunités : ${clean(p.opportunities)}`,
+    ].filter(Boolean) as string[];
+  });
+  const stakeholderItems = (content.stakeholders ?? []).map((s) => {
+    const actor = STAKEHOLDER_CATEGORY_LABELS[s.category as StakeholderCategory] ?? s.category ?? "—";
+    const levels = [
+      s.importance && `importance ${LEVEL_LABELS[s.importance as Level]}`,
+      s.influence && `influence ${LEVEL_LABELS[s.influence as Level]}`,
+    ].filter(Boolean);
+    return levels.length ? `${actor} (${levels.join(", ")})` : actor;
+  });
+  const causalItems = (content.causalAnalysis ?? []).flatMap((c) =>
+    (c.items ?? []).filter(Boolean).map((item) => `${CAUSAL_LABELS[c.source] ?? c.source} : ${item}`)
+  );
+  return [swotItems, pestelItems, stakeholderItems, causalItems];
+}
+
+const HEADERS = ["SWOT", "PESTEL", "Analyse des parties prenantes", "Analyse causale"];
+
 /**
- * S07 — inventaire du diagnostic : la note de synthese de la direction, puis le rappel en lecture
- * seule, tableau par tableau, de ce qu'elle a saisi dans les sections parties prenantes, PESTEL,
- * SWOT et analyse causale (agrege a la lecture par DerivedFieldsService).
+ * S07 — inventaire, sur l'agencement du canevas : un seul tableau à quatre colonnes (SWOT, PESTEL, analyse
+ * des parties prenantes, analyse causale), repris en lecture seule des sections correspondantes (agrégé à la
+ * lecture par DerivedFieldsService), précédé de la note de synthèse de la direction.
  */
 export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<InventoryContent>) {
-  const stakeholders = content.stakeholders ?? [];
-  const pestel = content.pestel ?? [];
-  const causalAnalysis = content.causalAnalysis ?? [];
-  const readOnlyHint = <span className="ml-2 text-[12px] font-normal text-muted-foreground">lecture seule — repris de la section</span>;
-  const cellClass = "whitespace-pre-wrap align-top text-[13px] leading-snug text-foreground/90";
+  const columns = inventoryColumns(content);
+  const rowCount = Math.max(...columns.map((c) => c.length), 0);
 
   return (
     <div className="space-y-5">
@@ -33,95 +60,41 @@ export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<
         value={content.synthesisNote}
         onChange={(v) => onChange((prev) => ({ ...prev, synthesisNote: v }))}
         readOnly={readOnly}
-        placeholder="Synthèse consolidée du diagnostic (parties prenantes, PESTEL, SWOT, analyse causale)…"
+        placeholder="Synthèse consolidée du diagnostic (SWOT, PESTEL, parties prenantes, analyse causale)…"
       />
 
       <section className="space-y-2">
-        <h3>Analyse des parties prenantes{readOnlyHint}</h3>
+        <h3>
+          Inventaire
+          <span className="ml-2 text-[12px] font-normal text-muted-foreground">lecture seule — repris des sections</span>
+        </h3>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[150px]">Acteur (PP)</TableHead>
-              <TableHead className="min-w-[110px]">Portée</TableHead>
-              <TableHead className="min-w-[180px] whitespace-normal">Rôles / Responsabilités</TableHead>
-              <TableHead className="min-w-[180px] whitespace-normal">Attentes / Intérêt / Priorités</TableHead>
-              <TableHead className="min-w-[180px] whitespace-normal">Stratégie d&apos;adaptation</TableHead>
-              <TableHead>Niveau importance</TableHead>
-              <TableHead>Niveau influence</TableHead>
-              <TableHead className="min-w-[160px]">Actions</TableHead>
+              {HEADERS.map((h) => (
+                <TableHead key={h} className="w-1/4 whitespace-normal text-center">
+                  {h}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {stakeholders.map((s, i) => (
-              <TableRow key={i}>
-                <TableCell label>
-                  {s.category ? (STAKEHOLDER_CATEGORY_LABELS[s.category as StakeholderCategory] ?? s.category) : "—"}
-                </TableCell>
-                <TableCell className={cellClass}>
-                  {s.scope ? (STAKEHOLDER_SCOPE_LABELS[s.scope as StakeholderScope] ?? s.scope) : "—"}
-                </TableCell>
-                <TableCell className={cellClass}>{text(s.roles)}</TableCell>
-                <TableCell className={cellClass}>{text(s.expectations)}</TableCell>
-                <TableCell className={cellClass}>{text(s.adaptationStrategy)}</TableCell>
-                <TableCell className={cellClass}>{s.importance ? LEVEL_LABELS[s.importance as Level] : "—"}</TableCell>
-                <TableCell className={cellClass}>{s.influence ? LEVEL_LABELS[s.influence as Level] : "—"}</TableCell>
-                <TableCell className={cellClass}>{text(s.actions)}</TableCell>
+            {Array.from({ length: rowCount }, (_, row) => (
+              <TableRow key={row} className="hover:bg-transparent">
+                {columns.map((items, col) => (
+                  <TableCell key={col} className="align-top whitespace-pre-wrap text-[13px] leading-snug text-foreground/90">
+                    {items[row] ?? ""}
+                  </TableCell>
+                ))}
               </TableRow>
             ))}
-            {stakeholders.length === 0 && <TableEmptyRow colSpan={8}>Aucune partie prenante renseignée</TableEmptyRow>}
-          </TableBody>
-        </Table>
-      </section>
-
-      <section className="space-y-2">
-        <h3>Analyse PESTEL{readOnlyHint}</h3>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[160px]">Items</TableHead>
-              <TableHead className="min-w-[220px]">Menaces</TableHead>
-              <TableHead className="min-w-[220px]">Opportunités</TableHead>
-              <TableHead className="min-w-[220px] whitespace-normal">Actions pour atténuer les menaces ou saisir les opportunités</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pestel.map((p, i) => (
-              <TableRow key={i}>
-                <TableCell label>{PESTEL_LABELS[p.axis] ?? p.axis}</TableCell>
-                <TableCell className={cellClass}>{text(p.threats)}</TableCell>
-                <TableCell className={cellClass}>{text(p.opportunities)}</TableCell>
-                <TableCell className={cellClass}>{text(p.actions)}</TableCell>
-              </TableRow>
-            ))}
-            {pestel.length === 0 && <TableEmptyRow colSpan={4}>Aucun item PESTEL renseigné</TableEmptyRow>}
-          </TableBody>
-        </Table>
-      </section>
-
-      <section className="space-y-2">
-        <h3>Analyse SWOT{readOnlyHint}</h3>
-        <SwotTable swot={content.swot} readOnly />
-      </section>
-
-      <section className="space-y-2">
-        <h3>Analyse causale{readOnlyHint}</h3>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[240px] whitespace-normal">Sources</TableHead>
-              <TableHead className="min-w-[320px]">Analyse</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {causalAnalysis.map((c, i) => (
-              <TableRow key={i}>
-                <TableCell label>{CAUSAL_LABELS[c.source] ?? c.source}</TableCell>
-                <TableCell className="py-3 align-top">
-                  <TagListEditor items={(c.items ?? []).filter(Boolean)} onChange={() => undefined} readOnly />
+            {rowCount === 0 && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={4} className="py-8 text-center text-[13px] text-muted-foreground">
+                  Rien à inventorier : les sections SWOT, PESTEL, parties prenantes et analyse causale ne sont pas encore renseignées.
                 </TableCell>
               </TableRow>
-            ))}
-            {causalAnalysis.length === 0 && <TableEmptyRow colSpan={2}>Aucune source d&apos;analyse renseignée</TableEmptyRow>}
+            )}
           </TableBody>
         </Table>
       </section>

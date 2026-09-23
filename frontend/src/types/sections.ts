@@ -362,6 +362,7 @@ export interface PerformanceFrameworkContent {
 
 // ---- S13 : Fiche d'indicateurs ----
 export interface IndicatorRow {
+  axisCode?: string; // AXE1..AXE4 : bandeau sous lequel la fiche range l'indicateur (absent sur les anciennes saisies)
   indicatorTitle: string;
   calculationMethod: string;
   periodicity: string;
@@ -371,6 +372,7 @@ export interface IndicatorRow {
 }
 export interface IndicatorSheetContent {
   rows: IndicatorRow[];
+  axisTitles?: Record<string, string>; // lecture seule, synchronise depuis S08
 }
 
 // ---- S14 : Matrice d'analyse des risques ----

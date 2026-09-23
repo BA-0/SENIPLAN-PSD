@@ -151,13 +151,13 @@ public class SectionExportRenderer {
     }
 
     // ---- S04 ----
-    private ExportBlock.Quadrant swotQuadrant(JsonNode content) {
-        return new ExportBlock.Quadrant(List.of(
-                new ExportBlock.QuadrantCell("Forces", JsonUtil.strList(content, "strengths")),
-                new ExportBlock.QuadrantCell("Faiblesses", JsonUtil.strList(content, "weaknesses")),
-                new ExportBlock.QuadrantCell("Opportunités", JsonUtil.strList(content, "opportunities")),
-                new ExportBlock.QuadrantCell("Menaces", JsonUtil.strList(content, "threats"))
-        ));
+    /** Grille SWOT (FFOM) du canevas : Environnement, INTERNE (forces, faiblesses), EXTERNE (opportunites, menaces). */
+    private ExportBlock.Table swotQuadrant(JsonNode content) {
+        return SwotGridTable.build(
+                SwotGridTable.list(JsonUtil.strList(content, "strengths")),
+                SwotGridTable.list(JsonUtil.strList(content, "weaknesses")),
+                SwotGridTable.list(JsonUtil.strList(content, "opportunities")),
+                SwotGridTable.list(JsonUtil.strList(content, "threats")));
     }
 
     // ---- S05 ----
@@ -208,18 +208,82 @@ public class SectionExportRenderer {
             blocks.add(new ExportBlock.Heading("Synthèse", 3));
             blocks.add(new ExportBlock.Paragraph(note));
         }
-        blocks.add(new ExportBlock.Heading("Analyse des parties prenantes", 3));
-        blocks.add(RowsTableRenderer.render(JsonUtil.arr(content, "stakeholders"), stakeholdersColumns()));
-        blocks.add(new ExportBlock.Heading("Analyse PESTEL", 3));
-        blocks.add(RowsTableRenderer.render(JsonUtil.arr(content, "pestel"), pestelColumns()));
-        blocks.add(new ExportBlock.Heading("Analyse SWOT", 3));
-        JsonNode swot = content.get("swot");
-        if (swot != null) {
-            blocks.add(swotQuadrant(swot));
+        // Agencement du canevas : un seul tableau, une colonne par analyse, chacune la liste de ce que la
+        // direction en a retenu.
+        List<List<String>> columns = List.of(swotItems(content.get("swot")), pestelItems(content), stakeholderItems(content),
+                causalItems(content));
+        int rowCount = columns.stream().mapToInt(List::size).max().orElse(0);
+        List<ExportBlock.TableRow> rows = new ArrayList<>();
+        for (int i = 0; i < rowCount; i++) {
+            List<ExportBlock.Cell> cells = new ArrayList<>();
+            for (List<String> column : columns) {
+                cells.add(new ExportBlock.Cell(i < column.size() ? column.get(i) : ""));
+            }
+            rows.add(new ExportBlock.TableRow(cells));
         }
-        blocks.add(new ExportBlock.Heading("Analyse causale", 3));
-        blocks.addAll(renderCausalAnalysis(JsonUtil.arr(content, "causalAnalysis")));
+        if (rows.isEmpty()) {
+            rows.add(new ExportBlock.TableRow(List.of(new ExportBlock.Cell("—"), new ExportBlock.Cell("—"),
+                    new ExportBlock.Cell("—"), new ExportBlock.Cell("—"))));
+        }
+        blocks.add(new ExportBlock.Table(List.of("SWOT", "PESTEL", "Analyse des parties prenantes", "Analyse causale"),
+                rows, List.of(25, 25, 25, 25)));
         return blocks;
+    }
+
+    private static List<String> swotItems(JsonNode swot) {
+        List<String> items = new ArrayList<>();
+        JsonUtil.strList(swot, "strengths").forEach(s -> items.add("Force : " + s));
+        JsonUtil.strList(swot, "weaknesses").forEach(s -> items.add("Faiblesse : " + s));
+        JsonUtil.strList(swot, "opportunities").forEach(s -> items.add("Opportunité : " + s));
+        JsonUtil.strList(swot, "threats").forEach(s -> items.add("Menace : " + s));
+        return items;
+    }
+
+    private static List<String> pestelItems(JsonNode content) {
+        List<String> items = new ArrayList<>();
+        for (JsonNode row : JsonUtil.arr(content, "pestel")) {
+            String item = SectionLabels.pestel(JsonUtil.text(row, "axis"));
+            String threats = flatten(JsonUtil.text(row, "threats"));
+            String opportunities = flatten(JsonUtil.text(row, "opportunities"));
+            if (!threats.isEmpty()) {
+                items.add(item + " — menaces : " + threats);
+            }
+            if (!opportunities.isEmpty()) {
+                items.add(item + " — opportunités : " + opportunities);
+            }
+        }
+        return items;
+    }
+
+    private static List<String> stakeholderItems(JsonNode content) {
+        List<String> items = new ArrayList<>();
+        for (JsonNode row : JsonUtil.arr(content, "stakeholders")) {
+            String actor = SectionLabels.stakeholderCategory(JsonUtil.text(row, "category"));
+            List<String> levels = new ArrayList<>();
+            if (!JsonUtil.text(row, "importance").isBlank()) {
+                levels.add("importance " + SectionLabels.level(JsonUtil.text(row, "importance")).toLowerCase());
+            }
+            if (!JsonUtil.text(row, "influence").isBlank()) {
+                levels.add("influence " + SectionLabels.level(JsonUtil.text(row, "influence")).toLowerCase());
+            }
+            items.add(levels.isEmpty() ? actor : actor + " (" + String.join(", ", levels) + ")");
+        }
+        return items;
+    }
+
+    private static List<String> causalItems(JsonNode content) {
+        List<String> items = new ArrayList<>();
+        for (JsonNode row : JsonUtil.arr(content, "causalAnalysis")) {
+            String source = SectionLabels.causal(JsonUtil.text(row, "source"));
+            JsonUtil.strList(row, "items").stream().filter(item -> !item.isBlank())
+                    .forEach(item -> items.add(source + " : " + item));
+        }
+        return items;
+    }
+
+    /** Une cellule saisie en liste a puces, sur une ligne : « a ; b ». */
+    private static String flatten(String text) {
+        return text.replaceAll("(?m)^•\\s*", "").replaceAll("\\s*\\n\\s*", " ; ").trim();
     }
 
     // ---- S07B ----
@@ -233,14 +297,24 @@ public class SectionExportRenderer {
     }
 
     // ---- S08 ----
+    /**
+     * Agencement du canevas : une colonne par axe (Axe 1 a Axe 4) ; sous chacun, en bandeaux, l'orientation
+     * strategique, l'objectif de l'axe et les objectifs specifiques.
+     */
     private List<ExportBlock> renderStrategicAxes(JsonNode content) {
-        List<ExportBlock> blocks = new ArrayList<>();
-        for (JsonNode axis : JsonUtil.arr(content, "axes")) {
-            blocks.add(new ExportBlock.Heading(JsonUtil.text(axis, "axisCode").replace("AXE", "Axe "), 3));
-            blocks.add(new ExportBlock.KeyValueList(null, List.of(
-                    new ExportBlock.KeyValue("Orientation stratégique", JsonUtil.text(axis, "title")),
-                    new ExportBlock.KeyValue("Objectif de l'axe", JsonUtil.text(axis, "objective"))
-            ), true));
+        List<JsonNode> axes = JsonUtil.arr(content, "axes");
+        if (axes.isEmpty()) {
+            return List.of();
+        }
+        List<String> headers = new ArrayList<>();
+        List<ExportBlock.Cell> titles = new ArrayList<>();
+        List<ExportBlock.Cell> objectives = new ArrayList<>();
+        List<ExportBlock.Cell> specifics = new ArrayList<>();
+        for (JsonNode axis : axes) {
+            headers.add(JsonUtil.text(axis, "axisCode").replaceFirst("^AXE\\s*", "Axe "));
+            titles.add(new ExportBlock.Cell(JsonUtil.dash(JsonUtil.text(axis, "title")), true, ExportBlock.Align.LEFT,
+                    ExportBlock.Background.NONE));
+            objectives.add(new ExportBlock.Cell(JsonUtil.dash(JsonUtil.text(axis, "objective"))));
             List<String> specificObjectives = JsonUtil.strList(axis, "specificObjectives");
             if (specificObjectives.isEmpty()) {
                 String legacyDescription = JsonUtil.text(axis, "description");
@@ -248,9 +322,16 @@ public class SectionExportRenderer {
                     specificObjectives = List.of(legacyDescription);
                 }
             }
-            blocks.add(new ExportBlock.BulletList("Objectifs spécifiques", specificObjectives));
+            specifics.add(SwotGridTable.list(specificObjectives));
         }
-        return blocks;
+        List<ExportBlock.TableRow> rows = List.of(
+                ExportBlock.TableRow.band("Orientation stratégique", ExportBlock.Background.GREY),
+                new ExportBlock.TableRow(titles),
+                ExportBlock.TableRow.band("Objectif de l'axe", ExportBlock.Background.GREY),
+                new ExportBlock.TableRow(objectives),
+                ExportBlock.TableRow.band("Objectifs spécifiques", ExportBlock.Background.GREY),
+                new ExportBlock.TableRow(specifics));
+        return List.of(new ExportBlock.Table(headers, rows));
     }
 
     /**
@@ -382,8 +463,8 @@ public class SectionExportRenderer {
         List<String> headers = new ArrayList<>();
         List<ExportBlock.HeaderBand> bands = new ArrayList<>();
         List<Integer> widths = new ArrayList<>();
-        headers.add("Effectifs");
-        bands.add(new ExportBlock.HeaderBand("Années", 1));
+        headers.add("Années");
+        bands.add(new ExportBlock.HeaderBand("", 1));
         widths.add(16);
         for (String year : SectionLabels.YEARS) {
             bands.add(new ExportBlock.HeaderBand(year, 3));
@@ -515,7 +596,27 @@ public class SectionExportRenderer {
                 new JsonUtil.Column("Sources de vérification", n -> JsonUtil.text(n, "verificationSource")),
                 new JsonUtil.Column("Structures responsables", n -> JsonUtil.text(n, "responsibleStructure"))
         );
-        return List.of(RowsTableRenderer.render(JsonUtil.arr(content, "rows"), columns));
+        // Un bandeau « AXE n : ... » par axe de la direction, comme la fiche du modele client.
+        JsonNode titles = content.get("axisTitles");
+        List<JsonNode> all = JsonUtil.arr(content, "rows");
+        List<ExportBlock.TableRow> rows = new ArrayList<>();
+        List<String> codes = new ArrayList<>(List.of(DefaultSectionContentFactory.AXIS_CODES));
+        codes.add("");
+        for (String code : codes) {
+            List<JsonNode> axisRows = all.stream().filter(r -> code.isEmpty()
+                    ? !List.of(DefaultSectionContentFactory.AXIS_CODES).contains(JsonUtil.text(r, "axisCode"))
+                    : code.equals(JsonUtil.text(r, "axisCode"))).toList();
+            if (axisRows.isEmpty()) {
+                continue;
+            }
+            String title = code.isEmpty() ? "" : JsonUtil.text(titles, code).trim();
+            String band = code.isEmpty() ? "Sans axe"
+                    : "AXE " + code.replaceAll("\\D", "") + (title.isEmpty() ? "" : " : " + title);
+            rows.add(ExportBlock.TableRow.band(band, ExportBlock.Background.PRIMARY_LIGHT));
+            rows.addAll(RowsTableRenderer.render(axisRows, columns).rows());
+        }
+        ExportBlock.Table table = RowsTableRenderer.render(all, columns);
+        return List.of(all.isEmpty() ? table : new ExportBlock.Table(table.columnHeaders(), rows));
     }
 
     // ---- S14 ----

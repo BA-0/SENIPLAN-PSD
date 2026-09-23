@@ -119,6 +119,9 @@ class PsdBriefBuilderTest {
                 items.addAll(list.items());
             } else if (bloc instanceof ExportBlock.AttributedQuadrant quadrant) {
                 quadrant.cells().forEach(cell -> items.addAll(cell.items()));
+            } else if (bloc instanceof ExportBlock.Table table) {
+                // Le SWOT est un tableau sur la grille du canevas depuis le 23/09/2026.
+                table.rows().forEach(row -> row.cells().forEach(cell -> items.addAll(cell.attributions())));
             }
         }
         return items;
@@ -412,8 +415,10 @@ class PsdBriefBuilderTest {
                 .contains("Marque connue de tous", "Un impact unique : une position commerciale consolidée")
                 .as("la note rédigée de chaque direction sur ses ressources reste dans son plan sectoriel")
                 .doesNotContain("Une direction solide mais peu outillée");
-        assertThat(note).as("la matrice complète garde le risque jugé absent, et la méthodologie du canevas")
-                .contains("Présence (Oui/Non)", "Contentieux fournisseur", "Méthodologie d'évaluation", "6 à 9 : criticité élevée");
+        assertThat(note).as("demande client du 23/09/2026 : plus de matrice complète des risques en annexe ; "
+                        + "la méthodologie du canevas suit la cartographie")
+                .doesNotContain("Présence (Oui/Non)", "Contentieux fournisseur")
+                .contains("Méthodologie d'évaluation", "6 à 9 : criticité élevée");
 
         assertThat(note).as("cadre logique par axe")
                 .contains("X.1 Cadre logique", "Accroître le chiffre d'affaires", "Impact (Finalité)",
@@ -538,14 +543,16 @@ class PsdBriefBuilderTest {
                 PsdBriefBuilder.BILAN, "V.1 Performances des années passées", "V.2 Performances de l'année 2026 et tendances",
                 PsdBriefBuilder.DIAGNOSTIC, "X.3 Budget du plan", "XI.2 Cadre de mesure de rendement",
                 "XII.1 Tableau de synthèse du cadre stratégique", PsdBriefBuilder.ANNEXES,
-                "Tableau 1 : Matrice d'analyse des risques", "Tableau 2 : Cadre logique", "Tableau 3 : Planification",
-                "Tableau 4 : Budget du plan", "Tableau 5 : Cadre de mesure de rendement");
+                "Tableau 1 : Cadre logique", "Tableau 2 : Planification", "Tableau 3 : Budget du plan",
+                "Tableau 4 : Cadre de mesure de rendement");
+        assertThat(titres).as("demande client du 23/09/2026 : plus de matrice d'analyse des risques en annexe")
+                .noneMatch(titre -> titre.contains("Matrice d'analyse des risques") || titre.startsWith("Tableau 5"));
         assertThat(titres).as("revue du 22/09/2026 : plus de XI.3 ni de tableau 6, la fiche des indicateurs ouvre le tableau 5")
                 .noneMatch(titre -> titre.startsWith("XI.3") || titre.startsWith("Tableau 6"));
         assertThat(titres).as("inventaire du diagnostic et récapitulatif des axes retirés")
                 .noneMatch(titre -> titre.contains("Inventaire") || titre.contains("Récapitulatif"));
         assertThat(titres).as("revue de l'auditeur : la synthèse des contraintes du canevas ouvre la partie VII")
-                .containsSubsequence(PsdBriefBuilder.ENJEUX, "VII.1 Synthèse des contraintes, enjeux et défis prioritaires",
+                .containsSubsequence(PsdBriefBuilder.ENJEUX, "VII.1 Synthèse des contraintes, enjeux, défis et priorités identifiés",
                         "VII.2 Enjeux", "VII.3 Défis à relever");
 
         int annexes = titres.isEmpty() ? -1 : blocs.indexOf(blocs.stream()
@@ -557,7 +564,7 @@ class PsdBriefBuilderTest {
                         && (table.columnHeaders().contains("Logique d'intervention")
                         || table.columnHeaders().contains("Activités pour atteindre les résultats")));
         assertThat(texte(corps)).as("le texte de la synthèse du cadre logique reste dans le corps, avec le renvoi à l'annexe")
-                .contains("Un impact unique : une position commerciale consolidée", "(Tableau 2 : Cadre logique)");
+                .contains("Un impact unique : une position commerciale consolidée", "(Tableau 1 : Cadre logique)");
         assertThat(blocs.subList(annexes, blocs.size())).as("le cadre logique par axe est en annexe")
                 .anyMatch(bloc -> bloc instanceof ExportBlock.Table table && table.columnHeaders().contains("Logique d'intervention"));
 
@@ -755,7 +762,7 @@ class PsdBriefBuilderTest {
 
         ExportBlock.Table effectifs = blocs.stream()
                 .filter(ExportBlock.Table.class::isInstance).map(ExportBlock.Table.class::cast)
-                .filter(table -> table.columnHeaders().get(0).equals("Effectifs"))
+                .filter(table -> table.columnHeaders().get(0).equals("Années"))
                 .findFirst().orElseThrow();
         assertThat(effectifs.bands()).as("les années coiffent les colonnes M, F, Total").isNotEmpty();
         List<ExportBlock.Cell> totaux = effectifs.rows().get(effectifs.rows().size() - 1).cells();
@@ -864,8 +871,7 @@ class PsdBriefBuilderTest {
                 .anySatisfy(h -> assertThat(h).contains("Contraintes prioritaires"))                 // contraintes / défis
                 .anySatisfy(h -> assertThat(h).contains("Total (M FCFA)"))                           // budget par axe
                 .anySatisfy(h -> assertThat(h).contains("Sources de financement"))                   // plan de financement
-                .anySatisfy(h -> assertThat(h).contains("Effectifs"))                                // effectifs
-                .anySatisfy(h -> assertThat(h).contains("Présence (Oui/Non)"))                       // annexe 1 : matrice des risques
+                .anySatisfy(h -> assertThat(h).contains("Années", "M", "F", "Total"))                // effectifs
                 .anySatisfy(h -> assertThat(h).contains("Logique d'intervention"))                   // annexe 2 : cadre logique
                 .anySatisfy(h -> {                                                                   // annexe 3 : planification
                     assertThat(h.get(0)).isEqualTo("Extrants");

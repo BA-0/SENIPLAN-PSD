@@ -23,21 +23,21 @@ interface SwotTableProps {
 }
 
 /**
- * Le tableau SWOT du canevas : l'analyse interne (forces, faiblesses) puis l'analyse externe
- * (opportunites, menaces), deux colonnes par bloc. Sert a la saisie (S04) comme au rappel en
- * lecture seule (S05, S07).
+ * Le tableau SWOT (FFOM) du canevas : une colonne « Environnement » ; la ligne INTERNE porte les forces et
+ * les faiblesses, la ligne EXTERNE, sous l'intitulé « Opportunités | Menaces », les opportunités et les
+ * menaces. Sert a la saisie (S04) comme au rappel en lecture seule (S05, S07).
  */
 export function SwotTable({ swot, onChange, readOnly }: SwotTableProps) {
   const editable = !readOnly && !!onChange;
 
-  const head = (q: Quadrant) => (
-    <TableHead key={q.key} className="w-1/2">
+  const label = (q: Quadrant) => (
+    <>
       <span className={cn("mr-2 inline-block h-2 w-2 rounded-full align-middle", q.dot)} aria-hidden />
       {q.label}
-    </TableHead>
+    </>
   );
   const cell = (q: Quadrant) => (
-    <TableCell key={q.key} className="w-1/2 py-3 align-top">
+    <TableCell key={q.key} className="w-[44%] py-3 align-top">
       <TagListEditor
         items={swot?.[q.key] ?? []}
         onChange={(items) => onChange?.(q.key, items)}
@@ -46,22 +46,40 @@ export function SwotTable({ swot, onChange, readOnly }: SwotTableProps) {
       />
     </TableCell>
   );
+  const environment = "w-[12%] text-center align-middle text-[12px] font-semibold uppercase tracking-wide";
 
   return (
     <Table>
       <TableHeader>
-        <TableRow band>
-          <TableCell colSpan={2}>Interne</TableCell>
+        <TableRow>
+          <TableHead className="text-center">Environnement</TableHead>
+          {INTERNAL.map((q) => (
+            <TableHead key={q.key} className="text-center">
+              {label(q)}
+            </TableHead>
+          ))}
         </TableRow>
-        <TableRow>{INTERNAL.map(head)}</TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow className="hover:bg-transparent">{INTERNAL.map(cell)}</TableRow>
-        <TableRow band>
-          <TableCell colSpan={2}>Externe</TableCell>
+        <TableRow className="hover:bg-transparent">
+          <TableCell label rowSpan={2} className={environment}>
+            Interne
+          </TableCell>
+          {INTERNAL.map(cell)}
         </TableRow>
-        <TableRow className="bg-muted/60 hover:bg-muted/60">{EXTERNAL.map(head)}</TableRow>
-        <TableRow className="hover:bg-transparent">{EXTERNAL.map(cell)}</TableRow>
+        <TableRow className="bg-muted/60 hover:bg-muted/60">
+          {EXTERNAL.map((q) => (
+            <TableCell key={q.key} className="h-11 text-center text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {label(q)}
+            </TableCell>
+          ))}
+        </TableRow>
+        <TableRow className="hover:bg-transparent">
+          <TableCell label className={environment}>
+            Externe
+          </TableCell>
+          {EXTERNAL.map(cell)}
+        </TableRow>
       </TableBody>
     </Table>
   );

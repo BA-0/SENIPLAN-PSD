@@ -74,13 +74,13 @@ export function BudgetForm({ content, onChange, readOnly }: SectionFormProps<Bud
             <TableHeader>
               <TableRow>
                 <TableHead className="min-w-[160px]">Extrants</TableHead>
-                <TableHead className="min-w-[180px]">Activités</TableHead>
+                <TableHead className="min-w-[180px] whitespace-normal">Activités pour atteindre les résultats</TableHead>
                 {PLAN_YEARS.map((y) => (
                   <TableHead key={y} className="text-right">
                     {y}
                   </TableHead>
                 ))}
-                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Totaux</TableHead>
                 <TableHead className="min-w-[120px]">Responsable</TableHead>
                 {!readOnly && <TableHead className="w-10" />}
               </TableRow>
@@ -92,7 +92,7 @@ export function BudgetForm({ content, onChange, readOnly }: SectionFormProps<Bud
                     <TableCell colSpan={colCount} className="py-2">
                       <div className="flex flex-wrap items-center gap-3">
                         <span className="shrink-0 text-primary-700 dark:text-primary-300">
-                          {effect.effectCode} — {effect.osCode}
+                          {effect.effectCode.replace(/^EFFET\s*/,"EFFET ")} — {effect.osCode} :
                         </span>
                         <div className="min-w-[260px] flex-1 text-sm font-normal normal-case tracking-normal">
                           <EditableCell

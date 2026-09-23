@@ -110,7 +110,7 @@ export function StaffEvolutionForm({ content, onChange, readOnly }: SectionFormP
         <TableHeader>
           <TableRow>
             <TableHead rowSpan={2} className="min-w-[200px] align-bottom">
-              Effectifs
+              Années
             </TableHead>
             {PLAN_YEARS.map((y) => (
               <TableHead key={y} colSpan={3} className="text-center border-l border-border">

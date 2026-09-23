@@ -29,7 +29,7 @@ export default function SectionFormPage() {
     queryFn: listMySections,
   });
 
-  const { content, update, status, savedAt, saveNow } = useSectionAutosave(code, data);
+  const { content, update, status, savedAt, saveNow, flush } = useSectionAutosave(code, data);
 
   const { notifyTyping } = usePresencePublisher({
     groupId: data?.groupId ?? null,
@@ -47,7 +47,10 @@ export default function SectionFormPage() {
   );
 
   const submitMutation = useMutation({
-    mutationFn: () => submitMySection(code),
+    mutationFn: async () => {
+      await flush();
+      return submitMySection(code);
+    },
     onSuccess: () => {
       toast.success("Section soumise avec succès");
       queryClient.invalidateQueries({ queryKey: ["me", "section", code] });

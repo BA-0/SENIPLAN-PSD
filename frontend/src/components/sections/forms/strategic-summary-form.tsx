@@ -52,9 +52,9 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="min-w-[260px] whitespace-normal">Orientations stratégiques (OS)</TableHead>
+          <TableHead className="min-w-[260px] whitespace-normal">Orientation stratégique (OS)</TableHead>
           <TableHead className="min-w-[260px]">Actions</TableHead>
-          <TableHead className="min-w-[260px] whitespace-normal">Contraintes à lever / opportunités à saisir</TableHead>
+          <TableHead className="min-w-[260px] whitespace-normal">Contraintes à lever ou opportunités à saisir</TableHead>
           {!readOnly && <TableHead className="w-10" />}
         </TableRow>
       </TableHeader>
@@ -132,7 +132,7 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
                   <TableCell className="align-top">
                     <div className="flex items-start gap-2">
                       <span className="mt-2 shrink-0 text-[12px] font-medium tabular-nums text-muted-foreground">
-                        {orientationIndex + 1}.{actionIndex + 1}
+                        Action {orientationIndex + 1}.{actionIndex + 1} :
                       </span>
                       <EditableCell
                         value={action.label}
@@ -148,7 +148,7 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
                       value={action.constraintsOrOpportunities}
                       onChange={(v) => updateAction(axisIndex, orientationIndex, actionIndex, { constraintsOrOpportunities: v })}
                       readOnly={readOnly}
-                      placeholder="Contraintes à lever / opportunités à saisir…"
+                      placeholder="Contraintes à lever ou opportunités à saisir…"
                       multiline
                     />
                   </TableCell>

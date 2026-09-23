@@ -12,7 +12,8 @@ import java.util.TreeMap;
  * Les deux tableaux du bilan des performances (S01B), partages par la note de synthese et le Plan
  * Strategique de SENICO : les cinq exercices ecoules regroupes dans un seul tableau, un bandeau par
  * exercice pour les distinguer, puis l'exercice en cours dans le sien, chaque indicateur portant sa
- * tendance. Les deux tableaux ont exactement les sept colonnes du modele client.
+ * tendance. Les deux tableaux ont les sept colonnes du modele client ; pour les exercices ecoules, le
+ * resultat est celui obtenu et non plus attendu en decembre.
  *
  * <p>La note colorie l'indicateur a la couleur de sa direction, le Plan par direction n'en a pas
  * besoin : la cellule de l'indicateur est fournie par l'appelant ({@link Line}).</p>
@@ -27,8 +28,11 @@ final class PerformanceReviewTables {
     static final String CURRENT_TITLE = "Performances de l'année " + REVIEW_YEAR + " et tendances";
 
     static final List<String> HEADERS = List.of("Objectif", "Indicateur", "Résultat attendu en décembre", "Écart",
-            "Cause", "Cause profonde", "Action entreprise");
+            "Cause sous-jacente", "Cause profonde", "Action à entreprendre");
     static final List<Integer> WIDTHS = List.of(15, 16, 12, 12, 15, 15, 15);
+    /** Exercices ecoules : les memes colonnes, le resultat y est celui obtenu. */
+    static final List<String> PAST_HEADERS = List.of("Objectif", "Indicateur", "Résultat obtenu", "Écart",
+            "Cause sous-jacente", "Cause profonde", "Action entreprise");
 
     /** Une ligne du bilan et la cellule de son indicateur (attribuee a sa direction dans la note, simple ailleurs). */
     record Line(JsonNode row, ExportBlock.Cell indicator) {
@@ -119,7 +123,7 @@ final class PerformanceReviewTables {
         if (rows.isEmpty()) {
             rows.add(emptyRow());
         }
-        return new ExportBlock.Table(HEADERS, rows, WIDTHS);
+        return new ExportBlock.Table(PAST_HEADERS, rows, WIDTHS);
     }
 
     /** L'exercice en cours dans son propre tableau, la tendance de chaque indicateur dans la colonne de l'ecart. */
@@ -171,8 +175,8 @@ final class PerformanceReviewTables {
         }
         text.append(". ");
         text.append(reviewYearClosed
-                ? "L'exercice " + REVIEW_YEAR + " est clos : les résultats attendus en décembre se lisent comme des réalisations."
-                : "L'exercice " + REVIEW_YEAR + " n'étant pas clos, les résultats attendus en décembre sont des projections à date.");
+                ? "L'exercice " + REVIEW_YEAR + " est clos : les résultats de décembre se lisent comme des réalisations."
+                : "L'exercice " + REVIEW_YEAR + " n'étant pas clos, les résultats de décembre sont des projections à date.");
         return new ExportBlock.Callout(text.toString());
     }
 

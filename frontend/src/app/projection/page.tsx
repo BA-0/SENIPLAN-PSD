@@ -210,7 +210,7 @@ function ProjectionPage() {
           <Link
             href="/admin"
             title="Quitter la projection"
-            className="h-9 w-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 hover:scale-110 active:scale-95 transition-all duration-200"
+            className="h-9 w-9 rounded-full bg-accent-500/15 border border-accent-500/40 text-red-300 flex items-center justify-center hover:bg-accent-500 hover:border-accent-500 hover:text-white hover:scale-110 active:scale-95 transition-all duration-200"
           >
             <X className="h-4 w-4" />
           </Link>

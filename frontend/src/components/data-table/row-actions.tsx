@@ -54,42 +54,79 @@ export function RemoveRowButton({ onConfirm, disabled }: { onConfirm: () => void
  * Ajout d'une ligne choisie dans la liste du modele (axe PESTEL, ressource, source de financement…) :
  * les tableaux demarrent vides et la direction n'ajoute que les lignes qu'elle renseigne. Seules les
  * lignes pas encore presentes sont proposees ; le controle disparait quand il n'en reste aucune.
+ *
+ * Avec `other`, l'option « Autre » reste toujours proposee et ouvre une saisie libre : le texte saisi
+ * devient la cle de la nouvelle ligne (un texte qui reprend le libelle d'une option retombe sur elle).
+ * Laisse vide, c'est la ligne « Autre » du modele elle-meme qui est ajoutee, tant qu'elle est libre.
  */
 export function KeyedRowAdder({
   options,
   onAdd,
   label = "Ajouter",
   placeholder = "Choisir une ligne…",
+  other,
 }: {
   options: { value: string; label: string }[];
   onAdd: (value: string) => void;
   label?: string;
   placeholder?: string;
+  other?: { value: string; label: string; placeholder?: string };
 }) {
   const [selected, setSelected] = useState("");
-  if (options.length === 0) return null;
-  const current = options.some((o) => o.value === selected) ? selected : "";
+  const [draft, setDraft] = useState("");
+  const otherKey = other ? `__other__:${other.value}` : "";
+  const listed = other ? options.filter((o) => o.value !== other.value) : options;
+  if (listed.length === 0 && !other) return null;
+  const current = listed.some((o) => o.value === selected) || (other && selected === otherKey) ? selected : "";
+  const choosingOther = !!other && current === otherKey;
+
+  const text = draft.trim().replace(/\s+/g, " ");
+  const otherStillFree = !!other && options.some((o) => o.value === other.value);
+  const target = !choosingOther
+    ? current
+    : text
+      ? (options.find((o) => o.label.toLowerCase() === text.toLowerCase())?.value ?? text)
+      : otherStillFree
+        ? other!.value
+        : "";
+
+  function submit() {
+    if (!target) return;
+    onAdd(target);
+    setSelected("");
+    setDraft("");
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="w-full max-w-md">
         <NativeSelect value={current} onChange={(e) => setSelected(e.target.value)}>
           <option value="">{placeholder}</option>
-          {options.map((o) => (
+          {listed.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
           ))}
+          {other && <option value={otherKey}>{other.label} (préciser)…</option>}
         </NativeSelect>
       </div>
-      <AddRowButton
-        label={label}
-        disabled={!current}
-        onAdd={() => {
-          onAdd(current);
-          setSelected("");
-        }}
-      />
+      {choosingOther && (
+        <input
+          type="text"
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          placeholder={other?.placeholder ?? "Préciser…"}
+          className="h-10 w-full max-w-sm rounded-lg border border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+        />
+      )}
+      <AddRowButton label={label} disabled={!target} onAdd={submit} />
     </div>
   );
 }

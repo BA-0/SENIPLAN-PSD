@@ -22,7 +22,7 @@ const PARTS: { title: string; description: string }[] = [
   {
     title: "V. Bilan des performances des années précédentes",
     description:
-      "enseignements, puis les performances des années passées (les cinq exercices écoulés dans un seul tableau) et celles de 2026 avec leurs tendances, dans les sept colonnes du modèle client.",
+      "enseignements, puis les performances des années passées (les cinq exercices écoulés dans un seul tableau) avec leur résultat obtenu, et celles de 2026 avec leurs tendances, dans les sept colonnes du modèle client.",
   },
   {
     title: "VI. Diagnostic stratégique",

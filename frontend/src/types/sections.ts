@@ -24,7 +24,8 @@ export const STAKEHOLDER_SCOPE_LABELS: Record<StakeholderScope, string> = {
 };
 
 export interface StakeholderRow {
-  category: StakeholderCategory | "";
+  /** Une StakeholderCategory, ou le libelle saisi librement apres avoir choisi « Autre ». */
+  category: StakeholderCategory | (string & {}) | "";
   scope: StakeholderScope | "";
   roles: string;
   expectations: string;
@@ -49,12 +50,12 @@ export const PERFORMANCE_TREND_LABELS: Record<PerformanceTrend, string> = {
   STABLE: "Stable",
   DEFAVORABLE: "Défavorable",
 };
-// Memes sept colonnes (modele client) pour les exercices ecoules et l'exercice en cours.
+// Sept colonnes (modele client) pour l'exercice en cours ; pour les exercices ecoules, le resultat est celui obtenu.
 export interface PerformanceReviewRow {
   year: number; // exercice : 2021-2025 (ecoule) ou 2026 (en cours). Une ligne de l'ancien tableau 2026 n'en a pas : le serveur la convertit a la lecture
   objective: string;
   indicator: string;
-  expectedResult: string; // Resultat attendu en decembre
+  expectedResult: string; // Resultat attendu en decembre (exercice en cours) ou obtenu (exercices ecoules)
   gap: string; // Ecart
   cause: string;
   rootCause: string; // Cause profonde
@@ -78,7 +79,7 @@ export const RESOURCE_LABELS: Record<string, string> = {
   CADRE_JURIDIQUE_INSTITUTIONNEL: "Cadre juridique, institutionnel et organisationnel",
   LEADERSHIP_PILOTAGE_GOUVERNANCE: "Leadership, Pilotage, Management et Gouvernance",
   POSITION_CONCURRENTIELLE: "Position concurrentielle",
-  CAPACITES_INSTITUTIONNELLES: "Capacités institutionnelles (ressources matérielles, financières, humaines et immatérielles)",
+  CAPACITES_INSTITUTIONNELLES: "Capacités institutionnelles (Ressources matérielles, financières, humaines et immatérielles)",
   BUDGET_RESSOURCES_FINANCIERES: "Budget ou ressources financières",
   COMPTABILITE_GESTION_FINANCIERE: "Comptabilité et gestion financière",
   SYSTEME_CONTROLE: "Système de contrôle",
@@ -89,7 +90,7 @@ export const RESOURCE_LABELS: Record<string, string> = {
   COMPETENCES: "Compétences",
   PRODUITS_SERVICES:
     "Produits et services à délivrer (portefeuille, qualité, production, marque, tarification, force de vente, compétitivité…)",
-  CLIENTELE_BENEFICIAIRES: "Clientèle ou bénéficiaires des prestations (taille, fidélité…)",
+  CLIENTELE_BENEFICIAIRES: "Clientèle ou bénéficiaires des prestations (taille, fidélité, …)",
   RECHERCHE_DEVELOPPEMENT: "Recherche et développement",
 };
 export interface ResourceRow {
@@ -162,7 +163,7 @@ export interface TowsMatrixContent extends TowsActions {
 // ---- S06 : Analyse causale ----
 export const CAUSAL_SOURCES = ["MANIFESTATION", "CAUSES_IMMEDIATES", "CAUSES_SOUS_JACENTES", "CAUSES_PROFONDES", "SOLUTIONS"] as const;
 export const CAUSAL_LABELS: Record<string, string> = {
-  MANIFESTATION: "Manifestation des problèmes (effet négatif, besoins)",
+  MANIFESTATION: "Manifestation des problèmes (l'effet négatif, besoins)",
   CAUSES_IMMEDIATES: "Causes immédiates",
   CAUSES_SOUS_JACENTES: "Causes sous-jacentes",
   CAUSES_PROFONDES: "Causes profondes",
@@ -171,14 +172,14 @@ export const CAUSAL_LABELS: Record<string, string> = {
 export const TOWS_ACTION_LABELS: Record<keyof TowsActions, string> = {
   maximizeStrengths: "Comment maximiser les forces ?",
   minimizeWeaknesses: "Comment minimiser les faiblesses ?",
-  strengthsControlWeaknesses: "En quoi les forces permettent-elles de maîtriser les faiblesses ?",
+  strengthsControlWeaknesses: "Examiner en quoi les forces permettent de maîtriser les faiblesses",
   maximizeOpportunities: "Comment maximiser les opportunités ?",
   strengthsForOpportunities: "Comment utiliser les forces pour tirer parti des opportunités ?",
   correctWeaknessesViaOpportunities: "Comment corriger les faiblesses en tirant parti des opportunités ?",
   minimizeThreats: "Comment minimiser les menaces ?",
   strengthsReduceThreats: "Comment utiliser les forces pour réduire les menaces ?",
   minimizeWeaknessesAndThreats: "Comment minimiser les faiblesses et les menaces ?",
-  opportunitiesMinimizeThreats: "En quoi les opportunités permettent-elles de minimiser les menaces ?",
+  opportunitiesMinimizeThreats: "Examiner en quoi les opportunités permettent de minimiser les menaces",
 };
 export interface CausalRow {
   source: string;
@@ -235,6 +236,14 @@ export const LOGFRAME_LABELS: Record<string, string> = {
   EFFETS_IMMEDIATS: "Effets immédiats (Résultats immédiats)",
   EXTRANTS: "Extrants (Produits / Activités)",
   RESSOURCES_INTRANTS: "Ressources / Intrants (Moyens)",
+};
+/** S12 : bandeaux du cadre de mesure de rendement, tels que les nomme le canevas (memes niveaux que le cadre logique). */
+export const PERFORMANCE_LEVEL_LABELS: Record<string, string> = {
+  IMPACT: "IMPACT (Finalité) — horizon 2031",
+  EFFET: "EFFET (Objectif spécifique)",
+  EFFETS_IMMEDIATS: "EFFETS IMMÉDIATS (Résultats immédiats par OS)",
+  EXTRANTS: "EXTRANTS (Produits)",
+  RESSOURCES_INTRANTS: "RESSOURCES / INTRANTS (Moyens)",
 };
 export interface LogicalFrameworkRow {
   level: string;

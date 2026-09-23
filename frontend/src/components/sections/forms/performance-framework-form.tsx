@@ -6,11 +6,11 @@ import { Table, TableBody, TableCell, TableEmptyRow, TableHead, TableHeader, Tab
 import { EditableCell } from "@/components/data-table/editable-cell";
 import { KeyedRowAdder, RemoveRowButton, TableAddRow, insertInModelOrder, remainingOptions } from "@/components/data-table/row-actions";
 import { directionAxisLabel } from "@/lib/utils";
-import { LOGFRAME_LABELS, PLAN_YEARS } from "@/types/sections";
+import { PERFORMANCE_LEVEL_LABELS, PLAN_YEARS } from "@/types/sections";
 import type { PerformanceFrameworkContent, PerformanceGroup, PerformanceRow } from "@/types/sections";
 import type { SectionFormProps } from "./types";
 
-const LOGFRAME_LEVELS = Object.keys(LOGFRAME_LABELS);
+const LOGFRAME_LEVELS = Object.keys(PERFORMANCE_LEVEL_LABELS);
 
 const EMPTY_ROW: PerformanceRow = {
   resultOrExtrant: "",
@@ -71,7 +71,7 @@ export function PerformanceFrameworkForm({ content, onChange, readOnly }: Sectio
                 <TableHead className="min-w-[120px]">Réf. 2026</TableHead>
                 {PLAN_YEARS.map((y) => (
                   <TableHead key={y} className="min-w-[90px]">
-                    Cible {y}
+                    {y}
                   </TableHead>
                 ))}
                 <TableHead className="min-w-[130px]">Responsables</TableHead>
@@ -84,7 +84,7 @@ export function PerformanceFrameworkForm({ content, onChange, readOnly }: Sectio
                   <TableRow band>
                     <TableCell colSpan={colCount}>
                       <div className="flex items-center justify-between gap-2">
-                        <span>{LOGFRAME_LABELS[group.level] ?? group.level}</span>
+                        <span>{PERFORMANCE_LEVEL_LABELS[group.level] ?? group.level}</span>
                         {!readOnly && <RemoveRowButton onConfirm={() => removeGroup(axisIndex, groupIndex)} />}
                       </div>
                     </TableCell>
@@ -166,7 +166,7 @@ export function PerformanceFrameworkForm({ content, onChange, readOnly }: Sectio
             <KeyedRowAdder
               options={remainingOptions(
                 LOGFRAME_LEVELS,
-                LOGFRAME_LABELS,
+                PERFORMANCE_LEVEL_LABELS,
                 axis.groups.map((g) => g.level)
               )}
               onAdd={(level) => addGroup(axisIndex, level)}

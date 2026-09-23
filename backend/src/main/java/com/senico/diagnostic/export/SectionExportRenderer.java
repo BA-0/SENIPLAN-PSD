@@ -119,33 +119,33 @@ public class SectionExportRenderer {
 
     private List<JsonUtil.Column> stakeholdersColumns() {
         return List.of(
-                new JsonUtil.Column("Catégorie", n -> SectionLabels.stakeholderCategory(JsonUtil.text(n, "category"))),
+                new JsonUtil.Column("Acteur (PP)", n -> SectionLabels.stakeholderCategory(JsonUtil.text(n, "category"))),
                 new JsonUtil.Column("Portée", n -> SectionLabels.stakeholderScope(JsonUtil.text(n, "scope"))),
-                new JsonUtil.Column("Rôles", n -> JsonUtil.text(n, "roles")),
-                new JsonUtil.Column("Attentes", n -> JsonUtil.text(n, "expectations")),
+                new JsonUtil.Column("Rôles / Responsabilités", n -> JsonUtil.text(n, "roles")),
+                new JsonUtil.Column("Attentes / Intérêt / Priorités", n -> JsonUtil.text(n, "expectations")),
                 new JsonUtil.Column("Stratégie d'adaptation", n -> JsonUtil.text(n, "adaptationStrategy")),
-                new JsonUtil.Column("Importance", n -> JsonUtil.text(n, "importance")),
-                new JsonUtil.Column("Influence", n -> JsonUtil.text(n, "influence")),
+                new JsonUtil.Column("Niveau importance", n -> SectionLabels.level(JsonUtil.text(n, "importance"))),
+                new JsonUtil.Column("Niveau influence", n -> SectionLabels.level(JsonUtil.text(n, "influence"))),
                 new JsonUtil.Column("Actions", n -> JsonUtil.text(n, "actions"))
         );
     }
 
     private List<JsonUtil.Column> pestelColumns() {
         return List.of(
-                new JsonUtil.Column("Axe", n -> SectionLabels.pestel(JsonUtil.text(n, "axis"))),
+                new JsonUtil.Column("Items", n -> SectionLabels.pestel(JsonUtil.text(n, "axis"))),
                 new JsonUtil.Column("Menaces", n -> JsonUtil.text(n, "threats")),
                 new JsonUtil.Column("Opportunités", n -> JsonUtil.text(n, "opportunities")),
-                new JsonUtil.Column("Actions", n -> JsonUtil.text(n, "actions"))
+                new JsonUtil.Column("Actions pour atténuer les menaces ou saisir les opportunités", n -> JsonUtil.text(n, "actions"))
         );
     }
 
     // ---- S02 ----
     private List<ExportBlock> renderResourcesMatrix(JsonNode content) {
         List<JsonUtil.Column> columns = List.of(
-                new JsonUtil.Column("Domaine", n -> SectionLabels.resource(JsonUtil.text(n, "resourceKey"))),
-                new JsonUtil.Column("Forces", n -> JsonUtil.text(n, "strengths")),
+                new JsonUtil.Column("Ressources", n -> SectionLabels.resource(JsonUtil.text(n, "resourceKey"))),
+                new JsonUtil.Column("Forces / Acquis", n -> JsonUtil.text(n, "strengths")),
                 new JsonUtil.Column("Faiblesses", n -> JsonUtil.text(n, "weaknesses")),
-                new JsonUtil.Column("Défis", n -> JsonUtil.text(n, "challenges"))
+                new JsonUtil.Column("Défis à relever", n -> JsonUtil.text(n, "challenges"))
         );
         return List.of(RowsTableRenderer.render(JsonUtil.arr(content, "rows"), columns));
     }
@@ -165,19 +165,8 @@ public class SectionExportRenderer {
         List<ExportBlock> blocks = new ArrayList<>();
         blocks.add(new ExportBlock.Heading("SWOT (rappel)", 3));
         blocks.add(swotQuadrant(content));
-        blocks.add(new ExportBlock.Heading("Stratégies de confrontation", 3));
-        blocks.add(new ExportBlock.KeyValueList(null, List.of(
-                new ExportBlock.KeyValue("Forces à maximiser", JsonUtil.dash(JsonUtil.text(content, "maximizeStrengths"))),
-                new ExportBlock.KeyValue("Forces pour saisir les opportunités (SO)", JsonUtil.dash(JsonUtil.text(content, "strengthsForOpportunities"))),
-                new ExportBlock.KeyValue("Forces pour maîtriser les faiblesses", JsonUtil.dash(JsonUtil.text(content, "strengthsControlWeaknesses"))),
-                new ExportBlock.KeyValue("Opportunités à maximiser", JsonUtil.dash(JsonUtil.text(content, "maximizeOpportunities"))),
-                new ExportBlock.KeyValue("Faiblesses à minimiser", JsonUtil.dash(JsonUtil.text(content, "minimizeWeaknesses"))),
-                new ExportBlock.KeyValue("Corriger les faiblesses grâce aux opportunités (WO)", JsonUtil.dash(JsonUtil.text(content, "correctWeaknessesViaOpportunities"))),
-                new ExportBlock.KeyValue("Menaces à minimiser", JsonUtil.dash(JsonUtil.text(content, "minimizeThreats"))),
-                new ExportBlock.KeyValue("Forces pour réduire les menaces (ST)", JsonUtil.dash(JsonUtil.text(content, "strengthsReduceThreats"))),
-                new ExportBlock.KeyValue("Minimiser faiblesses et menaces (WT)", JsonUtil.dash(JsonUtil.text(content, "minimizeWeaknessesAndThreats"))),
-                new ExportBlock.KeyValue("Opportunités pour réduire les menaces", JsonUtil.dash(JsonUtil.text(content, "opportunitiesMinimizeThreats")))
-        ), false));
+        blocks.add(new ExportBlock.Heading("Mise en relation du diagnostic stratégique", 3));
+        blocks.add(TowsMatrixTable.build(field -> new ExportBlock.Cell(JsonUtil.text(content, field))));
         return blocks;
     }
 
@@ -203,11 +192,12 @@ public class SectionExportRenderer {
     }
 
     private List<ExportBlock> renderCausalAnalysis(List<JsonNode> rows) {
-        List<ExportBlock> blocks = new ArrayList<>();
-        for (JsonNode row : rows) {
-            blocks.add(new ExportBlock.BulletList(SectionLabels.causal(JsonUtil.text(row, "source")), JsonUtil.strList(row, "items")));
-        }
-        return blocks;
+        // Tableau « Sources | Analyse » du canevas.
+        List<JsonUtil.Column> columns = List.of(
+                new JsonUtil.Column("Sources", n -> SectionLabels.causal(JsonUtil.text(n, "source"))),
+                new JsonUtil.Column("Analyse", n -> String.join("\n", JsonUtil.strList(n, "items")))
+        );
+        return List.of(RowsTableRenderer.render(rows, columns));
     }
 
     // ---- S07 ----
@@ -218,11 +208,11 @@ public class SectionExportRenderer {
             blocks.add(new ExportBlock.Heading("Synthèse", 3));
             blocks.add(new ExportBlock.Paragraph(note));
         }
-        blocks.add(new ExportBlock.Heading("Parties prenantes", 3));
+        blocks.add(new ExportBlock.Heading("Analyse des parties prenantes", 3));
         blocks.add(RowsTableRenderer.render(JsonUtil.arr(content, "stakeholders"), stakeholdersColumns()));
-        blocks.add(new ExportBlock.Heading("PESTEL", 3));
+        blocks.add(new ExportBlock.Heading("Analyse PESTEL", 3));
         blocks.add(RowsTableRenderer.render(JsonUtil.arr(content, "pestel"), pestelColumns()));
-        blocks.add(new ExportBlock.Heading("SWOT", 3));
+        blocks.add(new ExportBlock.Heading("Analyse SWOT", 3));
         JsonNode swot = content.get("swot");
         if (swot != null) {
             blocks.add(swotQuadrant(swot));
@@ -258,7 +248,7 @@ public class SectionExportRenderer {
                     specificObjectives = List.of(legacyDescription);
                 }
             }
-            blocks.add(new ExportBlock.BulletList("Objectif spécifique", specificObjectives));
+            blocks.add(new ExportBlock.BulletList("Objectifs spécifiques", specificObjectives));
         }
         return blocks;
     }
@@ -277,19 +267,21 @@ public class SectionExportRenderer {
         String code = JsonUtil.text(effect, "effectCode");
         String os = JsonUtil.text(effect, "osCode");
         String label = JsonUtil.text(effect, "effectLabel");
-        String head = os.isBlank() ? code : os + " (" + code + ")";
-        return label.isBlank() ? head : head + " — " + label;
+        // Intitule du canevas : « EFFET 1 — OS1 : ... ».
+        String name = code.replaceFirst("^EFFET\\s*", "EFFET ");
+        String head = os.isBlank() ? name : name + " — " + os;
+        return label.isBlank() ? head + " :" : head + " : " + label;
     }
 
     // ---- S09 ----
     private List<ExportBlock> renderLogicalFramework(JsonNode content) {
         List<ExportBlock> blocks = new ArrayList<>();
         List<JsonUtil.Column> columns = List.of(
-                new JsonUtil.Column("Niveau", n -> SectionLabels.logframe(JsonUtil.text(n, "level"))),
-                new JsonUtil.Column("Logique d'intervention", n -> JsonUtil.text(n, "interventionLogic")),
-                new JsonUtil.Column("IOV", n -> JsonUtil.text(n, "iov")),
-                new JsonUtil.Column("Moyens de vérification", n -> JsonUtil.text(n, "verificationMeans")),
-                new JsonUtil.Column("Hypothèses", n -> JsonUtil.text(n, "assumptions"))
+                new JsonUtil.Column("Logique d'intervention", n -> SectionLabels.logframe(JsonUtil.text(n, "level"))),
+                new JsonUtil.Column("Énoncé", n -> JsonUtil.text(n, "interventionLogic")),
+                new JsonUtil.Column("Indicateurs objectivement vérifiables (IOV)", n -> JsonUtil.text(n, "iov")),
+                new JsonUtil.Column("Moyens et sources de vérification", n -> JsonUtil.text(n, "verificationMeans")),
+                new JsonUtil.Column("Conditions critiques / Hypothèses", n -> JsonUtil.text(n, "assumptions"))
         );
         for (JsonNode axis : JsonUtil.arr(content, "axes")) {
             blocks.add(new ExportBlock.Heading(axisTitle(axis), 3));
@@ -306,20 +298,20 @@ public class SectionExportRenderer {
     private List<ExportBlock> renderActionPlan(JsonNode content) {
         List<ExportBlock> blocks = new ArrayList<>();
         List<JsonUtil.Column> leading = List.of(
-                new JsonUtil.Column("Extrant", n -> JsonUtil.text(n, "extrant")),
-                new JsonUtil.Column("Activités", n -> JsonUtil.text(n, "activities")),
+                new JsonUtil.Column("Extrants", n -> JsonUtil.text(n, "extrant")),
+                new JsonUtil.Column("Activités pour atteindre les résultats", n -> JsonUtil.text(n, "activities")),
                 new JsonUtil.Column("Objectif", n -> JsonUtil.text(n, "objective")),
-                new JsonUtil.Column("Budget", n -> JsonUtil.formatCurrency(JsonUtil.num(n, "budget")))
+                new JsonUtil.Column("Budget (FCFA)", n -> JsonUtil.formatCurrency(JsonUtil.num(n, "budget")))
         );
         List<JsonUtil.Column> trailing = List.of(
-                new JsonUtil.Column("Responsable", n -> JsonUtil.text(n, "responsible"))
+                new JsonUtil.Column("Responsables", n -> JsonUtil.text(n, "responsible"))
         );
         for (JsonNode axis : JsonUtil.arr(content, "axes")) {
             blocks.add(new ExportBlock.Heading(axisTitle(axis), 3));
             for (JsonNode effect : JsonUtil.arr(axis, "effects")) {
                 blocks.add(new ExportBlock.Heading(effectTitle(effect), 4));
                 blocks.add(YearlyTableRenderer.render(
-                        JsonUtil.arr(effect, "rows"), leading, "Prévu ", SectionLabels.YEARS,
+                        JsonUtil.arr(effect, "rows"), leading, SectionLabels.YEARS,
                         (yearsNode, year) -> JsonUtil.formatCheck(yearsNode != null && yearsNode.has(year) && yearsNode.get(year).asBoolean()),
                         trailing, row -> false));
             }
@@ -361,7 +353,7 @@ public class SectionExportRenderer {
     // ---- S06B ----
     private List<JsonUtil.Column> constraintsSynthesisColumns() {
         return List.of(
-                new JsonUtil.Column("Domaine d'activités", n -> JsonUtil.text(n, "domain")),
+                new JsonUtil.Column("Domaines d'activités", n -> JsonUtil.text(n, "domain")),
                 new JsonUtil.Column("Contraintes prioritaires", n -> String.join("\n", JsonUtil.strList(n, "constraints"))),
                 new JsonUtil.Column("Défis et enjeux prioritaires", n -> String.join("\n", JsonUtil.strList(n, "challenges")))
         );
@@ -446,11 +438,11 @@ public class SectionExportRenderer {
     private List<ExportBlock> renderBudget(JsonNode content) {
         List<ExportBlock> blocks = new ArrayList<>();
         List<JsonUtil.Column> leading = List.of(
-                new JsonUtil.Column("Extrant", n -> JsonUtil.text(n, "extrant")),
-                new JsonUtil.Column("Activités", n -> JsonUtil.text(n, "activities"))
+                new JsonUtil.Column("Extrants", n -> JsonUtil.text(n, "extrant")),
+                new JsonUtil.Column("Activités pour atteindre les résultats", n -> JsonUtil.text(n, "activities"))
         );
         List<JsonUtil.Column> trailing = List.of(
-                new JsonUtil.Column("Total", n -> JsonUtil.formatCurrency(JsonUtil.num(n, "rowTotal"))),
+                new JsonUtil.Column("Totaux", n -> JsonUtil.formatCurrency(JsonUtil.num(n, "rowTotal"))),
                 new JsonUtil.Column("Responsable", n -> JsonUtil.text(n, "responsible"))
         );
         for (JsonNode axis : JsonUtil.arr(content, "axes")) {
@@ -493,18 +485,18 @@ public class SectionExportRenderer {
         List<ExportBlock> blocks = new ArrayList<>();
         List<JsonUtil.Column> leading = List.of(
                 new JsonUtil.Column("Résultat / Extrant", n -> JsonUtil.text(n, "resultOrExtrant")),
-                new JsonUtil.Column("Indicateur", n -> JsonUtil.text(n, "indicator")),
-                new JsonUtil.Column("Référence 2026", n -> JsonUtil.text(n, "ref2026"))
+                new JsonUtil.Column("Indicateur (IOV)", n -> JsonUtil.text(n, "indicator")),
+                new JsonUtil.Column("Réf. 2026", n -> JsonUtil.text(n, "ref2026"))
         );
         List<JsonUtil.Column> trailing = List.of(
-                new JsonUtil.Column("Responsable", n -> JsonUtil.text(n, "responsible"))
+                new JsonUtil.Column("Responsables", n -> JsonUtil.text(n, "responsible"))
         );
         for (JsonNode axis : JsonUtil.arr(content, "axes")) {
             blocks.add(new ExportBlock.Heading(axisTitle(axis), 3));
             for (JsonNode group : JsonUtil.arr(axis, "groups")) {
-                blocks.add(new ExportBlock.Heading(SectionLabels.logframe(JsonUtil.text(group, "level")), 4));
+                blocks.add(new ExportBlock.Heading(SectionLabels.performanceLevel(JsonUtil.text(group, "level")), 4));
                 blocks.add(YearlyTableRenderer.render(
-                        JsonUtil.arr(group, "rows"), leading, "Cible ", SectionLabels.YEARS,
+                        JsonUtil.arr(group, "rows"), leading, SectionLabels.YEARS,
                         (yearsNode, year) -> JsonUtil.dash(yearsNode != null && yearsNode.has(year) ? yearsNode.get(year).asText() : ""),
                         trailing, row -> false));
             }
@@ -516,12 +508,12 @@ public class SectionExportRenderer {
     private List<ExportBlock> renderIndicatorSheet(JsonNode content) {
         List<JsonUtil.Column> columns = List.of(
                 // Intitules de colonnes du canevas client (fiche d'indicateurs).
-                new JsonUtil.Column("Intitulé de l'indicateur", n -> JsonUtil.text(n, "indicatorTitle")),
-                new JsonUtil.Column("Mode de calcul", n -> JsonUtil.text(n, "calculationMethod")),
-                new JsonUtil.Column("Périodicité", n -> JsonUtil.text(n, "periodicity")),
+                new JsonUtil.Column("Intitulés indicateurs", n -> JsonUtil.text(n, "indicatorTitle")),
+                new JsonUtil.Column("Modes de calcul", n -> JsonUtil.text(n, "calculationMethod")),
+                new JsonUtil.Column("Périodicités", n -> JsonUtil.text(n, "periodicity")),
                 new JsonUtil.Column("Sources et moyens de collecte", n -> JsonUtil.text(n, "collectionSource")),
                 new JsonUtil.Column("Sources de vérification", n -> JsonUtil.text(n, "verificationSource")),
-                new JsonUtil.Column("Structure responsable", n -> JsonUtil.text(n, "responsibleStructure"))
+                new JsonUtil.Column("Structures responsables", n -> JsonUtil.text(n, "responsibleStructure"))
         );
         return List.of(RowsTableRenderer.render(JsonUtil.arr(content, "rows"), columns));
     }
@@ -529,15 +521,15 @@ public class SectionExportRenderer {
     // ---- S14 ----
     private List<ExportBlock> renderRiskMatrix(JsonNode content) {
         List<JsonUtil.Column> columns = List.of(
-                new JsonUtil.Column("Catégorie", n -> JsonUtil.text(n, "category")),
-                new JsonUtil.Column("Présent", n -> JsonUtil.formatCheck(JsonUtil.bool(n, "present"))),
-                new JsonUtil.Column("Détails du risque", n -> JsonUtil.text(n, "riskDetails")),
-                new JsonUtil.Column("Niveau (N)", n -> String.valueOf((int) JsonUtil.num(n, "levelN"))),
-                new JsonUtil.Column("Domaines d'impact", n -> JsonUtil.text(n, "impactAreas")),
-                new JsonUtil.Column("Cotation (Q)", n -> String.valueOf((int) JsonUtil.num(n, "quotationQ"))),
-                new JsonUtil.Column("Criticité", n -> SectionLabels.criticality(JsonUtil.text(n, "criticalityLabel")),
+                new JsonUtil.Column("Catégorie de risque", n -> JsonUtil.text(n, "category")),
+                new JsonUtil.Column("Présence (Oui/Non)", n -> JsonUtil.bool(n, "present") ? "Oui" : "Non"),
+                new JsonUtil.Column("Quels risques (nature détaillée)", n -> JsonUtil.text(n, "riskDetails")),
+                new JsonUtil.Column("Niveau de risque", n -> String.valueOf((int) JsonUtil.num(n, "levelN"))),
+                new JsonUtil.Column("Impact sur les domaines d'activités", n -> JsonUtil.text(n, "impactAreas")),
+                new JsonUtil.Column("Quotation", n -> String.valueOf((int) JsonUtil.num(n, "quotationQ"))),
+                new JsonUtil.Column("Criticité (N × Q)", n -> SectionLabels.criticality(JsonUtil.text(n, "criticalityLabel")),
                         n -> SectionLabels.criticalityBackground(JsonUtil.text(n, "criticalityLabel"))),
-                new JsonUtil.Column("Actions d'atténuation", n -> JsonUtil.text(n, "mitigationActions"))
+                new JsonUtil.Column("Actions de mitigation ou de contingence", n -> JsonUtil.text(n, "mitigationActions"))
         );
         // Largeurs a la mesure des contenus : a parts egales, la coche et les cotes a un chiffre prenaient
         // autant de place que le detail du risque, ou « d'approvisionnement » se coupait en deux.
@@ -548,15 +540,15 @@ public class SectionExportRenderer {
     // ---- S15 ----
     private List<ExportBlock> renderFinancingPlan(JsonNode content) {
         List<JsonUtil.Column> columns = List.of(
-                new JsonUtil.Column("Source", n -> SectionLabels.financing(JsonUtil.text(n, "source"))),
-                new JsonUtil.Column("Montant", n -> JsonUtil.formatCurrency(JsonUtil.num(n, "amount"))),
-                new JsonUtil.Column("%", n -> JsonUtil.formatPercent(JsonUtil.num(n, "percent"))),
-                new JsonUtil.Column("Modalités", n -> JsonUtil.text(n, "modalities")),
+                new JsonUtil.Column("Sources de financement", n -> SectionLabels.financing(JsonUtil.text(n, "source"))),
+                new JsonUtil.Column("Montant (FCFA)", n -> JsonUtil.formatCurrency(JsonUtil.num(n, "amount"))),
+                new JsonUtil.Column("Pourcentage (%)", n -> JsonUtil.formatPercent(JsonUtil.num(n, "percent"))),
+                new JsonUtil.Column("Modalités de mobilisation", n -> JsonUtil.text(n, "modalities")),
                 new JsonUtil.Column("Période", n -> JsonUtil.text(n, "period")),
-                new JsonUtil.Column("Responsable", n -> JsonUtil.text(n, "responsible"))
+                new JsonUtil.Column("Responsables", n -> JsonUtil.text(n, "responsible"))
         );
         ExportBlock.TableRow totals = RowsTableRenderer.totalsRow(List.of(
-                "Total", JsonUtil.formatCurrency(JsonUtil.num(content, "total")), "100 %", "", "", ""));
+                "TOTAL", JsonUtil.formatCurrency(JsonUtil.num(content, "total")), "100 %", "", "", ""));
         // « Autofinancement » se coupait dans des colonnes a parts egales : les modalites prennent la place du %.
         ExportBlock.Table table = RowsTableRenderer.render(JsonUtil.arr(content, "rows"), columns, List.of(totals));
         return List.of(new ExportBlock.Table(table.columnHeaders(), table.rows(), List.of(14, 15, 7, 21, 12, 17)));
@@ -570,16 +562,29 @@ public class SectionExportRenderer {
             blocks.add(new ExportBlock.Heading("Vision", 3));
             blocks.add(new ExportBlock.Paragraph(vision));
         }
-        List<JsonUtil.Column> actionColumns = List.of(
-                new JsonUtil.Column("Action", n -> JsonUtil.text(n, "label")),
-                new JsonUtil.Column("Contraintes / Opportunités", n -> JsonUtil.text(n, "constraintsOrOpportunities"))
-        );
+        // Colonnes du canevas ; orientations et actions y sont numerotees (« OS1 : », « Action 1.1 : »).
         for (JsonNode axis : JsonUtil.arr(content, "axes")) {
             blocks.add(new ExportBlock.Heading(axisTitle(axis), 3));
-            for (JsonNode orientation : JsonUtil.arr(axis, "orientations")) {
-                blocks.add(new ExportBlock.Heading(JsonUtil.dash(JsonUtil.text(orientation, "label")), 4));
-                blocks.add(RowsTableRenderer.render(JsonUtil.arr(orientation, "actions"), actionColumns));
+            List<ExportBlock.TableRow> rows = new ArrayList<>();
+            List<JsonNode> orientations = JsonUtil.arr(axis, "orientations");
+            for (int o = 0; o < orientations.size(); o++) {
+                JsonNode orientation = orientations.get(o);
+                List<JsonNode> actions = JsonUtil.arr(orientation, "actions");
+                ExportBlock.Cell osCell = new ExportBlock.Cell("OS" + (o + 1) + " : " + JsonUtil.text(orientation, "label"),
+                        true, ExportBlock.Align.LEFT, ExportBlock.Background.NONE).spanning(Math.max(1, actions.size()));
+                if (actions.isEmpty()) {
+                    rows.add(new ExportBlock.TableRow(List.of(osCell, new ExportBlock.Cell("—"), new ExportBlock.Cell(""))));
+                }
+                for (int a = 0; a < actions.size(); a++) {
+                    JsonNode action = actions.get(a);
+                    rows.add(new ExportBlock.TableRow(List.of(
+                            a == 0 ? osCell : ExportBlock.Cell.covered(),
+                            new ExportBlock.Cell("Action " + (o + 1) + "." + (a + 1) + " : " + JsonUtil.text(action, "label")),
+                            new ExportBlock.Cell(JsonUtil.text(action, "constraintsOrOpportunities")))));
+                }
             }
+            blocks.add(new ExportBlock.Table(List.of("Orientation stratégique (OS)", "Actions",
+                    "Contraintes à lever ou opportunités à saisir"), rows, List.of(30, 35, 35)));
         }
         return blocks;
     }

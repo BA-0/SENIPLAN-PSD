@@ -166,7 +166,7 @@ class SynthesisNoteIT {
                 "X.1 Cadre logique", "Indicateurs objectivement vérifiables (IOV)",
                 "X.2 Opérationnalisation : plan d'actions", "Activités pour atteindre les résultats",
                 "X.3 Budget du plan", "Budget détaillé — ",
-                "XI.2 Cadre de mesure de rendement", "Résultat / extrant",
+                "XI.2 Cadre de mesure de rendement", "Résultat / Extrant",
                 PsdBriefBuilder.ANNEXE_CADRE_LOGIQUE, PsdBriefBuilder.ANNEXE_PLANIFICATION, PsdBriefBuilder.ANNEXE_RENDEMENT);
     }
 

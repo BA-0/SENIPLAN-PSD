@@ -49,7 +49,7 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
     [queryClient]
   );
 
-  const { mutate } = useMutation({
+  const { mutate, mutateAsync } = useMutation({
     mutationFn: (payload: T) => saveMySectionDraft<T>(code, payload),
     onMutate: () => setStatus("saving"),
     onSuccess: (response) => {
@@ -99,6 +99,17 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
     if (contentRef.current !== null) doSave(contentRef.current);
   }, [doSave]);
 
+  // Avant une soumission : le serveur valide ce qu'il a en base, pas ce qui est a l'ecran. Une
+  // frappe de moins de 2,5 s serait sinon soumise sans elle, puis refusee une fois la section
+  // verrouillee.
+  const flush = useCallback(async () => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = null;
+    const pending = contentRef.current;
+    if (pending === null || JSON.stringify(pending) === lastSavedRef.current) return;
+    await mutateAsync(pending);
+  }, [mutateAsync]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       if (dirtyRef.current && contentRef.current !== null) doSave(contentRef.current);
@@ -121,5 +132,5 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
     };
   }, [code, storeSaved]);
 
-  return { content, update, status, savedAt, saveNow };
+  return { content, update, status, savedAt, saveNow, flush };
 }

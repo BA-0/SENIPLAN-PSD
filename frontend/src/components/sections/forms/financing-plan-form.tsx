@@ -18,6 +18,8 @@ export function FinancingPlanForm({ content, onChange, readOnly }: SectionFormPr
     }));
   }
   function addRow(source: string) {
+    const labelOf = (k: string) => (FINANCING_LABELS[k] ?? k).toLowerCase();
+    if (content.rows.some((r) => labelOf(r.source) === labelOf(source))) return;
     const row: FinancingRow = {
       source,
       amount: 0,
@@ -42,9 +44,9 @@ export function FinancingPlanForm({ content, onChange, readOnly }: SectionFormPr
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[200px]">Source</TableHead>
+            <TableHead className="min-w-[200px]">Sources de financement</TableHead>
             <TableHead className="text-right">Montant (FCFA)</TableHead>
-            <TableHead className="text-right">%</TableHead>
+            <TableHead className="text-right">Pourcentage (%)</TableHead>
             <TableHead className="min-w-[220px]">Modalités de mobilisation</TableHead>
             <TableHead className="min-w-[120px]">Période</TableHead>
             <TableHead className="min-w-[140px]">Responsables</TableHead>
@@ -100,6 +102,7 @@ export function FinancingPlanForm({ content, onChange, readOnly }: SectionFormPr
           onAdd={addRow}
           label="Ajouter la source"
           placeholder="Choisir une source de financement…"
+          other={{ value: "AUTRES_SOURCES", label: FINANCING_LABELS.AUTRES_SOURCES, placeholder: "Préciser la source de financement…" }}
         />
       )}
     </div>

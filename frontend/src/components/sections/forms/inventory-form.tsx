@@ -37,17 +37,17 @@ export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<
       />
 
       <section className="space-y-2">
-        <h3>Parties prenantes{readOnlyHint}</h3>
+        <h3>Analyse des parties prenantes{readOnlyHint}</h3>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[150px]">Catégorie (PP)</TableHead>
+              <TableHead className="min-w-[150px]">Acteur (PP)</TableHead>
               <TableHead className="min-w-[110px]">Portée</TableHead>
               <TableHead className="min-w-[180px] whitespace-normal">Rôles / Responsabilités</TableHead>
               <TableHead className="min-w-[180px] whitespace-normal">Attentes / Intérêt / Priorités</TableHead>
               <TableHead className="min-w-[180px] whitespace-normal">Stratégie d&apos;adaptation</TableHead>
-              <TableHead>Importance</TableHead>
-              <TableHead>Influence</TableHead>
+              <TableHead>Niveau importance</TableHead>
+              <TableHead>Niveau influence</TableHead>
               <TableHead className="min-w-[160px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -78,10 +78,10 @@ export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[160px]">Axe</TableHead>
+              <TableHead className="min-w-[160px]">Items</TableHead>
               <TableHead className="min-w-[220px]">Menaces</TableHead>
               <TableHead className="min-w-[220px]">Opportunités</TableHead>
-              <TableHead className="min-w-[220px] whitespace-normal">Actions pour atténuer les menaces / saisir les opportunités</TableHead>
+              <TableHead className="min-w-[220px] whitespace-normal">Actions pour atténuer les menaces ou saisir les opportunités</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -93,7 +93,7 @@ export function InventoryForm({ content, onChange, readOnly }: SectionFormProps<
                 <TableCell className={cellClass}>{text(p.actions)}</TableCell>
               </TableRow>
             ))}
-            {pestel.length === 0 && <TableEmptyRow colSpan={4}>Aucun axe PESTEL renseigné</TableEmptyRow>}
+            {pestel.length === 0 && <TableEmptyRow colSpan={4}>Aucun item PESTEL renseigné</TableEmptyRow>}
           </TableBody>
         </Table>
       </section>

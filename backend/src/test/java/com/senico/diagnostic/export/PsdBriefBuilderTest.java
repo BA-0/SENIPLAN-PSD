@@ -636,7 +636,7 @@ class PsdBriefBuilderTest {
     }
 
     @Test
-    @DisplayName("Tant que 2026 n'est pas clos, ses résultats attendus en décembre sont présentés comme des projections")
+    @DisplayName("Tant que 2026 n'est pas clos, ses résultats de décembre sont présentés comme des projections")
     void presenteLesResultats2026CommeDesProjectionsAvantLaCloture() {
         WorkGroup commerciale = group(1, "Direction commerciale");
         saisie(commerciale, "S01B", """
@@ -665,9 +665,10 @@ class PsdBriefBuilderTest {
         ExportBlock.Table passees = tableauApres(blocs, "V.1 " + PerformanceReviewTables.PAST_TITLE);
         ExportBlock.Table courante = tableauApres(blocs, "V.2 " + PerformanceReviewTables.CURRENT_TITLE);
 
-        assertThat(passees.columnHeaders()).containsExactly("Objectif", "Indicateur", "Résultat attendu en décembre", "Écart",
-                "Cause", "Cause profonde", "Action entreprise");
-        assertThat(courante.columnHeaders()).isEqualTo(passees.columnHeaders());
+        assertThat(passees.columnHeaders()).as("exercices écoulés : le résultat est celui obtenu")
+                .containsExactly("Objectif", "Indicateur", "Résultat obtenu", "Écart", "Cause sous-jacente", "Cause profonde", "Action entreprise");
+        assertThat(courante.columnHeaders()).containsExactly("Objectif", "Indicateur", "Résultat attendu en décembre", "Écart",
+                "Cause sous-jacente", "Cause profonde", "Action à entreprendre");
         assertThat(passees.rows().stream().filter(ExportBlock.TableRow::band).map(row -> row.cells().get(0).text()))
                 .as("un bandeau par exercice écoulé, du plus ancien au plus récent")
                 .containsExactly("Exercice 2021", "Exercice 2022", "Exercice 2023", "Exercice 2024", "Exercice 2025");
@@ -715,6 +716,29 @@ class PsdBriefBuilderTest {
         assertThat(annexe.rows().get(0).cells().get(1).text()).isEqualTo("Exprime les besoins de livraison");
         assertThat(contientTexte(annexe.rows().get(1), "Fournisseurs de véhicules")).isTrue();
         assertThat(annexe.rows().get(1).cells().get(1).text()).as("le seul nom, sans rôle décrit").isEqualTo("—");
+    }
+
+    @Test
+    @DisplayName("« Autre » précisé : la partie prenante, la ressource et la source saisies librement sont publiées")
+    void publieLesValeursSaisiesApresAutre() {
+        WorkGroup logistique = group(5, "Direction Logistique");
+        saisie(logistique, "S01", """
+                {"rows":[{"category":"ONG locale","scope":"EXTERNE","roles":"Appui aux communautés",
+                          "importance":"MOYEN","influence":"FAIBLE"}]}""");
+        saisie(logistique, "S02", """
+                {"rows":[{"resourceKey":"Parc informatique","strengths":"Postes récents","weaknesses":"","challenges":""}]}""");
+        saisie(logistique, "S15", """
+                {"rows":[{"source":"Mécénat","amount":5000000,"modalities":"Convention","period":"2027","responsible":"DG"}],
+                 "total":5000000}""");
+
+        List<ExportBlock> blocs = build(logistique);
+        ExportBlock.Table annexe = blocs.stream()
+                .filter(ExportBlock.Table.class::isInstance).map(ExportBlock.Table.class::cast)
+                .filter(table -> table.columnHeaders().contains("Acteur (PP)"))
+                .findFirst().orElseThrow();
+        assertThat(contientTexte(annexe.rows().get(0), "ONG locale")).isTrue();
+        assertThat(annexe.rows().get(0).cells().get(1).text()).isEqualTo("Appui aux communautés");
+        assertThat(texte(blocs)).contains("Parc informatique", "Postes récents", "Mécénat");
     }
 
     @Test
@@ -834,7 +858,7 @@ class PsdBriefBuilderTest {
                 .anySatisfy(h -> assertThat(h).contains("Défis à relever"))                          // ressources et compétences
                 .anySatisfy(h -> assertThat(h).contains("Forces majeures"))                          // synthèse des ressources
                 .anySatisfy(h -> assertThat(h).contains("Menaces", "Opportunités"))                  // PESTEL
-                .anySatisfy(h -> assertThat(h).contains("Approche externe"))                         // mise en relation
+                .anySatisfy(h -> assertThat(h).contains("Liste des forces", "Liste des faiblesses"))  // mise en relation
                 .anySatisfy(h -> assertThat(h).contains("Sources", "Analyse"))                       // analyse causale
                 .anySatisfy(h -> assertThat(h).contains("Actions d'atténuation"))                    // risques élevés
                 .anySatisfy(h -> assertThat(h).contains("Contraintes prioritaires"))                 // contraintes / défis

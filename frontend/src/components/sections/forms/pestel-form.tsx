@@ -29,10 +29,10 @@ export function PestelForm({ content, onChange, readOnly }: SectionFormProps<Pes
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[160px]">Axe</TableHead>
+            <TableHead className="min-w-[160px]">Items</TableHead>
             <TableHead className="min-w-[240px]">Menaces</TableHead>
             <TableHead className="min-w-[240px]">Opportunités</TableHead>
-            <TableHead className="min-w-[240px]">Actions pour atténuer les menaces / saisir les opportunités</TableHead>
+            <TableHead className="min-w-[240px]">Actions pour atténuer les menaces ou saisir les opportunités</TableHead>
             {!readOnly && <TableHead className="w-10" />}
           </TableRow>
         </TableHeader>
@@ -64,7 +64,7 @@ export function PestelForm({ content, onChange, readOnly }: SectionFormProps<Pes
           {content.rows.length === 0 && (
             <TableRow>
               <TableCell colSpan={readOnly ? 4 : 5} className="py-8 text-center text-muted-foreground">
-                Aucun axe renseigné
+                Aucun item renseigné
               </TableCell>
             </TableRow>
           )}
@@ -78,8 +78,8 @@ export function PestelForm({ content, onChange, readOnly }: SectionFormProps<Pes
             content.rows.map((r) => r.axis)
           )}
           onAdd={addRow}
-          label="Ajouter l'axe"
-          placeholder="Choisir un axe PESTEL…"
+          label="Ajouter l'item"
+          placeholder="Choisir un item PESTEL…"
         />
       )}
     </div>

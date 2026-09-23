@@ -35,13 +35,13 @@ export function RiskMatrixForm({ content, onChange, readOnly }: SectionFormProps
         <TableHeader>
           <TableRow>
             <TableHead className="min-w-[160px]">Catégorie de risque</TableHead>
-            <TableHead className="min-w-[110px]">Présence</TableHead>
-            <TableHead className="min-w-[200px]">Quels risques</TableHead>
-            <TableHead className="min-w-[140px]">Niveau N</TableHead>
-            <TableHead className="min-w-[180px]">Impact domaines</TableHead>
-            <TableHead className="min-w-[140px]">Quotation Q</TableHead>
-            <TableHead className="min-w-[140px]">Criticité</TableHead>
-            <TableHead className="min-w-[200px]">Actions de mitigation</TableHead>
+            <TableHead className="min-w-[110px]">Présence (Oui/Non)</TableHead>
+            <TableHead className="min-w-[200px]">Quels risques (nature détaillée)</TableHead>
+            <TableHead className="min-w-[140px]">Niveau de risque</TableHead>
+            <TableHead className="min-w-[180px]">Impact sur les domaines d&apos;activités</TableHead>
+            <TableHead className="min-w-[140px]">Quotation</TableHead>
+            <TableHead className="min-w-[140px]">Criticité (N × Q)</TableHead>
+            <TableHead className="min-w-[200px]">Actions de mitigation ou de contingence</TableHead>
             {!readOnly && <TableHead className="w-10" />}
           </TableRow>
         </TableHeader>

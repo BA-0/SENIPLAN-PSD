@@ -12,13 +12,23 @@ import { PAST_PERFORMANCE_YEARS, PERFORMANCE_REVIEW_YEAR, PERFORMANCE_TREND_LABE
 import type { PerformanceReview2026Content, PerformanceReviewRow, PerformanceTrend } from "@/types/sections";
 import type { SectionFormProps } from "./types";
 
-/** Les sept colonnes du modele client, identiques pour les exercices ecoules et l'exercice en cours. */
+/** Les sept colonnes du modele client pour l'exercice en cours. */
 const COLUMNS = [
   "Objectif",
   "Indicateur",
-  "Résultat attendu en décembre",
+  "Résultat attendu",
   "Écart",
-  "Cause",
+  "Cause sous-jacente",
+  "Cause profonde",
+  "Action à entreprendre",
+] as const;
+/** Exercices ecoules : les memes colonnes, le resultat y est celui obtenu et l'action celle deja entreprise. */
+const PAST_COLUMNS = [
+  "Objectif",
+  "Indicateur",
+  "Résultat obtenu",
+  "Écart",
+  "Cause sous-jacente",
   "Cause profonde",
   "Action entreprise",
 ] as const;
@@ -44,9 +54,9 @@ function trendOf(row: PerformanceReviewRow): PerformanceTrend | "" {
 }
 
 /**
- * S01B — bilan des performances, en deux tableaux aux memes sept colonnes que le modele client : les cinq
- * exercices ecoules regroupes dans le premier (un bandeau par exercice), l'exercice en cours seul dans le
- * second, ou chaque indicateur porte sa tendance vers le resultat attendu en decembre. Les lignes sont
+ * S01B — bilan des performances, en deux tableaux : les cinq exercices ecoules regroupes dans le premier
+ * (un bandeau par exercice, le resultat y est celui obtenu), l'exercice en cours seul dans le second,
+ * aux sept colonnes du modele client, ou chaque indicateur porte sa tendance vers le resultat attendu en decembre. Les lignes sont
  * stockees dans une seule liste, distinguees par leur exercice (`year`).
  */
 export function PerformanceReview2026Form({ content, onChange, readOnly }: SectionFormProps<PerformanceReview2026Content>) {
@@ -78,7 +88,7 @@ export function PerformanceReview2026Form({ content, onChange, readOnly }: Secti
           </p>
         </div>
         <Table>
-          <ReviewHeader readOnly={readOnly} />
+          <ReviewHeader columns={PAST_COLUMNS} readOnly={readOnly} />
           <TableBody>
             {pastYears.map((year) => {
               const yearRows = indexed.filter(({ row }) => yearOf(row) === year);
@@ -120,7 +130,7 @@ export function PerformanceReview2026Form({ content, onChange, readOnly }: Secti
           </p>
         </div>
         <Table>
-          <ReviewHeader readOnly={readOnly} />
+          <ReviewHeader columns={COLUMNS} readOnly={readOnly} />
           <TableBody>
             {current.map(({ row, index }) => (
               <ReviewRow
@@ -150,11 +160,11 @@ export function PerformanceReview2026Form({ content, onChange, readOnly }: Secti
   );
 }
 
-function ReviewHeader({ readOnly }: { readOnly: boolean }) {
+function ReviewHeader({ columns, readOnly }: { columns: readonly string[]; readOnly: boolean }) {
   return (
     <TableHeader>
       <TableRow>
-        {COLUMNS.map((column) => (
+        {columns.map((column) => (
           <TableHead key={column} className={cn("min-w-[170px]", column === "Écart" && "min-w-[200px]")}>
             {column}
           </TableHead>

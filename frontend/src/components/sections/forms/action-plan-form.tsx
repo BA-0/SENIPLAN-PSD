@@ -75,12 +75,12 @@ export function ActionPlanForm({ content, onChange, readOnly }: SectionFormProps
             <TableHeader>
               <TableRow>
                 <TableHead className="min-w-[180px]">Extrants</TableHead>
-                <TableHead className="min-w-[200px]">Activités</TableHead>
+                <TableHead className="min-w-[200px] whitespace-normal">Activités pour atteindre les résultats</TableHead>
                 <TableHead className="min-w-[180px]">Objectif</TableHead>
                 <TableHead className="min-w-[120px] text-right">Budget (FCFA)</TableHead>
                 {PLAN_YEARS.map((y) => (
                   <TableHead key={y} className="text-center">
-                    Prévu {y}
+                    {y}
                   </TableHead>
                 ))}
                 <TableHead className="min-w-[140px]">Responsables</TableHead>
@@ -94,7 +94,7 @@ export function ActionPlanForm({ content, onChange, readOnly }: SectionFormProps
                     <TableCell colSpan={colCount} className="py-2">
                       <div className="flex flex-wrap items-center gap-3">
                         <span className="shrink-0 text-primary-700 dark:text-primary-300">
-                          {effect.effectCode} — {effect.osCode}
+                          {effect.effectCode.replace(/^EFFET\s*/,"EFFET ")} — {effect.osCode} :
                         </span>
                         <div className="min-w-[260px] flex-1 text-sm font-normal normal-case tracking-normal">
                           <EditableCell

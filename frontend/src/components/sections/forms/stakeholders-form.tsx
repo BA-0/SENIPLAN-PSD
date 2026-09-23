@@ -5,6 +5,7 @@ import { EditableCell } from "@/components/data-table/editable-cell";
 import { AddRowButton, RemoveRowButton } from "@/components/data-table/row-actions";
 import { NativeSelect } from "@/components/ui/native-select";
 import { LevelSelect } from "./level-select";
+import { SelectWithOther } from "./select-with-other";
 import type { SectionFormProps } from "./types";
 import {
   STAKEHOLDER_CATEGORIES,
@@ -45,13 +46,13 @@ export function StakeholdersForm({ content, onChange, readOnly }: SectionFormPro
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[150px]">Catégorie (PP)</TableHead>
+            <TableHead className="min-w-[150px]">Acteur (PP)</TableHead>
             <TableHead className="min-w-[110px]">Portée</TableHead>
             <TableHead className="min-w-[180px]">Rôles / Responsabilités</TableHead>
             <TableHead className="min-w-[200px]">Attentes / Intérêt / Priorités</TableHead>
             <TableHead className="min-w-[200px]">Stratégie d&apos;adaptation</TableHead>
-            <TableHead className="min-w-[110px]">Importance</TableHead>
-            <TableHead className="min-w-[110px]">Influence</TableHead>
+            <TableHead className="min-w-[110px]">Niveau importance</TableHead>
+            <TableHead className="min-w-[110px]">Niveau influence</TableHead>
             <TableHead className="min-w-[160px]">Actions</TableHead>
             {!readOnly && <TableHead className="w-10" />}
           </TableRow>
@@ -60,19 +61,16 @@ export function StakeholdersForm({ content, onChange, readOnly }: SectionFormPro
           {content.rows.map((row, index) => (
             <TableRow key={index}>
               <TableCell>
-                <NativeSelect
-                  cellStyle
+                <SelectWithOther
                   value={row.category}
-                  disabled={readOnly}
-                  onChange={(e) => updateRow(index, { category: e.target.value as StakeholderRow["category"] })}
-                >
-                  <option value="">—</option>
-                  {STAKEHOLDER_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {STAKEHOLDER_CATEGORY_LABELS[c]}
-                    </option>
-                  ))}
-                </NativeSelect>
+                  onChange={(v) => updateRow(index, { category: v })}
+                  options={STAKEHOLDER_CATEGORIES}
+                  labels={STAKEHOLDER_CATEGORY_LABELS}
+                  otherValue="AUTRE"
+                  customValues={content.rows.map((r) => r.category)}
+                  readOnly={readOnly}
+                  placeholder="Préciser la partie prenante…"
+                />
               </TableCell>
               <TableCell>
                 <NativeSelect

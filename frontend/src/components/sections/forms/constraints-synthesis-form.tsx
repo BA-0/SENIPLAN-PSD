@@ -34,7 +34,7 @@ export function ConstraintsSynthesisForm({ content, onChange, readOnly }: Sectio
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[200px]">Domaine d&apos;activités</TableHead>
+            <TableHead className="min-w-[200px]">Domaines d&apos;activités</TableHead>
             <TableHead className="min-w-[280px]">Contraintes prioritaires</TableHead>
             <TableHead className="min-w-[280px]">Défis et enjeux prioritaires</TableHead>
             {!readOnly && <TableHead className="w-10" />}

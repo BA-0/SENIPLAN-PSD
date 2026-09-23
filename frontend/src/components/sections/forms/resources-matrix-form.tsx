@@ -7,6 +7,8 @@ import { RESOURCE_KEYS, RESOURCE_LABELS } from "@/types/sections";
 import type { ResourceRow, ResourcesMatrixContent } from "@/types/sections";
 import type { SectionFormProps } from "./types";
 
+const OTHER_RESOURCE = "AUTRES_ACHATS_EXPLOITATION_TECHNIQUE_RH";
+
 export function ResourcesMatrixForm({ content, onChange, readOnly }: SectionFormProps<ResourcesMatrixContent>) {
   function updateRow(index: number, patch: Partial<ResourceRow>) {
     onChange((prev) => ({
@@ -14,6 +16,8 @@ export function ResourcesMatrixForm({ content, onChange, readOnly }: SectionForm
     }));
   }
   function addRow(resourceKey: string) {
+    const labelOf = (k: string) => (RESOURCE_LABELS[k] ?? k).toLowerCase();
+    if (content.rows.some((r) => labelOf(r.resourceKey) === labelOf(resourceKey))) return;
     onChange((prev) => ({
       rows: insertInModelOrder(
         prev.rows,
@@ -32,7 +36,7 @@ export function ResourcesMatrixForm({ content, onChange, readOnly }: SectionForm
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[280px]">Ressource</TableHead>
+            <TableHead className="min-w-[280px]">Ressources</TableHead>
             <TableHead className="min-w-[220px]">Forces / Acquis</TableHead>
             <TableHead className="min-w-[220px]">Faiblesses</TableHead>
             <TableHead className="min-w-[220px]">Défis à relever</TableHead>
@@ -98,6 +102,7 @@ export function ResourcesMatrixForm({ content, onChange, readOnly }: SectionForm
           onAdd={addRow}
           label="Ajouter la ressource"
           placeholder="Choisir une ressource…"
+          other={{ value: OTHER_RESOURCE, label: RESOURCE_LABELS[OTHER_RESOURCE], placeholder: "Préciser la ressource…" }}
         />
       )}
     </div>

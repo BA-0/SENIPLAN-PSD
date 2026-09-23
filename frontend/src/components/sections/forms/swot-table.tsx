@@ -51,14 +51,14 @@ export function SwotTable({ swot, onChange, readOnly }: SwotTableProps) {
     <Table>
       <TableHeader>
         <TableRow band>
-          <TableCell colSpan={2}>Analyse interne</TableCell>
+          <TableCell colSpan={2}>Interne</TableCell>
         </TableRow>
         <TableRow>{INTERNAL.map(head)}</TableRow>
       </TableHeader>
       <TableBody>
         <TableRow className="hover:bg-transparent">{INTERNAL.map(cell)}</TableRow>
         <TableRow band>
-          <TableCell colSpan={2}>Analyse externe</TableCell>
+          <TableCell colSpan={2}>Externe</TableCell>
         </TableRow>
         <TableRow className="bg-muted/60 hover:bg-muted/60">{EXTERNAL.map(head)}</TableRow>
         <TableRow className="hover:bg-transparent">{EXTERNAL.map(cell)}</TableRow>

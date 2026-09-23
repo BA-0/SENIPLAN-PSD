@@ -33,21 +33,21 @@ final class SectionLabels {
     static {
         TOWS_ACTION_LABELS.put("maximizeStrengths", "Comment maximiser les forces ?");
         TOWS_ACTION_LABELS.put("minimizeWeaknesses", "Comment minimiser les faiblesses ?");
-        TOWS_ACTION_LABELS.put("strengthsControlWeaknesses", "En quoi les forces permettent-elles de maîtriser les faiblesses ?");
+        TOWS_ACTION_LABELS.put("strengthsControlWeaknesses", "Examiner en quoi les forces permettent de maîtriser les faiblesses");
         TOWS_ACTION_LABELS.put("maximizeOpportunities", "Comment maximiser les opportunités ?");
         TOWS_ACTION_LABELS.put("strengthsForOpportunities", "Comment utiliser les forces pour tirer parti des opportunités ?");
         TOWS_ACTION_LABELS.put("correctWeaknessesViaOpportunities", "Comment corriger les faiblesses en tirant parti des opportunités ?");
         TOWS_ACTION_LABELS.put("minimizeThreats", "Comment minimiser les menaces ?");
         TOWS_ACTION_LABELS.put("strengthsReduceThreats", "Comment utiliser les forces pour réduire les menaces ?");
         TOWS_ACTION_LABELS.put("minimizeWeaknessesAndThreats", "Comment minimiser les faiblesses et les menaces ?");
-        TOWS_ACTION_LABELS.put("opportunitiesMinimizeThreats", "En quoi les opportunités permettent-elles de minimiser les menaces ?");
+        TOWS_ACTION_LABELS.put("opportunitiesMinimizeThreats", "Examiner en quoi les opportunités permettent de minimiser les menaces");
     }
 
     static final Map<String, String> RESOURCE_LABELS = Map.ofEntries(
             Map.entry("CADRE_JURIDIQUE_INSTITUTIONNEL", "Cadre juridique, institutionnel et organisationnel"),
             Map.entry("LEADERSHIP_PILOTAGE_GOUVERNANCE", "Leadership, Pilotage, Management et Gouvernance"),
             Map.entry("POSITION_CONCURRENTIELLE", "Position concurrentielle"),
-            Map.entry("CAPACITES_INSTITUTIONNELLES", "Capacités institutionnelles (ressources matérielles, financières, humaines et immatérielles)"),
+            Map.entry("CAPACITES_INSTITUTIONNELLES", "Capacités institutionnelles (Ressources matérielles, financières, humaines et immatérielles)"),
             Map.entry("BUDGET_RESSOURCES_FINANCIERES", "Budget ou ressources financières"),
             Map.entry("COMPTABILITE_GESTION_FINANCIERE", "Comptabilité et gestion financière"),
             Map.entry("SYSTEME_CONTROLE", "Système de contrôle"),
@@ -57,7 +57,7 @@ final class SectionLabels {
             Map.entry("AUTRES_ACHATS_EXPLOITATION_TECHNIQUE_RH", "Autres (Achats, Exploitation commerciale, Technique et armement, RH)"),
             Map.entry("COMPETENCES", "Compétences"),
             Map.entry("PRODUITS_SERVICES", "Produits et services à délivrer (portefeuille, qualité, production, marque, tarification, force de vente, compétitivité…)"),
-            Map.entry("CLIENTELE_BENEFICIAIRES", "Clientèle ou bénéficiaires des prestations (taille, fidélité…)"),
+            Map.entry("CLIENTELE_BENEFICIAIRES", "Clientèle ou bénéficiaires des prestations (taille, fidélité, …)"),
             Map.entry("RECHERCHE_DEVELOPPEMENT", "Recherche et développement")
     );
 
@@ -71,7 +71,7 @@ final class SectionLabels {
     );
 
     static final Map<String, String> CAUSAL_LABELS = Map.of(
-            "MANIFESTATION", "Manifestation des problèmes (effet négatif, besoins)",
+            "MANIFESTATION", "Manifestation des problèmes (l'effet négatif, besoins)",
             "CAUSES_IMMEDIATES", "Causes immédiates",
             "CAUSES_SOUS_JACENTES", "Causes sous-jacentes",
             "CAUSES_PROFONDES", "Causes profondes",
@@ -135,6 +135,28 @@ final class SectionLabels {
 
     static String logframe(String key) {
         return LOGFRAME_LABELS.getOrDefault(key, key);
+    }
+
+    /** Niveau d'importance ou d'influence d'une partie prenante (FORT, MOYEN, FAIBLE). */
+    static String level(String key) {
+        return switch (key == null ? "" : key.toUpperCase(java.util.Locale.ROOT)) {
+            case "FORT" -> "Fort";
+            case "MOYEN" -> "Moyen";
+            case "FAIBLE" -> "Faible";
+            default -> "—";
+        };
+    }
+
+    /** Bandeaux du cadre de mesure de rendement (S12), tels que les nomme le canevas. */
+    static String performanceLevel(String key) {
+        return switch (key == null ? "" : key) {
+            case "IMPACT" -> "IMPACT (Finalité) — horizon " + YEARS[YEARS.length - 1];
+            case "EFFET" -> "EFFET (Objectif spécifique)";
+            case "EFFETS_IMMEDIATS" -> "EFFETS IMMÉDIATS (Résultats immédiats par OS)";
+            case "EXTRANTS" -> "EXTRANTS (Produits)";
+            case "RESSOURCES_INTRANTS" -> "RESSOURCES / INTRANTS (Moyens)";
+            default -> logframe(key);
+        };
     }
 
     static String financing(String key) {

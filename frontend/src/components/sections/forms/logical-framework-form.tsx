@@ -54,9 +54,9 @@ export function LogicalFrameworkForm({ content, onChange, readOnly }: SectionFor
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[180px] whitespace-normal">Niveau</TableHead>
-                <TableHead className="min-w-[220px] whitespace-normal">Logique d&apos;intervention</TableHead>
-                <TableHead className="min-w-[200px]">IOV</TableHead>
+                <TableHead className="min-w-[180px] whitespace-normal">Logique d&apos;intervention</TableHead>
+                <TableHead className="min-w-[220px] whitespace-normal">Énoncé</TableHead>
+                <TableHead className="min-w-[200px] whitespace-normal">Indicateurs objectivement vérifiables (IOV)</TableHead>
                 <TableHead className="min-w-[200px] whitespace-normal">Moyens et sources de vérification</TableHead>
                 <TableHead className="min-w-[200px] whitespace-normal">Conditions critiques / Hypothèses</TableHead>
                 {!readOnly && <TableHead className="w-10" />}

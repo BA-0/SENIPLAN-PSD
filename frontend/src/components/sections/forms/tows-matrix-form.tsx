@@ -51,43 +51,54 @@ export function TowsMatrixForm({ content, onChange, readOnly }: SectionFormProps
       </section>
 
       <section className="space-y-2">
-        <h3>Matrice de confrontation</h3>
+        <h3>Mise en relation du diagnostic stratégique</h3>
+        {/* Grille du canevas : l'approche interne coiffe les colonnes, l'approche externe les lignes. */}
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[160px] whitespace-normal">Approche externe</TableHead>
-              <TableHead className="min-w-[220px] whitespace-normal">
-                Comment maximiser les opportunités / minimiser les menaces ?
+              <TableHead colSpan={3} rowSpan={2} className="bg-muted" aria-hidden />
+              <TableHead colSpan={3} className="text-center">
+                Approche interne
               </TableHead>
-              <TableHead className="min-w-[220px] whitespace-normal">Forces : comment les maximiser et s&apos;en servir ?</TableHead>
-              <TableHead className="min-w-[220px] whitespace-normal">Faiblesses : comment les minimiser et les corriger ?</TableHead>
-              <TableHead className="min-w-[220px] whitespace-normal">En quoi les forces permettent de maîtriser les faiblesses</TableHead>
+            </TableRow>
+            <TableRow>
+              <TableHead className="min-w-[220px] whitespace-normal">Liste des forces</TableHead>
+              <TableHead className="min-w-[220px] whitespace-normal">Liste des faiblesses</TableHead>
+              <TableHead className="min-w-[220px] whitespace-normal">
+                {TOWS_ACTION_LABELS.strengthsControlWeaknesses}
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow className="hover:bg-transparent">
-              <TableCell label>Approche interne</TableCell>
-              {none}
+              <TableCell colSpan={3} className="bg-muted/40" aria-hidden />
               {answer("maximizeStrengths")}
               {answer("minimizeWeaknesses")}
               {answer("strengthsControlWeaknesses")}
             </TableRow>
             <TableRow className="hover:bg-transparent">
-              <TableCell label>Opportunités</TableCell>
+              <TableCell
+                label
+                rowSpan={3}
+                className="w-10 text-center align-middle [writing-mode:vertical-rl] rotate-180 text-[12px] font-semibold uppercase tracking-wide"
+              >
+                Approche externe
+              </TableCell>
+              <TableCell label>Liste des opportunités</TableCell>
               {answer("maximizeOpportunities")}
               {answer("strengthsForOpportunities")}
               {answer("correctWeaknessesViaOpportunities")}
               {none}
             </TableRow>
             <TableRow className="hover:bg-transparent">
-              <TableCell label>Menaces</TableCell>
+              <TableCell label>Liste des menaces</TableCell>
               {answer("minimizeThreats")}
               {answer("strengthsReduceThreats")}
               {answer("minimizeWeaknessesAndThreats")}
               {none}
             </TableRow>
             <TableRow className="hover:bg-transparent">
-              <TableCell label>En quoi les opportunités permettent de minimiser les menaces</TableCell>
+              <TableCell label>{TOWS_ACTION_LABELS.opportunitiesMinimizeThreats}</TableCell>
               {answer("opportunitiesMinimizeThreats")}
               {none}
               {none}

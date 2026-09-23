@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Inbox, RotateCcw, Send, Search as SearchIcon, ShieldCheck } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Inbox, RotateCcw, Send, Search as SearchIcon, ShieldCheck, Undo2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -25,9 +25,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { KpiCard } from "@/components/kpi-card";
-import { dgApproveAllPending, dgApproveSelection, getAdminSubmissions } from "@/lib/api/admin";
+import { dgApproveAllPending, dgApproveSelection, getAdminSubmissions, reviewSection } from "@/lib/api/admin";
 import { extractErrorMessage } from "@/lib/api-client";
-import { canApproveAsDg } from "@/lib/roles";
+import { canApproveAsDg, canReview } from "@/lib/roles";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { formatDateTime } from "@/lib/utils";
 import { groupSectionsByPart } from "@/lib/section-groups";
@@ -84,6 +84,7 @@ export default function AdminSubmissionsPage() {
 
   const { user } = useCurrentUser();
   const peutApprouver = canApproveAsDg(user?.role);
+  const peutRedonner = canReview(user?.role);
   const queryClient = useQueryClient();
 
   /**
@@ -149,6 +150,19 @@ export default function AdminSubmissionsPage() {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
     },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'approbation")),
+  });
+
+  /**
+   * Redonner la main au groupe depuis la liste : la section soumise (ou validee) repasse « En cours »
+   * et la direction peut de nouveau la modifier, sans que l'admin ait a ouvrir la section.
+   */
+  const redonnerLaMain = useMutation({
+    mutationFn: (s: SubmissionSummaryDto) => reviewSection(s.groupId, s.sectionCode, "RETURN_TO_GROUP"),
+    onSuccess: (_result, s) => {
+      toast.success(`La main a été redonnée à ${s.groupName} sur « ${s.sectionTitle} »`);
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec : la main n'a pas pu être redonnée")),
   });
 
   const groups = useMemo(() => {
@@ -599,6 +613,9 @@ export default function AdminSubmissionsPage() {
                       peutApprouver={peutApprouver}
                       approbationEnCours={approuverLigne.isPending}
                       onApprouver={() => approuverLigne.mutate(s)}
+                      peutRedonner={peutRedonner}
+                      redonnerEnCours={redonnerLaMain.isPending}
+                      onRedonner={() => redonnerLaMain.mutate(s)}
                     />
                   ))}
                 </TableBody>
@@ -675,6 +692,9 @@ function SubmissionRow({
   peutApprouver,
   approbationEnCours,
   onApprouver,
+  peutRedonner,
+  redonnerEnCours,
+  onRedonner,
 }: {
   submission: SubmissionSummaryDto;
   selectable: boolean;
@@ -683,6 +703,9 @@ function SubmissionRow({
   peutApprouver: boolean;
   approbationEnCours: boolean;
   onApprouver: () => void;
+  peutRedonner: boolean;
+  redonnerEnCours: boolean;
+  onRedonner: () => void;
 }) {
   // Seule une section validee et pas encore approuvee peut etre cochee : le reste n'attend
   // rien du DG, et la case n'aurait aucun effet a la confirmation.
@@ -749,6 +772,29 @@ function SubmissionRow({
             >
               <ShieldCheck className="h-3.5 w-3.5" /> Approuver
             </Button>
+          )}
+          {peutRedonner && (s.status === "SUBMITTED" || s.status === "VALIDATED") && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="secondary" size="sm" disabled={redonnerEnCours} title="Redonner la main au groupe">
+                  <Undo2 className="h-3.5 w-3.5" /> Redonner la main
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Redonner la main à {s.groupName} ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    La section « {s.sectionTitle} » repassera « En cours » : la direction pourra de nouveau la modifier,
+                    puis la soumettre à nouveau.
+                    {s.status === "VALIDATED" && " Sa validation, et son éventuelle approbation par la Direction Générale, seront annulées."}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction onClick={onRedonner}>Redonner la main</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           <Button variant="ghost" size="icon" asChild title="Voir la section">
             <Link href={`/admin/groups/${s.groupId}/sections/${s.sectionCode}`}>

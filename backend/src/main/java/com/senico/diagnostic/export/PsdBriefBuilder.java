@@ -419,6 +419,10 @@ class PsdBriefBuilder {
         if (!actor.isEmpty()) {
             return actor;
         }
+        String custom = customCategoryOf(row);
+        if (!custom.isEmpty()) {
+            return custom;
+        }
         String roles = JsonUtil.text(row, "roles").trim();
         int colon = roles.indexOf(" : ");
         return colon > 0 ? roles.substring(0, colon).trim() : roles;
@@ -431,7 +435,7 @@ class PsdBriefBuilder {
      */
     static String rolesOf(JsonNode row) {
         String roles = JsonUtil.text(row, "roles").trim();
-        if (!JsonUtil.text(row, "actor").isBlank()) {
+        if (!JsonUtil.text(row, "actor").isBlank() || !customCategoryOf(row).isEmpty()) {
             return roles;
         }
         int colon = roles.indexOf(" : ");
@@ -446,7 +450,13 @@ class PsdBriefBuilder {
     static String stakeholderLabel(JsonNode row) {
         String category = SectionLabels.stakeholderCategory(JsonUtil.text(row, "category"));
         String actor = actorOf(row);
-        return actor.isEmpty() ? category : category + " — " + actor;
+        return actor.isEmpty() || actor.equals(category) ? category : category + " — " + actor;
+    }
+
+    /** Partie prenante saisie librement apres le choix « Autre » : la categorie porte alors son nom. */
+    private static String customCategoryOf(JsonNode row) {
+        String category = JsonUtil.text(row, "category").trim();
+        return category.isEmpty() || SectionLabels.STAKEHOLDER_CATEGORY_LABELS.containsKey(category) ? "" : category;
     }
 
     // ---- V. Diagnostic strategique ----
@@ -514,7 +524,17 @@ class PsdBriefBuilder {
      */
     private List<ExportBlock> resources(Context ctx) {
         List<ExportBlock.TableRow> rows = new ArrayList<>();
-        for (String resource : DefaultSectionContentFactory.RESOURCE_KEYS) {
+        // Les ressources saisies librement (« Autres », precise) suivent les lignes du canevas.
+        Set<String> resourceKeys = new LinkedHashSet<>(List.of(DefaultSectionContentFactory.RESOURCE_KEYS));
+        for (WorkGroup group : ctx.groups) {
+            for (JsonNode row : JsonUtil.arr(ctx.content(group, "S02"), "rows")) {
+                String key = JsonUtil.text(row, "resourceKey").trim();
+                if (!key.isEmpty()) {
+                    resourceKeys.add(key);
+                }
+            }
+        }
+        for (String resource : resourceKeys) {
             Contributions strengths = new Contributions(ctx.groups);
             Contributions weaknesses = new Contributions(ctx.groups);
             Contributions challenges = new Contributions(ctx.groups);
@@ -618,22 +638,7 @@ class PsdBriefBuilder {
             JsonNode content = ctx.content(group, "S05");
             answers.forEach((field, items) -> items.addLines(group, JsonUtil.text(content, field)));
         }
-        ExportBlock.Cell none = new ExportBlock.Cell("", ExportBlock.Background.GREY);
-        List<ExportBlock.TableRow> rows = List.of(
-                new ExportBlock.TableRow(List.of(rowLabel("Approche interne"), none,
-                        attributedCell(answers.get("maximizeStrengths")), attributedCell(answers.get("minimizeWeaknesses")),
-                        attributedCell(answers.get("strengthsControlWeaknesses")))),
-                new ExportBlock.TableRow(List.of(rowLabel("Opportunités"), attributedCell(answers.get("maximizeOpportunities")),
-                        attributedCell(answers.get("strengthsForOpportunities")),
-                        attributedCell(answers.get("correctWeaknessesViaOpportunities")), none)),
-                new ExportBlock.TableRow(List.of(rowLabel("Menaces"), attributedCell(answers.get("minimizeThreats")),
-                        attributedCell(answers.get("strengthsReduceThreats")),
-                        attributedCell(answers.get("minimizeWeaknessesAndThreats")), none)),
-                new ExportBlock.TableRow(List.of(rowLabel("En quoi les opportunités permettent de minimiser les menaces"),
-                        attributedCell(answers.get("opportunitiesMinimizeThreats")), none, none, none)));
-        return List.of(new ExportBlock.Table(List.of("Approche externe", "Comment maximiser les opportunités / minimiser les menaces ?",
-                "Forces : comment les maximiser et s'en servir ?", "Faiblesses : comment les minimiser et les corriger ?",
-                "En quoi les forces permettent de maîtriser les faiblesses"), rows, List.of(15, 20, 22, 22, 21)));
+        return List.of(TowsMatrixTable.build(field -> attributedCell(answers.get(field))));
     }
 
     /**
@@ -731,8 +736,9 @@ class PsdBriefBuilder {
         List<Risk> risks = ctx.risks(false);
         int absent = ctx.risks(true).size() - risks.size();
         List<Risk> high = risks.stream().filter(risk -> risk.criticality() >= 6).toList();
-        List<String> headers = List.of("Catégorie", "Risque", "Impact sur les activités", "N × Q", "Criticité", "Actions d'atténuation");
-        List<Integer> widths = List.of(15, 23, 17, 8, 10, 27);
+        List<String> headers = List.of("Catégorie", "Risque", "Impact sur les activités", "N", "Q", "N × Q", "Criticité",
+                "Actions d'atténuation");
+        List<Integer> widths = List.of(14, 21, 16, 5, 5, 7, 10, 22);
         List<ExportBlock> b = new ArrayList<>();
         b.add(new ExportBlock.Heading("Risques de criticité élevée (N × Q de 6 à 9)", 3));
         List<ExportBlock.TableRow> rows = new ArrayList<>();
@@ -769,7 +775,9 @@ class PsdBriefBuilder {
                 new ExportBlock.Cell(risk.category()),
                 single(risk.details(), risk.group(), ctx),
                 impact,
-                center(risk.level() + " × " + risk.quotation()),
+                center(String.valueOf(risk.level())),
+                center(String.valueOf(risk.quotation())),
+                center(String.valueOf(risk.criticality())),
                 criticality,
                 new ExportBlock.Cell(risk.mitigation())));
     }
@@ -1170,7 +1178,7 @@ class PsdBriefBuilder {
                 attributedCell(cells.get(2)), attributedCell(cells.get(3))))));
         tables.add(new ExportBlock.Table(List.of("Logique d'intervention", "Énoncé",
                 "Indicateurs objectivement vérifiables (IOV)", "Moyens et sources de vérification",
-                "Conditions critiques / hypothèses"), rows, List.of(17, 24, 21, 19, 19)));
+                "Conditions critiques / Hypothèses"), rows, List.of(17, 24, 21, 19, 19)));
         return tables;
     }
 
@@ -1421,7 +1429,7 @@ class PsdBriefBuilder {
         if (omitted(ctx, axis, empty)) {
             return List.of();
         }
-        List<String> headers = new ArrayList<>(List.of("Résultat / extrant", "Indicateur (IOV)", "Réf. " + REVIEW_YEAR));
+        List<String> headers = new ArrayList<>(List.of("Résultat / Extrant", "Indicateur (IOV)", "Réf. " + REVIEW_YEAR));
         headers.addAll(List.of(YEARS));
         headers.add("Responsables");
         List<Integer> widths = new ArrayList<>(List.of(21, 21, 10));
@@ -1436,14 +1444,7 @@ class PsdBriefBuilder {
     }
 
     private static String performanceBand(String level) {
-        return switch (level) {
-            case "IMPACT" -> "IMPACT (Finalité) — horizon " + LAST_YEAR;
-            case "EFFET" -> "EFFET (Objectif spécifique)";
-            case "EFFETS_IMMEDIATS" -> "EFFETS IMMÉDIATS (Résultats immédiats par OS)";
-            case "EXTRANTS" -> "EXTRANTS (Produits)";
-            case "RESSOURCES_INTRANTS" -> "RESSOURCES / INTRANTS (Moyens)";
-            default -> SectionLabels.logframe(level);
-        };
+        return SectionLabels.performanceLevel(level);
     }
 
     private static ExportBlock.TableRow effectBand(int os, PlanOrientation orientation) {
@@ -2003,7 +2004,7 @@ class PsdBriefBuilder {
                         new ExportBlock.Cell(JsonUtil.dash(JsonUtil.text(row, "actions"))))));
             }
         }
-        List<String> headers = List.of("Acteur (PP)", "Rôles / responsabilités", "Attentes / intérêt / priorités",
+        List<String> headers = List.of("Acteur (PP)", "Rôles / Responsabilités", "Attentes / Intérêt / Priorités",
                 "Stratégie d'adaptation", "Niveau importance", "Niveau influence", "Actions");
         List<Integer> widths = List.of(14, 16, 16, 16, 11, 11, 16);
         return List.of(rows.isEmpty() ? emptyTable(headers, widths) : new ExportBlock.Table(headers, rows, widths));

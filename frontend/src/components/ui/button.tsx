@@ -15,7 +15,10 @@ const buttonVariants = cva(
           "bg-card border border-border text-foreground hover:bg-muted hover:border-slate-300 dark:hover:border-white/20 active:bg-muted",
         ghost: "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted",
         destructive: "bg-accent-500 text-white hover:bg-accent-600 active:bg-accent-700",
-        destructiveGhost: "bg-transparent text-accent-500 hover:bg-accent-50 active:bg-accent-100",
+        destructiveGhost:
+          "bg-transparent text-accent-500 hover:bg-accent-50 active:bg-accent-100 dark:text-red-400 dark:hover:bg-accent-500/15 dark:active:bg-accent-500/25",
+        destructiveOutline:
+          "bg-accent-50 border border-accent-200 text-accent-600 hover:bg-accent-500 hover:border-accent-500 hover:text-white active:bg-accent-600 focus-visible:ring-accent-500/40 dark:bg-accent-500/10 dark:border-accent-500/30 dark:text-red-400 dark:hover:bg-accent-500 dark:hover:text-white",
         link: "bg-transparent text-primary-500 hover:underline hover:text-primary-600 p-0 h-auto",
         submit:
           "bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700 shadow-md shadow-primary-500/20",

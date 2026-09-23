@@ -22,6 +22,8 @@ public final class JsonContentRenderer {
     private static final Map<String, String> KNOWN_LABELS = Map.ofEntries(
             Map.entry("rows", "Lignes"),
             Map.entry("axes", "Axes"),
+            // Colonne « Items » du canevas PESTEL (S03), stockee sous la cle « axis ».
+            Map.entry("axis", "Items"),
             Map.entry("effects", "Effets"),
             Map.entry("groups", "Groupes"),
             Map.entry("items", "Éléments"),

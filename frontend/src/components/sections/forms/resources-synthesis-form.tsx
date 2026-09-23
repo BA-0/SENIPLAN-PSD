@@ -73,7 +73,7 @@ export function ResourcesSynthesisForm({ content, onChange, readOnly }: SectionF
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[220px]">Ressource</TableHead>
+              <TableHead className="min-w-[220px]">Ressources</TableHead>
               <TableHead className="min-w-[180px]">Forces / Acquis</TableHead>
               <TableHead className="min-w-[180px]">Faiblesses</TableHead>
               <TableHead className="min-w-[180px]">Défis à relever</TableHead>

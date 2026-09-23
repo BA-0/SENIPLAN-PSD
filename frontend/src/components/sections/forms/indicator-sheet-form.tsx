@@ -31,9 +31,9 @@ export function IndicatorSheetForm({ content, onChange, readOnly }: SectionFormP
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="min-w-[180px]">Intitulé indicateur</TableHead>
-            <TableHead className="min-w-[180px]">Mode de calcul</TableHead>
-            <TableHead className="min-w-[120px]">Périodicité</TableHead>
+            <TableHead className="min-w-[180px]">Intitulés indicateurs</TableHead>
+            <TableHead className="min-w-[180px]">Modes de calcul</TableHead>
+            <TableHead className="min-w-[120px]">Périodicités</TableHead>
             <TableHead className="min-w-[180px]">Sources et moyens de collecte</TableHead>
             <TableHead className="min-w-[180px]">Sources de vérification</TableHead>
             <TableHead className="min-w-[160px]">Structures responsables</TableHead>

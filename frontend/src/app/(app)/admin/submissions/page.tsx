@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Inbox, RotateCcw, Send, Search as SearchIcon, ShieldCheck, Undo2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, CheckCircle2, Eye, Inbox, RotateCcw, Send, Search as SearchIcon, ShieldCheck, Undo2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -25,12 +25,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/status-badge";
 import { KpiCard } from "@/components/kpi-card";
-import { dgApproveAllPending, dgApproveSelection, getAdminSubmissions, reviewSection } from "@/lib/api/admin";
+import { dgApproveSelection, getAdminSubmissions, reviewSection } from "@/lib/api/admin";
 import { extractErrorMessage } from "@/lib/api-client";
 import { canApproveAsDg, canReview } from "@/lib/roles";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { formatDateTime } from "@/lib/utils";
 import { groupSectionsByPart } from "@/lib/section-groups";
+// Seul cas ou l'approbation en masse a un effet : l'interface ne propose de cocher que celles-la.
+import { attendLaDg } from "@/lib/dg-queue";
 import type { SubmissionSummaryDto } from "@/types/api";
 import type { SectionStatus } from "@/types/common";
 
@@ -52,15 +54,6 @@ type DgFilter = "" | "PENDING" | "APPROVED";
 
 const PAGE_SIZE = 25;
 
-/**
- * Une soumission qui attend l'arbitrage du DG : validee par le comite de pilotage, pas encore
- * approuvee. C'est le seul cas ou l'approbation en masse a un effet — le serveur ignore le
- * reste, l'interface ne propose donc de cocher que celles-la.
- */
-function attendLaDg(s: SubmissionSummaryDto): boolean {
-  return s.status === "VALIDATED" && !s.dgApprovedAt;
-}
-
 /** Identifiant de ligne : une section n'existe qu'une fois par direction. */
 function cleDe(s: SubmissionSummaryDto): string {
   return `${s.groupId}::${s.sectionCode}`;
@@ -73,7 +66,8 @@ export default function AdminSubmissionsPage() {
   const [statusFilter, setStatusFilter] = useState<SectionStatus | "">(initialStatus ?? "");
   const [groupFilter, setGroupFilter] = useState<number | "">("");
   const [sectionFilter, setSectionFilter] = useState<string>("");
-  const [dgFilter, setDgFilter] = useState<DgFilter>("");
+  // Le menu « À valider » du DG ouvre la liste deja filtree sur ce qui l'attend.
+  const [dgFilter, setDgFilter] = useState<DgFilter>(searchParams.get("dg") === "PENDING" ? "PENDING" : "");
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -101,31 +95,23 @@ export default function AdminSubmissionsPage() {
     refetchInterval: 15_000,
   });
 
-  /**
-   * Approbation en masse. Sans filtre, on passe par la route « tout ce qui attend » : le DG
-   * n'a alors rien a designer, et le serveur travaille sur son propre etat plutot que sur une
-   * liste vieille de quelques secondes. Des qu'un filtre restreint la liste, on envoie au
-   * contraire les lignes exactes, pour ne jamais approuver ce que l'ecran ne montrait pas.
-   */
+  /** Approbation en masse des lignes cochees : on envoie les lignes exactes, jamais ce que l'ecran ne montrait pas. */
   const approuverMutation = useMutation({
-    mutationFn: (cibles: SubmissionSummaryDto[] | "TOUT") =>
-      cibles === "TOUT"
-        ? dgApproveAllPending()
-        : dgApproveSelection(cibles.map((s) => ({ groupId: s.groupId, sectionCode: s.sectionCode }))),
+    mutationFn: (cibles: SubmissionSummaryDto[]) =>
+      dgApproveSelection(cibles.map((s) => ({ groupId: s.groupId, sectionCode: s.sectionCode }))),
     onMutate: (cibles) => {
-      const touchees = cibles === "TOUT" ? (data ?? []).filter(attendLaDg) : cibles;
       setRecemmentApprouvees((precedent) => {
         const suivant = new Set(precedent);
-        touchees.forEach((s) => suivant.add(cleDe(s)));
+        cibles.forEach((s) => suivant.add(cleDe(s)));
         return suivant;
       });
     },
     onSuccess: (result) => {
       if (result.approvedCount === 0) {
-        toast.info("Aucune section n'attendait l'approbation de la Direction Générale");
+        toast.info("Aucune section n'attendait votre validation");
       } else {
         toast.success(
-          `${result.approvedCount} section(s) approuvée(s) — elles entrent dans les documents consolidés`
+          `${result.approvedCount} section(s) validée(s) — elles entrent dans la Note de synthèse et les documents consolidés`
         );
       }
       setSelection(new Set());
@@ -146,7 +132,7 @@ export default function AdminSubmissionsPage() {
       setRecemmentApprouvees((precedent) => new Set(precedent).add(cleDe(s)));
     },
     onSuccess: (_result, s) => {
-      toast.success(`« ${s.sectionTitle} » — ${s.groupName} approuvée`);
+      toast.success(`« ${s.sectionTitle} » — ${s.groupName} validée et intégrée à la Note de synthèse`);
       queryClient.invalidateQueries({ queryKey: ["admin"] });
     },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'approbation")),
@@ -156,6 +142,19 @@ export default function AdminSubmissionsPage() {
    * Redonner la main au groupe depuis la liste : la section soumise (ou validee) repasse « En cours »
    * et la direction peut de nouveau la modifier, sans que l'admin ait a ouvrir la section.
    */
+  /**
+   * Validation d'une ligne soumise, premier niveau : sans ce bouton, valider obligeait a ouvrir
+   * chaque section, et la liste ne montrait aucune action de validation.
+   */
+  const validerLigne = useMutation({
+    mutationFn: (s: SubmissionSummaryDto) => reviewSection(s.groupId, s.sectionCode, "VALIDATE"),
+    onSuccess: (_result, s) => {
+      toast.success(`« ${s.sectionTitle} » — ${s.groupName} validée`);
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec de la validation")),
+  });
+
   const redonnerLaMain = useMutation({
     mutationFn: (s: SubmissionSummaryDto) => reviewSection(s.groupId, s.sectionCode, "RETURN_TO_GROUP"),
     onSuccess: (_result, s) => {
@@ -230,7 +229,7 @@ export default function AdminSubmissionsPage() {
       if (dgFilter === "APPROVED" && !s.dgApprovedAt) return false;
       if (
         dgFilter === "PENDING" &&
-        !(s.status === "VALIDATED" && !s.dgApprovedAt) &&
+        !attendLaDg(s) &&
         !recemmentApprouvees.has(cleDe(s))
       ) {
         return false;
@@ -295,7 +294,7 @@ export default function AdminSubmissionsPage() {
     const source = data ?? [];
     return {
       submitted: source.filter((s) => s.status === "SUBMITTED").length,
-      awaitingDg: source.filter((s) => s.status === "VALIDATED" && !s.dgApprovedAt).length,
+      awaitingDg: source.filter(attendLaDg).length,
       dgApproved: source.filter((s) => s.dgApprovedAt).length,
       revision: source.filter((s) => s.status === "REVISION_REQUESTED").length,
     };
@@ -342,15 +341,15 @@ export default function AdminSubmissionsPage() {
       <div>
         <h1>Soumissions</h1>
         <p className="text-[13px] text-muted-foreground mt-1">
-          Toutes les sections soumises par les groupes, à filtrer et à examiner. Une section validée n&apos;entre dans
-          les documents de consolidation et de synthèse qu&apos;une fois approuvée par la Direction Générale.
+          Toutes les sections soumises par les groupes, à filtrer et à examiner. Une section entre dans la Note de
+          synthèse et les documents consolidés dès que la Direction Générale la valide.
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard icon={Send} label="En attente de validation" value={kpis.submitted} color="blue" />
         <KpiCard icon={Inbox} label="En attente de la DG" value={kpis.awaitingDg} color="amber" />
-        <KpiCard icon={ShieldCheck} label="Approuvées par la DG" value={kpis.dgApproved} color="emerald" />
+        <KpiCard icon={ShieldCheck} label="Validées par la DG" value={kpis.dgApproved} color="emerald" />
         <KpiCard icon={RotateCcw} label="À réviser" value={kpis.revision} color="orange" />
       </div>
 
@@ -468,8 +467,8 @@ export default function AdminSubmissionsPage() {
                 }}
               >
                 <option value="">Toutes</option>
-                <option value="PENDING">Validées, en attente de la DG</option>
-                <option value="APPROVED">Approuvées par la DG</option>
+                <option value="PENDING">En attente de la DG</option>
+                <option value="APPROVED">Validées par la DG</option>
               </NativeSelect>
             </div>
             <div className="space-y-1.5 w-56">
@@ -504,45 +503,22 @@ export default function AdminSubmissionsPage() {
           </CardTitle>
           {peutApprouver ? (
             <div className="flex items-center gap-2">
-              {selectionnees.length > 0 ? (
+              {selectionnees.length > 0 && (
                 <>
-                  <span className="text-[13px] text-muted-foreground">
-                    {selectionnees.length} sélectionnée{selectionnees.length > 1 ? "s" : ""}
-                  </span>
-                  <Button variant="ghost" size="sm" onClick={() => setSelection(new Set())}>
-                    Effacer
-                  </Button>
-                  <ApprobationEnMasse
-                    label={`Approuver la sélection (${selectionnees.length})`}
-                    titre="Approuver les sections sélectionnées ?"
-                    description={`${selectionnees.length} section(s) validée(s) par le comité de pilotage seront approuvées et entreront dans le Document de consolidation, la Note de synthèse et le Plan Stratégique de SENICO. Les autres lignes ne sont pas touchées.`}
-                    enCours={approuverMutation.isPending}
-                    onConfirm={() => approuverMutation.mutate(selectionnees)}
-                  />
-                </>
-              ) : (
+                <span className="text-[13px] text-muted-foreground">
+                  {selectionnees.length} sélectionnée{selectionnees.length > 1 ? "s" : ""}
+                </span>
+                <Button variant="ghost" size="sm" onClick={() => setSelection(new Set())}>
+                  Effacer
+                </Button>
                 <ApprobationEnMasse
-                  label={
-                    enAttenteFiltrees.length === 0
-                      ? "Tout est approuvé"
-                      : hasActiveFilters
-                        ? `Approuver les ${enAttenteFiltrees.length} en attente (filtrées)`
-                        : `Tout approuver (${enAttenteFiltrees.length})`
-                  }
-                  titre={
-                    hasActiveFilters
-                      ? "Approuver les sections filtrées en attente ?"
-                      : "Approuver tout ce qui attend la Direction Générale ?"
-                  }
-                  description={
-                    hasActiveFilters
-                      ? `Les ${enAttenteFiltrees.length} section(s) que ces filtres affichent et qui attendent encore votre arbitrage seront approuvées, toutes directions confondues. Elles entreront dans le Document de consolidation, la Note de synthèse et le Plan Stratégique de SENICO.`
-                      : `Les ${enAttenteFiltrees.length} section(s) validées par le comité de pilotage qui attendent encore votre arbitrage seront approuvées, toutes directions confondues, et entreront dans le Document de consolidation, la Note de synthèse et le Plan Stratégique de SENICO. Les sections non validées, en cours ou renvoyées pour révision ne sont pas touchées.`
-                  }
+                  label={`Valider la sélection (${selectionnees.length})`}
+                  titre="Valider les sections sélectionnées ?"
+                  description={`${selectionnees.length} section(s) seront validées et entreront aussitôt dans le Document de consolidation, la Note de synthèse et le Plan Stratégique de SENICO. Les autres lignes ne sont pas touchées.`}
                   enCours={approuverMutation.isPending}
-                  desactive={enAttenteFiltrees.length === 0}
-                  onConfirm={() => approuverMutation.mutate(hasActiveFilters ? enAttenteFiltrees : "TOUT")}
+                  onConfirm={() => approuverMutation.mutate(selectionnees)}
                 />
+                </>
               )}
             </div>
           ) : (
@@ -613,6 +589,8 @@ export default function AdminSubmissionsPage() {
                       peutApprouver={peutApprouver}
                       approbationEnCours={approuverLigne.isPending}
                       onApprouver={() => approuverLigne.mutate(s)}
+                      validationEnCours={validerLigne.isPending}
+                      onValider={() => validerLigne.mutate(s)}
                       peutRedonner={peutRedonner}
                       redonnerEnCours={redonnerLaMain.isPending}
                       onRedonner={() => redonnerLaMain.mutate(s)}
@@ -692,6 +670,8 @@ function SubmissionRow({
   peutApprouver,
   approbationEnCours,
   onApprouver,
+  validationEnCours,
+  onValider,
   peutRedonner,
   redonnerEnCours,
   onRedonner,
@@ -703,12 +683,14 @@ function SubmissionRow({
   peutApprouver: boolean;
   approbationEnCours: boolean;
   onApprouver: () => void;
+  validationEnCours: boolean;
+  onValider: () => void;
   peutRedonner: boolean;
   redonnerEnCours: boolean;
   onRedonner: () => void;
 }) {
-  // Seule une section validee et pas encore approuvee peut etre cochee : le reste n'attend
-  // rien du DG, et la case n'aurait aucun effet a la confirmation.
+  // Seule une section qui attend le DG (soumise, ou validee par l'admin sans son accord) peut etre
+  // cochee : le reste n'attend rien de lui, et la case n'aurait aucun effet a la confirmation.
   const cochable = attendLaDg(s);
   // Une section approuvee reste a l'ecran mais s'efface : le DG voit ce qu'il a traite sans
   // que cela concurrence visuellement ce qui lui reste a faire.
@@ -762,15 +744,27 @@ function SubmissionRow({
       </TableCell>
       <TableCell>
         <div className="flex items-center justify-end gap-1">
+          {/* Le DG a son propre bouton juste en dessous : sa validation fait tout en un geste. */}
+          {peutRedonner && !peutApprouver && s.status === "SUBMITTED" && (
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={validationEnCours}
+              onClick={onValider}
+              title="Valider cette section"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" /> Valider
+            </Button>
+          )}
           {peutApprouver && cochable && (
             <Button
-              variant="secondary"
+              variant="primary"
               size="sm"
               disabled={approbationEnCours}
               onClick={onApprouver}
-              title="Approuver cette section"
+              title="Valider : la section entre aussitôt dans la Note de synthèse"
             >
-              <ShieldCheck className="h-3.5 w-3.5" /> Approuver
+              <CheckCircle2 className="h-3.5 w-3.5" /> Valider
             </Button>
           )}
           {peutRedonner && (s.status === "SUBMITTED" || s.status === "VALIDATED") && (
@@ -842,7 +836,7 @@ function ApprobationEnMasse({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Annuler</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Approuver</AlertDialogAction>
+          <AlertDialogAction onClick={onConfirm}>Valider</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

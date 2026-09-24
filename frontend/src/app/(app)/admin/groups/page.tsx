@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Archive, CheckCheck, FileDown, FileText, KeyRound, Pencil, Plus, Power, RotateCcw, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { Archive, CheckCheck, FileDown, FileText, KeyRound, Pencil, Plus, Power, RotateCcw, Trash2, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,6 @@ import {
   getGroupCycleSections,
   listGroupCycles,
   startNewCycle,
-  dgApproveAllValidated,
   validateAllSubmitted,
 } from "@/lib/api/admin";
 import { downloadConsolidatedExcel, downloadGroupPdf, downloadGroupWord } from "@/lib/api/exports";
@@ -323,19 +322,6 @@ export default function AdminGroupsPage() {
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la validation en masse")),
   });
 
-  const dgApproveAllMutation = useMutation({
-    mutationFn: (groupId: number) => dgApproveAllValidated(groupId),
-    onSuccess: (result) => {
-      if (result.approvedCount === 0) {
-        toast.info("Aucune section validée n'attend l'approbation de la Direction Générale");
-      } else {
-        toast.success(`${result.approvedCount} section(s) approuvée(s)`);
-      }
-      queryClient.invalidateQueries({ queryKey: ["admin"] });
-    },
-    onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'approbation en masse")),
-  });
-
   function openPurgeDialog(target: PurgeTarget) {
     setPurgeTarget(target);
     setPurgeConfirmation("");
@@ -545,18 +531,19 @@ export default function AdminGroupsPage() {
                   )}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" title="Valider toutes les sections soumises">
-                        <CheckCheck className="h-4 w-4" />
+                      <Button variant="secondary" size="sm" title="Valider toutes les sections soumises">
+                        <CheckCheck className="h-4 w-4" /> Tout valider
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Valider toutes les sections soumises ?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Toutes les sections de {g.name} au statut « Soumis » passeront à « Validé ». Elles
-                          n&apos;entreront dans les documents consolidés qu&apos;une fois approuvées par la Direction
-                          Générale. Les brouillons en cours et les sections renvoyées pour révision ne sont pas
-                          touchés.
+                          Toutes les sections de {g.name} au statut « Soumis » passeront à « Validé ».{" "}
+                          {peutApprouver
+                            ? "Votre validation vaut approbation : elles entreront aussitôt, avec celles qui attendaient encore votre arbitrage, dans le Document de consolidation, la Note de synthèse et le Plan Stratégique."
+                            : "Elles n'entreront dans les documents consolidés qu'une fois approuvées par la Direction Générale."}{" "}
+                          Les brouillons en cours et les sections renvoyées pour révision ne sont pas touchés.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -567,31 +554,6 @@ export default function AdminGroupsPage() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                  {peutApprouver && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" title="Approuver toutes les sections validées">
-                        <ShieldCheck className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Approuver toutes les sections validées ?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Toutes les sections de {g.name} au statut « Validé » qui attendent encore votre arbitrage
-                          seront approuvées, et entreront dans le Document de consolidation, la Note de synthèse et
-                          le Plan Stratégique de SENICO. Les sections non validées ne sont pas touchées.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => dgApproveAllMutation.mutate(g.id)}>
-                          Tout approuver
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  )}
                   <Button
                     variant="ghost"
                     size="icon"

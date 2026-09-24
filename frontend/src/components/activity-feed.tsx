@@ -24,12 +24,12 @@ const ACTION_CONFIG: Record<string, { label: (a: ActivityEntryDto) => string; ic
     color: "text-emerald-600 dark:text-emerald-400",
   },
   VALIDATE: {
-    label: (a) => `L'administrateur a validé ${laSection(a)} pour ${a.groupName}`,
+    label: (a) => `Le comité de pilotage a validé ${laSection(a)} pour ${a.groupName} — en attente de la Direction Générale`,
     icon: CheckCircle2,
     color: "text-emerald-600 dark:text-emerald-400",
   },
   DG_APPROVE: {
-    label: (a) => `La Direction Générale a approuvé ${laSection(a)} pour ${a.groupName}`,
+    label: (a) => `La Direction Générale a validé ${laSection(a)} pour ${a.groupName} — intégrée aux documents`,
     icon: ShieldCheck,
     color: "text-emerald-600 dark:text-emerald-400",
   },

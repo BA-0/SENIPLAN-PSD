@@ -45,14 +45,14 @@ public class AdminDashboardController {
         return ResponseEntity.ok(adminDashboardService.recentActivity(limit));
     }
 
-    /** Retire une entree du fil « Activite en direct » (admin seul, cf. SecurityConfig). */
+    /** Retire une entree du fil « Activite en direct » (admin et DG, cf. SecurityConfig). */
     @DeleteMapping("/activity/{id}")
     public ResponseEntity<Void> deleteActivity(@PathVariable Long id) {
         adminDashboardService.deleteActivity(id);
         return ResponseEntity.noContent().build();
     }
 
-    /** Vide le fil « Activite en direct » (admin seul) ; les saisies des directions ne sont pas touchees. */
+    /** Vide le fil « Activite en direct » (admin et DG) ; les saisies des directions ne sont pas touchees. */
     @DeleteMapping("/activity")
     public ResponseEntity<java.util.Map<String, Long>> clearActivity() {
         return ResponseEntity.ok(java.util.Map.of("deleted", adminDashboardService.clearActivity()));

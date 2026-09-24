@@ -4,14 +4,22 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Users, TrendingUp, Send, CheckCircle2, RotateCcw, ArrowRight, AlertTriangle, Trash2 } from "lucide-react";
+import { Users, TrendingUp, Send, CheckCircle2, RotateCcw, ArrowRight, AlertTriangle, Trash2, ShieldCheck } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/kpi-card";
 import { GroupProgressChart } from "@/components/charts/group-progress-chart";
 import { StatusHeatmap } from "@/components/charts/status-heatmap";
 import { ActivityFeed } from "@/components/activity-feed";
-import { clearAdminActivity, deleteAdminActivity, getAdminActivity, getAdminDashboard, getAdminMatrix } from "@/lib/api/admin";
+import {
+  clearAdminActivity,
+  deleteAdminActivity,
+  getAdminActivity,
+  getAdminDashboard,
+  getAdminMatrix,
+  getAdminSubmissions,
+} from "@/lib/api/admin";
+import { attendLaDg } from "@/lib/dg-queue";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -25,7 +33,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { extractErrorMessage } from "@/lib/api-client";
-import { canAdminister } from "@/lib/roles";
+import { canApproveAsDg, canPilot } from "@/lib/roles";
+import { DgApprovalBanner } from "@/components/dg-approval-banner";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useRealtimeAdmin } from "@/hooks/use-realtime-admin";
 import { useIsGroupTyping } from "@/store/presence-store";
@@ -33,8 +42,8 @@ import { useIsGroupTyping } from "@/store/presence-store";
 export default function AdminDashboardPage() {
   useRealtimeAdmin();
   const { user } = useCurrentUser();
-  // Effacer le fil d'activité : l'admin seul (la DG consulte).
-  const peutEffacer = canAdminister(user?.role);
+  // Effacer le fil d'activité : l'admin et la direction générale.
+  const peutEffacer = canPilot(user?.role);
   const queryClient = useQueryClient();
   const retirerActivite = useMutation({
     mutationFn: (id: number) => deleteAdminActivity(id),
@@ -56,6 +65,17 @@ export default function AdminDashboardPage() {
     queryFn: getAdminDashboard,
     refetchInterval: 15_000,
   });
+
+  // Indicateurs du DG : ce qui attend sa validation, ce qui est deja dans les documents.
+  const estDg = canApproveAsDg(user?.role);
+  const { data: submissions } = useQuery({
+    queryKey: ["admin", "submissions"],
+    queryFn: getAdminSubmissions,
+    enabled: estDg,
+    refetchInterval: 15_000,
+  });
+  const aValider = (submissions ?? []).filter(attendLaDg).length;
+  const integrees = (submissions ?? []).filter((s) => s.dgApprovedAt).length;
 
   const { data: matrix, isError: isMatrixError } = useQuery({
     queryKey: ["admin", "matrix"],
@@ -110,10 +130,40 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1>Tableau de bord administrateur</h1>
+        <h1>{estDg ? "Tableau de bord — Direction Générale" : "Tableau de bord administrateur"}</h1>
         <p className="text-[13px] text-muted-foreground mt-1">Suivi en temps réel du Plan Stratégique 2027-2031</p>
       </div>
 
+      {estDg && <DgApprovalBanner />}
+
+      {estDg ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link href="/admin/submissions?dg=PENDING" className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40">
+            <KpiCard icon={Send} label="À valider" value={aValider} subtitle="sections soumises en attente de vous" color="blue" />
+          </Link>
+          <KpiCard
+            icon={ShieldCheck}
+            label="Validées"
+            value={integrees}
+            subtitle="intégrées à la Note de synthèse"
+            color="emerald"
+          />
+          <KpiCard
+            icon={TrendingUp}
+            label="Complétion globale"
+            value={`${data.globalCompletionPercent}%`}
+            subtitle="sections soumises ou validées / total"
+            color="violet"
+          />
+          <KpiCard
+            icon={RotateCcw}
+            label="En révision"
+            value={data.sectionsRevisionRequested}
+            subtitle="renvoyées aux directions"
+            color="amber"
+          />
+        </div>
+      ) : (
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <KpiCard
           icon={Users}
@@ -151,6 +201,7 @@ export default function AdminDashboardPage() {
           color="amber"
         />
       </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">

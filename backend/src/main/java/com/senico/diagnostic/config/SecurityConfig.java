@@ -69,9 +69,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/groups/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/v1/admin/users/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/v1/admin/data-purge/**").hasAuthority("ROLE_ADMIN")
-                        // Effacer le fil « Activite en direct » : l'admin seul (demande client du 23/09/2026).
+                        // Effacer le fil « Activite en direct » : l'admin et la direction generale.
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/activity", "/api/v1/admin/activity/**")
-                        .hasAuthority("ROLE_ADMIN")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_DIRECTEUR_GENERAL")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/groups/*/cycles/**").hasAuthority("ROLE_ADMIN")
                         // Modifier une soumission : l'admin et la direction generale (demande client du 23/09/2026).
                         // Effacer le contenu d'une section (DELETE, juste en dessous) reste a l'admin.

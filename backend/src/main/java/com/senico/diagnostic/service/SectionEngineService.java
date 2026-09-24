@@ -437,21 +437,62 @@ public class SectionEngineService {
         LocalDateTime now = LocalDateTime.now();
         int validated = 0;
 
+        boolean dg = adminUser.getRole() == Role.DIRECTEUR_GENERAL;
+
         for (GroupSectionStatus status : groupSectionStatusRepository.findByGroupIdWithSection(groupId)) {
-            if (status.getStatus() != SectionStatus.SUBMITTED) {
-                continue;
+            // Lancee par le DG, la validation approuve aussi ce qui n'attendait plus que lui.
+            if (validateSubmittedSection(group, status, comment, adminUser, now)
+                    || (dg && approvePendingSection(group, status, comment, adminUser, now))) {
+                validated++;
             }
-            status.setStatus(SectionStatus.VALIDATED);
-            status.setValidatedAt(now);
-            status.setAdminComment(comment);
-            clearDgApproval(status);
-            status.setLastActivityAt(now);
-            groupSectionStatusRepository.save(status);
-            activityLogService.log(group, adminUser, ActivityLogService.ACTION_VALIDATE, status.getSection());
-            publishProgress(group, status.getSection(), status);
-            validated++;
         }
         return validated;
+    }
+
+    /**
+     * Valide d'un coup toutes les sections soumises, toutes directions confondues : le pendant,
+     * pour le premier niveau, de {@link #dgApproveAllPending}. Evite de repasser direction par
+     * direction quand la relecture a deja ete faite.
+     *
+     * <p>Ne touche qu'aux sections au statut SUBMITTED ; sans effet si on la rejoue. Lancee par
+     * le DG, elle approuve en plus les sections deja validees par l'admin qui attendaient encore son
+     * arbitrage : un seul geste fait alors tout entrer dans les documents consolides.</p>
+     *
+     * @return le nombre de sections effectivement validees (ou approuvees, pour le DG)
+     */
+    @Transactional
+    public int adminValidateAllSubmittedEverywhere(String comment, User adminUser) {
+        LocalDateTime now = LocalDateTime.now();
+        boolean dg = adminUser.getRole() == Role.DIRECTEUR_GENERAL;
+        int validated = 0;
+
+        for (GroupSectionStatus status : groupSectionStatusRepository.findAllWithGroupAndSection()) {
+            if (validateSubmittedSection(status.getGroup(), status, comment, adminUser, now)
+                    || (dg && approvePendingSection(status.getGroup(), status, comment, adminUser, now))) {
+                validated++;
+            }
+        }
+        return validated;
+    }
+
+    /** Coeur commun des validations en masse : n'agit que sur une section soumise, et dit si elle a bouge. */
+    private boolean validateSubmittedSection(WorkGroup group, GroupSectionStatus status, String comment,
+                                             User adminUser, LocalDateTime now) {
+        if (status.getStatus() != SectionStatus.SUBMITTED) {
+            return false;
+        }
+        status.setStatus(SectionStatus.VALIDATED);
+        status.setValidatedAt(now);
+        status.setAdminComment(comment);
+        clearDgApproval(status);
+        // Une seule ligne au fil d'activite : « validee par la DG » ou « validee par l'admin ».
+        if (!approveIfValidatedByDg(group, status, adminUser, now)) {
+            activityLogService.log(group, adminUser, ActivityLogService.ACTION_VALIDATE, status.getSection());
+        }
+        status.setLastActivityAt(now);
+        groupSectionStatusRepository.save(status);
+        publishProgress(group, status.getSection(), status);
+        return true;
     }
 
     @Transactional
@@ -467,7 +508,9 @@ public class SectionEngineService {
                 status.setValidatedAt(LocalDateTime.now());
                 status.setAdminComment(request.comment());
                 clearDgApproval(status);
-                activityLogService.log(group, adminUser, ActivityLogService.ACTION_VALIDATE, section);
+                if (!approveIfValidatedByDg(group, status, adminUser, status.getValidatedAt())) {
+                    activityLogService.log(group, adminUser, ActivityLogService.ACTION_VALIDATE, section);
+                }
             }
             case REQUEST_REVISION -> {
                 requireStatus(status, "Seules les sections soumises peuvent etre renvoyees pour revision", SectionStatus.SUBMITTED);
@@ -499,10 +542,10 @@ public class SectionEngineService {
     }
 
     /**
-     * Second niveau de validation, reserve au DG (regle d'acces dans SecurityConfig). L'approbation
-     * ne porte que sur une section deja validee par le comite de pilotage, et c'est elle — non la
-     * validation — qui fait entrer la contribution dans le Document de consolidation, la Note de
-     * synthese et le Plan Strategique de SENICO.
+     * Validation du DG (regle d'acces dans SecurityConfig) : c'est elle qui fait entrer la
+     * contribution dans le Document de consolidation, la Note de synthese et le Plan Strategique de
+     * SENICO. Le DG n'a pas besoin d'attendre le comite de pilotage : il agit aussi bien sur une
+     * section soumise que sur une section deja validee par l'admin.
      *
      * <p>Un refus renvoie la section en revision cote direction : elle ressort donc aussi des
      * documents, puisqu'elle n'est plus validee.</p>
@@ -516,8 +559,9 @@ public class SectionEngineService {
         switch (request.decision()) {
             case APPROVE -> {
                 requireStatus(status,
-                        "Seules les sections validees par le comite de pilotage peuvent etre approuvees",
-                        SectionStatus.VALIDATED);
+                        "Seules les sections soumises ou validees peuvent etre validees par la Direction Generale",
+                        SectionStatus.SUBMITTED, SectionStatus.VALIDATED);
+                markValidated(status, LocalDateTime.now());
                 status.setDgApprovedAt(LocalDateTime.now());
                 status.setDgApprovedBy(dgUser.getId());
                 status.setDgComment(request.comment());
@@ -525,8 +569,8 @@ public class SectionEngineService {
             }
             case REJECT -> {
                 requireStatus(status,
-                        "Seule une section validee par le comite de pilotage peut etre refusee par la Direction Generale",
-                        SectionStatus.VALIDATED);
+                        "Seules les sections soumises ou validees peuvent etre refusees par la Direction Generale",
+                        SectionStatus.SUBMITTED, SectionStatus.VALIDATED);
                 status.setStatus(SectionStatus.REVISION_REQUESTED);
                 status.setValidatedAt(null);
                 clearDgApproval(status);
@@ -622,14 +666,18 @@ public class SectionEngineService {
     }
 
     /**
-     * Coeur commun des approbations en masse : n'agit que sur une section validee par le comite
-     * de pilotage et pas encore approuvee, et dit si elle a bouge.
+     * Coeur commun des validations du DG en masse : n'agit que sur une section soumise, ou validee
+     * par le comite de pilotage et pas encore approuvee, et dit si elle a bouge. Le DG n'attend pas
+     * l'admin : une section soumise passe directement a « Valide » et entre dans les documents.
      */
     private boolean approvePendingSection(WorkGroup group, GroupSectionStatus status, String comment,
                                           User dgUser, LocalDateTime now) {
-        if (status.getStatus() != SectionStatus.VALIDATED || status.isDgApproved()) {
+        boolean aValider = status.getStatus() == SectionStatus.SUBMITTED
+                || (status.getStatus() == SectionStatus.VALIDATED && !status.isDgApproved());
+        if (!aValider) {
             return false;
         }
+        markValidated(status, now);
         status.setDgApprovedAt(now);
         status.setDgApprovedBy(dgUser.getId());
         status.setDgComment(comment);
@@ -812,6 +860,30 @@ public class SectionEngineService {
         status.setDgApprovedAt(null);
         status.setDgApprovedBy(null);
         status.setDgComment(null);
+    }
+
+    /**
+     * Quand c'est le DG qui valide, il n'y a pas de second niveau a attendre : sa validation vaut
+     * approbation, et la section entre aussitot dans le Document de consolidation, la Note de
+     * synthese et le Plan Strategique. Lui faire approuver ensuite sa propre validation serait un
+     * geste sans objet.
+     */
+    private boolean approveIfValidatedByDg(WorkGroup group, GroupSectionStatus status, User validator, LocalDateTime now) {
+        if (validator.getRole() != Role.DIRECTEUR_GENERAL) {
+            return false;
+        }
+        status.setDgApprovedAt(now);
+        status.setDgApprovedBy(validator.getId());
+        activityLogService.log(group, validator, ActivityLogService.ACTION_DG_APPROVE, status.getSection());
+        return true;
+    }
+
+    /** Fait passer une section soumise a « Valide » ; sans effet sur une section deja validee. */
+    private void markValidated(GroupSectionStatus status, LocalDateTime now) {
+        if (status.getStatus() == SectionStatus.SUBMITTED) {
+            status.setStatus(SectionStatus.VALIDATED);
+            status.setValidatedAt(now);
+        }
     }
 
     private void requireStatus(GroupSectionStatus status, String message, SectionStatus... allowed) {

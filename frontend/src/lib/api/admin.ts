@@ -98,6 +98,18 @@ export async function validateAllSubmitted(groupId: number, comment?: string): P
 }
 
 /**
+ * Valide d'un coup toutes les sections soumises, toutes directions confondues. Comme la version
+ * par direction, le serveur ignore ce qui n'est pas « Soumis » : l'appel peut etre rejoue.
+ */
+export async function validateAllSubmittedEverywhere(comment?: string): Promise<{ validatedCount: number }> {
+  const { data } = await apiClient.post<{ validatedCount: number }>("/admin/validations/all", {
+    decision: "VALIDATE",
+    comment,
+  });
+  return data;
+}
+
+/**
  * Second niveau de validation, reserve au DG : une section validee par le comite de pilotage
  * n'entre dans les documents consolides qu'une fois approuvee ici. Un refus la renvoie en
  * revision cote direction.

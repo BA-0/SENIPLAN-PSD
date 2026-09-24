@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -18,6 +18,7 @@ export default function SectionFormPage() {
   const params = useParams<{ code: string }>();
   const code = params.code;
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const { data, isLoading } = useQuery({
     queryKey: ["me", "section", code],
@@ -52,13 +53,26 @@ export default function SectionFormPage() {
       return submitMySection(code);
     },
     onSuccess: () => {
-      toast.success("Section soumise avec succès");
       queryClient.invalidateQueries({ queryKey: ["me", "section", code] });
       queryClient.invalidateQueries({ queryKey: ["me", "sections", "nav"] });
       queryClient.invalidateQueries({ queryKey: ["me", "dashboard"] });
+      // Soumettre enchaine sur la section suivante : la direction avance sans repasser par le tableau de bord.
+      const suivante = sectionSuivante();
+      if (suivante) {
+        toast.success("Section soumise à la Direction Générale — section suivante");
+        router.push(`/sections/${suivante.code}`);
+      } else {
+        toast.success("Section soumise à la Direction Générale");
+      }
     },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la soumission")),
   });
+
+  function sectionSuivante() {
+    const triees = (navSections ?? []).slice().sort((a, b) => a.order - b.order);
+    const index = triees.findIndex((s) => s.code === code);
+    return index >= 0 ? (triees[index + 1] ?? null) : null;
+  }
 
   if (isLoading || !data || content === null) {
     return (

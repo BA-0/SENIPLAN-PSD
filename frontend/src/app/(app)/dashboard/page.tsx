@@ -61,7 +61,7 @@ export default function GroupDashboardPage() {
       {data.sectionsWithAdminComment.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Commentaires de l&apos;administrateur</CardTitle>
+            <CardTitle>Commentaires reçus</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {data.sectionsWithAdminComment.map((s) => (

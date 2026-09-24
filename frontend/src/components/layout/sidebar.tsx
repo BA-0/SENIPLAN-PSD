@@ -31,7 +31,9 @@ import { downloadMyGroupPdf } from "@/lib/api/exports";
 import { extractErrorMessage } from "@/lib/api-client";
 import { useMobileNavStore } from "@/store/mobile-nav-store";
 import { StatusDot } from "./status-dot";
-import { canPilot } from "@/lib/roles";
+import { canApproveAsDg, canPilot } from "@/lib/roles";
+import { getAdminSubmissions } from "@/lib/api/admin";
+import { attendLaDg } from "@/lib/dg-queue";
 import { countValidated, findPartForCode, groupSectionsByPart } from "@/lib/section-groups";
 
 export function Sidebar() {
@@ -63,6 +65,16 @@ export function Sidebar() {
     enabled: !isAdmin,
     refetchInterval: 30_000,
   });
+
+  // Pour le DG, le menu dit combien de sections attendent sa validation : c'est sa seule tache.
+  const isDg = canApproveAsDg(user?.role);
+  const { data: submissions } = useQuery({
+    queryKey: ["admin", "submissions"],
+    queryFn: getAdminSubmissions,
+    enabled: isDg,
+    refetchInterval: 15_000,
+  });
+  const aValider = (submissions ?? []).filter(attendLaDg).length;
 
   const sectionParts = useMemo(() => groupSectionsByPart(sections ?? []), [sections]);
   // Menu replie : les codes de section restent internes, on affiche le rang dans le canevas.
@@ -143,11 +155,12 @@ export function Sidebar() {
           <>
             <NavItem href="/admin" icon={LayoutDashboard} label="Tableau de bord" active={pathname === "/admin"} collapsed={showCollapsed} />
             <NavItem
-              href="/admin/submissions"
+              href={isDg ? "/admin/submissions?dg=PENDING" : "/admin/submissions"}
               icon={Inbox}
-              label="Soumissions"
+              label={isDg ? "À valider" : "Soumissions"}
               active={pathname.startsWith("/admin/submissions")}
               collapsed={showCollapsed}
+              badge={isDg ? aValider : undefined}
             />
             <NavItem
               href="/admin/groups"
@@ -338,12 +351,15 @@ function NavItem({
   label,
   active,
   collapsed,
+  badge,
 }: {
   href: string;
   icon: React.ElementType;
   label: string;
   active: boolean;
   collapsed?: boolean;
+  /** Compteur affiche a droite du libelle ; masque a zero. */
+  badge?: number;
 }) {
   return (
     <Link
@@ -357,8 +373,16 @@ function NavItem({
           : "hover:bg-white/5 text-white/75"
       )}
     >
-      <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
+      <span className="relative shrink-0">
+        <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
+        {collapsed && !!badge && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-amber-400" />}
+      </span>
       {!collapsed && <span className="truncate">{label}</span>}
+      {!collapsed && !!badge && (
+        <span className="ml-auto rounded-full bg-amber-400 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-primary-900">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }

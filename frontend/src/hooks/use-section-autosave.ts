@@ -5,7 +5,8 @@ import { saveMySectionDraft } from "@/lib/api/me";
 import { extractErrorMessage } from "@/lib/api-client";
 import type { SectionContentResponse } from "@/types/common";
 
-export type SaveStatus = "idle" | "saving" | "saved" | "error";
+/** « unsaved » : une saisie attend son enregistrement automatique (quelques secondes). */
+export type SaveStatus = "idle" | "unsaved" | "saving" | "saved" | "error";
 
 const AUTOSAVE_DEBOUNCE_MS = 2500;
 const AUTOSAVE_INTERVAL_MS = 20_000;
@@ -84,6 +85,7 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
       // avec le dernier enregistrement avant d'envoyer quoi que ce soit.
       dirtyRef.current = true;
       setContent(next);
+      setStatus((s) => (s === "saving" ? s : "unsaved"));
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
       debounceTimer.current = setTimeout(() => {
         debounceTimer.current = null;
@@ -93,11 +95,6 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
     [doSave]
   );
 
-  const saveNow = useCallback(() => {
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = null;
-    if (contentRef.current !== null) doSave(contentRef.current);
-  }, [doSave]);
 
   // Avant une soumission : le serveur valide ce qu'il a en base, pas ce qui est a l'ecran. Une
   // frappe de moins de 2,5 s serait sinon soumise sans elle, puis refusee une fois la section
@@ -109,6 +106,29 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
     if (pending === null || JSON.stringify(pending) === lastSavedRef.current) return;
     await mutateAsync(pending);
   }, [mutateAsync]);
+
+  // Le bouton « Enregistrer » confirme toujours : sans message, un clic sur une section deja
+  // enregistree automatiquement laissait croire que rien ne s'etait passe.
+  const saveNow = useCallback(async () => {
+    try {
+      await flush();
+      toast.success("Section enregistrée");
+    } catch {
+      // L'echec est deja signale par onError.
+    }
+  }, [flush]);
+
+  // Fermer l'onglet pendant qu'une saisie attend son enregistrement la perdrait : le navigateur
+  // demande confirmation.
+  useEffect(() => {
+    const avertir = (event: BeforeUnloadEvent) => {
+      if (!dirtyRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", avertir);
+    return () => window.removeEventListener("beforeunload", avertir);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {

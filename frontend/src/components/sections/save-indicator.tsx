@@ -9,10 +9,17 @@ export function SaveIndicator({ status, savedAt }: { status: SaveStatus; savedAt
       </span>
     );
   }
+  if (status === "unsaved") {
+    return (
+      <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+        <Loader2 className="h-3.5 w-3.5" /> Modifications en attente d&apos;enregistrement…
+      </span>
+    );
+  }
   if (status === "error") {
     return (
       <span className="flex items-center gap-1.5 text-[13px] text-accent-700 dark:text-accent-300">
-        <AlertCircle className="h-3.5 w-3.5" /> Échec de l&apos;enregistrement
+        <AlertCircle className="h-3.5 w-3.5" /> Échec de l&apos;enregistrement — cliquez sur « Enregistrer »
       </span>
     );
   }
@@ -20,7 +27,7 @@ export function SaveIndicator({ status, savedAt }: { status: SaveStatus; savedAt
     return (
       <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
         <CheckCircle2 className="h-3.5 w-3.5 text-primary-500" />
-        Enregistré à {savedAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+        Enregistré automatiquement à {savedAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
       </span>
     );
   }

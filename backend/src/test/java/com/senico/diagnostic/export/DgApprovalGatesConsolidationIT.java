@@ -3,8 +3,7 @@ package com.senico.diagnostic.export;
 import com.senico.diagnostic.domain.GroupSectionStatus;
 import com.senico.diagnostic.domain.SectionStatus;
 import com.senico.diagnostic.domain.User;
-import com.senico.diagnostic.dto.section.DgApprovalRequest;
-import com.senico.diagnostic.dto.section.DgDecision;
+import com.senico.diagnostic.dto.section.DgSectionTarget;
 import com.senico.diagnostic.repository.GroupSectionStatusRepository;
 import com.senico.diagnostic.repository.UserRepository;
 import com.senico.diagnostic.service.SectionEngineService;
@@ -18,6 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayInputStream;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -70,8 +70,9 @@ class DgApprovalGatesConsolidationIT {
                 .as("une section validee mais pas encore approuvee doit rester hors du document")
                 .contains(MESSAGE_RETENU);
 
-        sectionEngineService.dgReview(cible.getGroup().getId(), codeSection,
-                new DgApprovalRequest(DgDecision.APPROVE, null), dg);
+        // Le DG approuve depuis l'onglet « A valider », c'est-a-dire par selection.
+        sectionEngineService.dgApproveSelection(
+                List.of(new DgSectionTarget(cible.getGroup().getId(), codeSection)), null, dg);
 
         assertThat(contenuConsolide(codeSection, direction))
                 .as("une fois le DG passe, la contribution doit figurer dans le document")

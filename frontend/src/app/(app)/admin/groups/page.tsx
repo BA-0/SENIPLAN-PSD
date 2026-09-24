@@ -529,31 +529,33 @@ export default function AdminGroupsPage() {
                       <KeyRound className="h-4 w-4" />
                     </Button>
                   )}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="secondary" size="sm" title="Valider toutes les sections soumises">
-                        <CheckCheck className="h-4 w-4" /> Tout valider
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Valider toutes les sections soumises ?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Toutes les sections de {g.name} au statut « Soumis » passeront à « Validé ».{" "}
-                          {peutApprouver
-                            ? "Votre validation vaut approbation : elles entreront aussitôt, avec celles qui attendaient encore votre arbitrage, dans le Document de consolidation, la Note de synthèse et le Plan Stratégique."
-                            : "Elles n'entreront dans les documents consolidés qu'une fois approuvées par la Direction Générale."}{" "}
-                          Les brouillons en cours et les sections renvoyées pour révision ne sont pas touchés.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => validateAllMutation.mutate(g.id)}>
-                          Tout valider
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  {/* Le DG ne valide que depuis l'onglet « À valider ». */}
+                  {!peutApprouver && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="secondary" size="sm" title="Valider toutes les sections soumises">
+                          <CheckCheck className="h-4 w-4" /> Tout valider
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Valider toutes les sections soumises ?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Toutes les sections de {g.name} au statut « Soumis » passeront à « Validé ».{" "}
+                            Elles n&apos;entreront dans les documents consolidés qu&apos;une fois approuvées par la Direction
+                            Générale.{" "}
+                            Les brouillons en cours et les sections renvoyées pour révision ne sont pas touchés.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => validateAllMutation.mutate(g.id)}>
+                            Tout valider
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"

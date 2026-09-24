@@ -9,7 +9,9 @@ import com.senico.diagnostic.dto.cycle.GroupCycleSummaryDto;
 import com.senico.diagnostic.dto.realtime.SectionProgressEvent;
 import com.senico.diagnostic.dto.section.AdminReviewRequest;
 import com.senico.diagnostic.dto.section.DgApprovalRequest;
+import com.senico.diagnostic.dto.section.DgDecision;
 import com.senico.diagnostic.dto.section.DgSectionTarget;
+import com.senico.diagnostic.dto.section.ReviewDecision;
 import com.senico.diagnostic.dto.section.SectionContentResponse;
 import com.senico.diagnostic.dto.section.SectionRevisionContentResponse;
 import com.senico.diagnostic.dto.section.SectionRevisionSummaryDto;
@@ -20,8 +22,10 @@ import com.senico.diagnostic.repository.*;
 import com.senico.diagnostic.validation.DefaultSectionContentFactory;
 import com.senico.diagnostic.validation.SectionContentValidator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -497,6 +501,9 @@ public class SectionEngineService {
 
     @Transactional
     public SectionContentResponse adminReview(Long groupId, String sectionCode, AdminReviewRequest request, User adminUser) {
+        if (request.decision() == ReviewDecision.VALIDATE) {
+            requireNotDg(adminUser);
+        }
         WorkGroup group = resolveGroup(groupId);
         SectionDef section = resolveSection(sectionCode);
         GroupSectionStatus status = resolveStatus(group, section);
@@ -552,6 +559,9 @@ public class SectionEngineService {
      */
     @Transactional
     public SectionContentResponse dgReview(Long groupId, String sectionCode, DgApprovalRequest request, User dgUser) {
+        if (request.decision() == DgDecision.APPROVE) {
+            requireNotDg(dgUser);
+        }
         WorkGroup group = resolveGroup(groupId);
         SectionDef section = resolveSection(sectionCode);
         GroupSectionStatus status = resolveStatus(group, section);
@@ -883,6 +893,17 @@ public class SectionEngineService {
         if (status.getStatus() == SectionStatus.SUBMITTED) {
             status.setStatus(SectionStatus.VALIDATED);
             status.setValidatedAt(now);
+        }
+    }
+
+    /**
+     * Le DG ne valide que depuis l'onglet « A valider » (approbation par selection) : la validation
+     * section par section, depuis la page d'une section, lui est fermee.
+     */
+    private void requireNotDg(User user) {
+        if (user.getRole() == Role.DIRECTEUR_GENERAL) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "La Direction Generale valide uniquement depuis l'onglet « A valider »");
         }
     }
 

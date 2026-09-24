@@ -74,11 +74,25 @@ class DirectionGeneraleAccessIT {
     }
 
     @Test
-    @DisplayName("Le DG peut valider en masse : c'est la raison d'etre de son compte")
-    void leDgValide() throws Exception {
-        mockMvc.perform(post("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/validate-all")
-                        .with(compte("m.dia")))
-                .andExpect(status().isNotFound());
+    @DisplayName("Le DG ne valide pas hors de l'onglet « A valider » : ni en masse, ni section isolee")
+    void leDgNeValideQueDepuisAValider() throws Exception {
+        RequestPostProcessor dg = compte("m.dia");
+
+        // Refuses avant tout traitement : aucune de ces routes n'ecrit en base.
+        mockMvc.perform(post("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/validate-all").with(dg))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/admin/validations/all").with(dg))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/dg-approve-all").with(dg))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/admin/dg-approvals/all").with(dg))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/S01/dg-approval")
+                        .contentType("application/json").content("{\"decision\":\"APPROVE\"}").with(dg))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/S01/review")
+                        .contentType("application/json").content("{\"decision\":\"VALIDATE\"}").with(dg))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -94,18 +108,16 @@ class DirectionGeneraleAccessIT {
     }
 
     @Test
-    @DisplayName("Le DG seul approuve ce qui entre dans les documents consolides")
+    @DisplayName("Le DG seul approuve ce qui entre dans les documents consolides, depuis « A valider »")
     void leDgApprouve() throws Exception {
         RequestPostProcessor dg = compte("m.dia");
 
+        // Refuser une section reste possible depuis sa page.
         mockMvc.perform(post("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/S01/dg-approval")
-                        .contentType("application/json").content("{\"decision\":\"APPROVE\"}").with(dg))
+                        .contentType("application/json").content("{\"decision\":\"REJECT\"}").with(dg))
                 .andExpect(status().isNotFound());
-        mockMvc.perform(post("/api/v1/admin/groups/" + GROUPE_INEXISTANT + "/sections/dg-approve-all").with(dg))
-                .andExpect(status().isNotFound());
-        // Approbation par lot, toutes directions confondues. On vise la aussi une direction
-        // inexistante : le 404 prouve l'acces sans rien approuver en base — et surtout sans
-        // toucher a la route « tout approuver », qui elle agirait pour de bon.
+        // Approbation par selection, la route de l'onglet « A valider ». On vise une direction
+        // inexistante : le 404 prouve l'acces sans rien approuver en base.
         mockMvc.perform(post("/api/v1/admin/dg-approvals/selection")
                         .contentType("application/json")
                         .content("{\"targets\":[{\"groupId\":" + GROUPE_INEXISTANT + ",\"sectionCode\":\"S01\"}]}")

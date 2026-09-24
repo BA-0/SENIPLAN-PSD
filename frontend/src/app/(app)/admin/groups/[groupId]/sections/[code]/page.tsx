@@ -7,9 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   ArrowLeft,
-  ArrowRight,
   CheckCircle2,
-  MessageSquarePlus,
   Pencil,
   RotateCcw,
   Save,
@@ -40,7 +38,6 @@ import { VersionHistory } from "@/components/sections/version-history";
 import {
   adminUpdateSectionContent,
   dgReviewSection,
-  getAdminSubmissions,
   getGroupSectionContent,
   listGroupSections,
   resetGroupSection,
@@ -51,7 +48,6 @@ import { canAdminister, canApproveAsDg } from "@/lib/roles";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { extractErrorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
-import { fileDuDg, lienSection, suivanteDansLaFile } from "@/lib/dg-queue";
 import type { SectionType } from "@/types/common";
 
 const RETURNABLE_STATUSES = new Set(["SUBMITTED", "VALIDATED"]);
@@ -64,10 +60,9 @@ export default function AdminSectionReviewPage() {
   const code = params.code;
   const [comment, setComment] = useState("");
   const [dgComment, setDgComment] = useState("");
-  const [dgCommentOuvert, setDgCommentOuvert] = useState(false);
   const [editContent, setEditContent] = useState<unknown>(null);
   const { user } = useCurrentUser();
-  // Le DG seul fait entrer une section dans les documents consolides, en la validant.
+  // Le DG seul fait entrer une section dans les documents consolides, en la validant — depuis l'onglet « À valider ».
   const peutApprouver = canApproveAsDg(user?.role);
   // Effacer le contenu d'une section reste a l'admin ; le DG valide, refuse et modifie.
   const peutEffacer = canAdminister(user?.role);
@@ -105,36 +100,16 @@ export default function AdminSectionReviewPage() {
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'action")),
   });
 
-  // File d'attente du DG, pour enchainer les sections sans repasser par la liste des soumissions.
-  const { data: submissions } = useQuery({
-    queryKey: ["admin", "submissions"],
-    queryFn: getAdminSubmissions,
-    enabled: peutApprouver,
-  });
-  const fileDg = fileDuDg(submissions);
-  const suivante = suivanteDansLaFile(fileDg, groupId, code);
-  const restantes = fileDg.filter((s) => !(s.groupId === groupId && s.sectionCode === code)).length;
-
-  const dgMutation = useMutation({
-    mutationFn: (decision: "APPROVE" | "REJECT") => dgReviewSection(groupId, code, decision, dgComment),
-    onSuccess: (_, decision) => {
+  // Le DG ne valide que depuis l'onglet « À valider » : ici, il relit et peut seulement refuser.
+  const dgRefusMutation = useMutation({
+    mutationFn: () => dgReviewSection(groupId, code, "REJECT", dgComment),
+    onSuccess: () => {
       setDgComment("");
-      setDgCommentOuvert(false);
       invalidateAll();
       queryClient.invalidateQueries({ queryKey: ["admin", "submissions"] });
-      if (decision === "REJECT") {
-        toast.success("Section refusée et renvoyée en révision");
-        return;
-      }
-      // Valider ouvre aussitot la section suivante : le DG relit et decide, sans revenir a la liste.
-      if (suivante) {
-        toast.success(`Section validée et intégrée à la Note de synthèse — ${restantes} restante${restantes > 1 ? "s" : ""}`);
-        router.push(lienSection(suivante));
-      } else {
-        toast.success("Section validée et intégrée à la Note de synthèse — plus rien n'attend votre validation");
-      }
+      toast.success("Section refusée et renvoyée en révision");
     },
-    onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'arbitrage")),
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec du refus")),
   });
 
   const updateContentMutation = useMutation({
@@ -161,10 +136,10 @@ export default function AdminSectionReviewPage() {
   return (
     <div className="space-y-5">
       <Link
-        href="/admin/submissions"
+        href={peutApprouver ? "/admin/submissions?dg=PENDING" : "/admin/submissions"}
         className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-primary-600 transition-colors"
       >
-        <ArrowLeft className="h-3.5 w-3.5" /> Retour aux soumissions
+        <ArrowLeft className="h-3.5 w-3.5" /> {peutApprouver ? "Retour à « À valider »" : "Retour aux soumissions"}
       </Link>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -245,25 +220,20 @@ export default function AdminSectionReviewPage() {
                 ) : (
                   <p className="mr-auto text-[13px] font-medium text-amber-700 dark:text-amber-400">
                     En attente de votre validation
-                    {restantes > 0 && (
-                      <span className="font-normal text-muted-foreground">
-                        {" "}
-                        · {restantes} autre{restantes > 1 ? "s" : ""} section{restantes > 1 ? "s" : ""} en attente
-                      </span>
-                    )}
                   </p>
                 )}
 
                 {!data.dgApprovedAt && (
-                  <Button onClick={() => dgMutation.mutate("APPROVE")} loading={dgMutation.isPending}>
-                    <CheckCircle2 className="h-4 w-4" />
-                    {suivante ? "Valider et passer à la suivante" : "Valider"}
+                  <Button asChild>
+                    <Link href="/admin/submissions?dg=PENDING">
+                      <CheckCircle2 className="h-4 w-4" /> Valider depuis « À valider »
+                    </Link>
                   </Button>
                 )}
 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="secondary" disabled={dgMutation.isPending}>
+                    <Button variant="secondary" disabled={dgRefusMutation.isPending}>
                       <RotateCcw className="h-4 w-4" />
                       {data.dgApprovedAt ? "Annuler la validation" : "Refuser"}
                     </Button>
@@ -286,34 +256,12 @@ export default function AdminSectionReviewPage() {
                     />
                     <AlertDialogFooter>
                       <AlertDialogCancel>Annuler</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => dgMutation.mutate("REJECT")}>Renvoyer en révision</AlertDialogAction>
+                      <AlertDialogAction onClick={() => dgRefusMutation.mutate()}>Renvoyer en révision</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-
-                {!data.dgApprovedAt && !dgCommentOuvert && (
-                  <Button variant="ghost" size="sm" onClick={() => setDgCommentOuvert(true)}>
-                    <MessageSquarePlus className="h-4 w-4" /> Commentaire
-                  </Button>
-                )}
-
-                {data.dgApprovedAt && suivante && (
-                  <Button variant="primary" onClick={() => router.push(lienSection(suivante))}>
-                    Section suivante en attente <ArrowRight className="h-4 w-4" />
-                  </Button>
-                )}
               </div>
 
-              {dgCommentOuvert && !data.dgApprovedAt && (
-                <Textarea
-                  className="mt-3"
-                  placeholder="Commentaire joint à la validation (facultatif)…"
-                  value={dgComment}
-                  onChange={(e) => setDgComment(e.target.value)}
-                  rows={2}
-                  autoFocus
-                />
-              )}
               {data.dgComment && (
                 <p className="mt-2 text-[13px] text-muted-foreground">
                   <span className="font-medium">Votre commentaire : </span>

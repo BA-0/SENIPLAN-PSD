@@ -80,14 +80,19 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/groups/*/sections/**").hasAuthority("ROLE_ADMIN")
                         // Second niveau de validation : le DG seul approuve ce qui entre dans les
                         // documents consolides, l'admin ne pouvant pas se l'accorder a lui-meme.
+                        // Sur une section isolee, le DG ne fait plus que refuser (cf. dgReview).
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/groups/*/sections/*/dg-approval")
                         .hasAuthority("ROLE_DIRECTEUR_GENERAL")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/groups/*/sections/dg-approve-all")
+                        // Le DG ne valide que depuis l'onglet « A valider », ligne par ligne ou par
+                        // selection cochee : les validations « tout d'un coup » lui sont fermees.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/dg-approvals/selection")
                         .hasAuthority("ROLE_DIRECTEUR_GENERAL")
-                        // Meme arbitrage, mais a l'echelle de la campagne : selection cochee dans
-                        // la liste des soumissions, ou tout ce qui attend encore le DG.
-                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/dg-approvals/**")
-                        .hasAuthority("ROLE_DIRECTEUR_GENERAL")
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/admin/groups/*/sections/dg-approve-all", "/api/v1/admin/dg-approvals/**")
+                        .denyAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/admin/groups/*/sections/validate-all", "/api/v1/admin/validations/**")
+                        .hasAuthority("ROLE_ADMIN")
                         // Consultation croisee entre directions : lecture seule pour tout compte
                         // connecte, toute autre methode est refusee (cf. PeerSectionController).
                         .requestMatchers(HttpMethod.GET, "/api/v1/peers/**").authenticated()

@@ -51,6 +51,13 @@ public class WorkGroupController {
         return ResponseEntity.noContent().build();
     }
 
+    /** Suppression definitive de la direction, de ses saisies et de ses comptes chef de groupe. */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        workGroupService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/{id}/reset-password")
     public ResponseEntity<ResetPasswordResponse> resetPassword(@PathVariable Long id,
                                                                @Valid @RequestBody ResetPasswordRequest request) {

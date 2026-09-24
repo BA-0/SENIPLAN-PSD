@@ -47,3 +47,8 @@ export async function resetLeaderPassword(id: number, password: string): Promise
   const { data } = await apiClient.post<ResetPasswordResponse>(`/groups/${id}/reset-password`, { password });
   return data;
 }
+
+/** Suppression définitive : la direction, ses saisies, son historique et ses comptes chef de groupe. */
+export async function deleteGroup(id: number): Promise<void> {
+  await apiClient.delete(`/groups/${id}`);
+}

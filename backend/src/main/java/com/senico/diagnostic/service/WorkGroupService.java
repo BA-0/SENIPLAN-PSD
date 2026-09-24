@@ -6,7 +6,10 @@ import com.senico.diagnostic.dto.group.ResetPasswordResponse;
 import com.senico.diagnostic.dto.group.UpdateWorkGroupRequest;
 import com.senico.diagnostic.dto.group.WorkGroupDto;
 import com.senico.diagnostic.exception.ResourceNotFoundException;
+import com.senico.diagnostic.repository.ActivityLogRepository;
+import com.senico.diagnostic.repository.GroupCycleArchiveRepository;
 import com.senico.diagnostic.repository.GroupSectionStatusRepository;
+import com.senico.diagnostic.repository.SectionResponseRepository;
 import com.senico.diagnostic.repository.SectionDefRepository;
 import com.senico.diagnostic.repository.UserRepository;
 import com.senico.diagnostic.repository.WorkGroupRepository;
@@ -28,6 +31,9 @@ public class WorkGroupService {
     private final UserRepository userRepository;
     private final SectionDefRepository sectionDefRepository;
     private final GroupSectionStatusRepository groupSectionStatusRepository;
+    private final SectionResponseRepository sectionResponseRepository;
+    private final GroupCycleArchiveRepository groupCycleArchiveRepository;
+    private final ActivityLogRepository activityLogRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordGeneratorService passwordGeneratorService;
     private final ProgressService progressService;
@@ -142,6 +148,29 @@ public class WorkGroupService {
         group.getLeader().setMustChangePassword(true);
         userRepository.save(group.getLeader());
         return new ResetPasswordResponse(group.getLeader().getUsername(), rawPassword);
+    }
+
+    /**
+     * Supprime definitivement une direction : saisies (et leur historique, en cascade), cycles
+     * archives, journal d'activite, statuts de section et comptes chef de groupe. Les comptes
+     * admin ou DG qui y seraient rattaches sont conserves, simplement detaches.
+     */
+    @Transactional
+    public void delete(Long id) {
+        WorkGroup group = findGroupOrThrow(id);
+        // Le groupe et son chef se referencent mutuellement : on rompt le lien avant de supprimer l'un ou l'autre.
+        group.setLeader(null);
+        workGroupRepository.saveAndFlush(group);
+
+        // Suppressions en masse : elles vident le contexte de persistance.
+        sectionResponseRepository.deleteAllByGroupId(id);
+        groupCycleArchiveRepository.deleteAllByGroupId(id);
+        activityLogRepository.deleteAllByGroupId(id);
+        userRepository.deleteAllByGroupIdAndRole(id, Role.GROUP_LEADER);
+        userRepository.detachAllFromGroup(id);
+
+        // Les statuts de section partent en cascade (fk_gss_group ON DELETE CASCADE).
+        workGroupRepository.deleteById(id);
     }
 
     private String nextPaletteColor() {

@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Archive, CheckCheck, FileDown, FileText, KeyRound, Pencil, Plus, Power, RotateCcw, Trash2, UserPlus } from "lucide-react";
+import { Archive, CheckCheck, Eraser, FileDown, FileText, KeyRound, Pencil, Plus, Power, RotateCcw, Trash2, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { createGroup, listGroups, resetLeaderPassword, setGroupEnabled, updateGroup } from "@/lib/api/groups";
+import { createGroup, deleteGroup, listGroups, resetLeaderPassword, setGroupEnabled, updateGroup } from "@/lib/api/groups";
 import {
   getGroupCycleSectionContent,
   getGroupCycleSections,
@@ -113,6 +113,9 @@ type PasswordTarget = { kind: "leader" | "account"; id: number; username: string
 /** Mot a recopier pour confirmer un effacement : un clic ne suffit pas a tout perdre. */
 const PURGE_CONFIRMATION_WORD = "EFFACER";
 
+/** Mot a recopier pour supprimer une direction : distinct de l'effacement, plus lourd de consequences. */
+const DELETE_CONFIRMATION_WORD = "SUPPRIMER";
+
 /** Effacement des saisies : une direction, ou toutes (groupId absent). */
 type PurgeTarget = { groupId?: number; label: string };
 
@@ -142,6 +145,8 @@ export default function AdminGroupsPage() {
   const [passwordTarget, setPasswordTarget] = useState<PasswordTarget | null>(null);
   const [purgeTarget, setPurgeTarget] = useState<PurgeTarget | null>(null);
   const [purgeConfirmation, setPurgeConfirmation] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<WorkGroupDto | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
   async function handleExportExcel() {
     setExportingExcel(true);
@@ -340,6 +345,22 @@ export default function AdminGroupsPage() {
       queryClient.invalidateQueries();
     },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'effacement des saisies")),
+  });
+
+  function openDeleteDialog(group: WorkGroupDto) {
+    setDeleteTarget(group);
+    setDeleteConfirmation("");
+  }
+
+  const deleteMutation = useMutation({
+    mutationFn: (groupId: number) => deleteGroup(groupId),
+    onSuccess: () => {
+      setDeleteTarget(null);
+      toast.success("Direction supprimée");
+      // La direction disparait de partout : tableau de bord, soumissions, activite, comptes.
+      queryClient.invalidateQueries();
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec de la suppression de la direction")),
   });
 
   const newCycleMutation = useMutation({
@@ -589,6 +610,16 @@ export default function AdminGroupsPage() {
                       title="Effacer toutes les saisies de la direction"
                       onClick={() => openPurgeDialog({ groupId: g.id, label: g.name })}
                     >
+                      <Eraser className="h-4 w-4 text-red-500 dark:text-red-400" />
+                    </Button>
+                  )}
+                  {peutAdministrer && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Supprimer la direction"
+                      onClick={() => openDeleteDialog(g)}
+                    >
                       <Trash2 className="h-4 w-4 text-red-500 dark:text-red-400" />
                     </Button>
                   )}
@@ -797,14 +828,14 @@ export default function AdminGroupsPage() {
             <p className="text-[13px] text-muted-foreground">
               Efface les saisies de toutes les directions pour repartir d&apos;une base propre avant le lancement
               réel. Les directions, les comptes et les textes du plan stratégique sont conservés. Pour une seule
-              direction, utilisez l&apos;icône corbeille sur sa ligne.
+              direction, utilisez l&apos;icône gomme sur sa ligne.
             </p>
             <Button
               variant="secondary"
               className="sm:shrink-0"
               onClick={() => openPurgeDialog({ label: "toutes les directions" })}
             >
-              <Trash2 className="h-4 w-4 text-red-500 dark:text-red-400" /> Effacer toutes les saisies
+              <Eraser className="h-4 w-4 text-red-500 dark:text-red-400" /> Effacer toutes les saisies
             </Button>
           </CardContent>
         </Card>
@@ -848,7 +879,51 @@ export default function AdminGroupsPage() {
                 loading={purgeMutation.isPending}
                 disabled={purgeConfirmation.trim() !== PURGE_CONFIRMATION_WORD}
               >
-                <Trash2 className="h-4 w-4" /> Effacer définitivement
+                <Eraser className="h-4 w-4" /> Effacer définitivement
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Supprimer la direction — {deleteTarget?.name}</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (deleteTarget && deleteConfirmation.trim() === DELETE_CONFIRMATION_WORD) {
+                deleteMutation.mutate(deleteTarget.id);
+              }
+            }}
+            className="space-y-4"
+          >
+            <p className="text-[13px] text-muted-foreground">
+              La direction disparaît définitivement, sans archive, avec le contenu de toutes ses sections, leur
+              historique de versions, ses cycles archivés, son journal d&apos;activité et son compte chef de
+              groupe{deleteTarget?.leaderUsername ? ` (${deleteTarget.leaderUsername})` : ""}. Pour la mettre
+              seulement en pause, désactivez-la plutôt.
+            </p>
+            <div className="space-y-1.5">
+              <Label required>
+                Tapez {DELETE_CONFIRMATION_WORD} pour confirmer
+              </Label>
+              <Input
+                autoComplete="off"
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="submit"
+                variant="primary"
+                loading={deleteMutation.isPending}
+                disabled={deleteConfirmation.trim() !== DELETE_CONFIRMATION_WORD}
+              >
+                <Trash2 className="h-4 w-4" /> Supprimer définitivement
               </Button>
             </DialogFooter>
           </form>

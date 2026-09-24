@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ArrowUpDown, CheckCircle2, Eye, Inbox, RotateCcw, Send, Search as SearchIcon, ShieldCheck, Undo2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, CheckCircle2, Eye, Inbox, RotateCcw, Send, Search as SearchIcon, ShieldCheck, Undo2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -34,23 +34,14 @@ import { groupSectionsByPart } from "@/lib/section-groups";
 // Seul cas ou l'approbation en masse a un effet : l'interface ne propose de cocher que celles-la.
 import { attendLaDg } from "@/lib/dg-queue";
 import type { SubmissionSummaryDto } from "@/types/api";
-import type { SectionStatus } from "@/types/common";
-
-const STATUS_OPTIONS: { value: SectionStatus; label: string }[] = [
-  { value: "NOT_STARTED", label: "Non commencé" },
-  { value: "IN_PROGRESS", label: "En cours" },
-  { value: "SUBMITTED", label: "Soumis" },
-  { value: "VALIDATED", label: "Validé" },
-  { value: "REVISION_REQUESTED", label: "À réviser" },
-];
-
-type SortKey = "groupName" | "sectionOrder" | "status" | "submittedAt" | "validatedAt" | "dgApprovedAt" | "lastActivityAt";
 
 /**
- * L'approbation du DG est un second axe, independant du statut : une section validee peut
- * attendre son arbitrage, et c'est cette attente qui la tient hors des documents consolides.
+ * Etape du circuit de validation : un seul filtre au lieu de « Statut » et « Approbation DG »,
+ * qui se recoupaient. Les etapes ne se chevauchent pas, une section n'est que dans une seule.
  */
-type DgFilter = "" | "PENDING" | "APPROVED";
+type Etape = "" | "A_VALIDER" | "ATTENTE_DG" | "APPROUVEES" | "A_REVISER" | "EN_SAISIE";
+
+type SortKey = "groupName" | "sectionOrder" | "status" | "submittedAt" | "validatedAt" | "dgApprovedAt" | "lastActivityAt";
 
 const PAGE_SIZE = 25;
 
@@ -61,16 +52,17 @@ function cleDe(s: SubmissionSummaryDto): string {
 
 export default function AdminSubmissionsPage() {
   const searchParams = useSearchParams();
-  const initialStatus = searchParams.get("status") as SectionStatus | null;
+  // Liens entrants : ?dg=PENDING (file de la DG), ?status=SUBMITTED (a valider).
+  const etapeInitiale: Etape =
+    searchParams.get("dg") === "PENDING" ? "ATTENTE_DG" : searchParams.get("status") === "SUBMITTED" ? "A_VALIDER" : "";
 
-  const [statusFilter, setStatusFilter] = useState<SectionStatus | "">(initialStatus ?? "");
+  const [etape, setEtape] = useState<Etape>(etapeInitiale);
   const [groupFilter, setGroupFilter] = useState<number | "">("");
   const [sectionFilter, setSectionFilter] = useState<string>("");
-  // Le menu « À valider » du DG ouvre la liste deja filtree sur ce qui l'attend.
-  const [dgFilter, setDgFilter] = useState<DgFilter>(searchParams.get("dg") === "PENDING" ? "PENDING" : "");
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [periodeOuverte, setPeriodeOuverte] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("submittedAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
@@ -194,13 +186,12 @@ export default function AdminSubmissionsPage() {
   // l'ecran ne montre plus serait exactement l'erreur que ce raccourci doit eviter.
   useEffect(() => {
     setSelection(new Set());
-  }, [statusFilter, groupFilter, sectionFilter, dgFilter, search, dateFrom, dateTo]);
+  }, [etape, groupFilter, sectionFilter, search, dateFrom, dateTo]);
 
   function resetFilters() {
-    setStatusFilter("");
+    setEtape("");
     setGroupFilter("");
     setSectionFilter("");
-    setDgFilter("");
     setSearch("");
     setDateFrom("");
     setDateTo("");
@@ -208,32 +199,63 @@ export default function AdminSubmissionsPage() {
   }
 
   const hasActiveFilters =
-    statusFilter !== "" ||
+    etape !== "" ||
     groupFilter !== "" ||
     sectionFilter !== "" ||
-    dgFilter !== "" ||
     search.trim() !== "" ||
     dateFrom !== "" ||
     dateTo !== "";
 
-  const filtered = useMemo(() => {
+  /**
+   * Pour la DG, « À valider » est toute sa file : soumises comme validees par l'admin. L'admin,
+   * lui, distingue ce qu'il doit valider de ce qui attend ensuite la DG.
+   */
+  function estALEtape(s: SubmissionSummaryDto, e: Etape): boolean {
+    switch (e) {
+      case "":
+        return true;
+      case "A_VALIDER":
+        return s.status === "SUBMITTED";
+      case "ATTENTE_DG":
+        // Ce que la DG vient d'approuver reste affiche, cf. recemmentApprouvees.
+        if (recemmentApprouvees.has(cleDe(s))) return true;
+        return peutApprouver ? attendLaDg(s) : s.status === "VALIDATED" && !s.dgApprovedAt;
+      case "APPROUVEES":
+        return !!s.dgApprovedAt;
+      case "A_REVISER":
+        return s.status === "REVISION_REQUESTED";
+      case "EN_SAISIE":
+        return s.status === "NOT_STARTED" || s.status === "IN_PROGRESS";
+    }
+  }
+
+  const etapes: { value: Etape; label: string }[] = peutApprouver
+    ? [
+        { value: "", label: "Toutes" },
+        { value: "ATTENTE_DG", label: "À valider" },
+        { value: "APPROUVEES", label: "Validées" },
+        { value: "A_REVISER", label: "À réviser" },
+        { value: "EN_SAISIE", label: "En cours de saisie" },
+      ]
+    : [
+        { value: "", label: "Toutes" },
+        { value: "A_VALIDER", label: "À valider" },
+        { value: "ATTENTE_DG", label: "En attente de la DG" },
+        { value: "APPROUVEES", label: "Validées par la DG" },
+        { value: "A_REVISER", label: "À réviser" },
+        { value: "EN_SAISIE", label: "En cours de saisie" },
+      ];
+
+  /** Lignes retenues par la recherche, la direction, la section et la periode : l'etape se choisit parmi elles. */
+  const horsEtape = useMemo(() => {
     if (!data) return [];
     const q = search.trim().toLowerCase();
     const from = dateFrom ? new Date(dateFrom) : null;
     const to = dateTo ? new Date(dateTo + "T23:59:59") : null;
 
-    let rows = data.filter((s) => {
-      if (statusFilter !== "" && s.status !== statusFilter) return false;
+    return data.filter((s) => {
       if (groupFilter !== "" && s.groupId !== groupFilter) return false;
       if (sectionFilter !== "" && s.sectionCode !== sectionFilter) return false;
-      if (dgFilter === "APPROVED" && !s.dgApprovedAt) return false;
-      if (
-        dgFilter === "PENDING" &&
-        !attendLaDg(s) &&
-        !recemmentApprouvees.has(cleDe(s))
-      ) {
-        return false;
-      }
       if (q) {
         const haystack = `${s.groupName} ${s.leaderFullName ?? ""} ${s.sectionCode} ${s.sectionTitle}`.toLowerCase();
         if (!haystack.includes(q)) return false;
@@ -246,8 +268,12 @@ export default function AdminSubmissionsPage() {
       }
       return true;
     });
+  }, [data, groupFilter, sectionFilter, search, dateFrom, dateTo]);
 
-    rows = rows.sort((a, b) => {
+  const filtered = useMemo(() => {
+    const rows = horsEtape.filter((s) => estALEtape(s, etape));
+
+    rows.sort((a, b) => {
       let cmp = 0;
       switch (sortKey) {
         case "groupName":
@@ -276,29 +302,20 @@ export default function AdminSubmissionsPage() {
     });
 
     return rows;
-  }, [
-    data,
-    statusFilter,
-    groupFilter,
-    sectionFilter,
-    dgFilter,
-    search,
-    dateFrom,
-    dateTo,
-    sortKey,
-    sortDir,
-    recemmentApprouvees,
-  ]);
+    // estALEtape ne lit que etape, peutApprouver et recemmentApprouvees.
+  }, [horsEtape, etape, peutApprouver, sortKey, sortDir, recemmentApprouvees]);
 
+  // Memes etapes que les filtres, sur toutes les soumissions : une carte et son filtre affichent le meme nombre.
   const kpis = useMemo(() => {
     const source = data ?? [];
     return {
       submitted: source.filter((s) => s.status === "SUBMITTED").length,
-      awaitingDg: source.filter(attendLaDg).length,
+      awaitingDg: source.filter((s) => (peutApprouver ? attendLaDg(s) : s.status === "VALIDATED" && !s.dgApprovedAt)).length,
       dgApproved: source.filter((s) => s.dgApprovedAt).length,
       revision: source.filter((s) => s.status === "REVISION_REQUESTED").length,
+      enSaisie: source.filter((s) => s.status === "NOT_STARTED" || s.status === "IN_PROGRESS").length,
     };
-  }, [data]);
+  }, [data, peutApprouver]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);
@@ -347,14 +364,52 @@ export default function AdminSubmissionsPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard icon={Send} label="En attente de validation" value={kpis.submitted} color="blue" />
-        <KpiCard icon={Inbox} label="En attente de la DG" value={kpis.awaitingDg} color="amber" />
-        <KpiCard icon={ShieldCheck} label="Validées par la DG" value={kpis.dgApproved} color="emerald" />
-        <KpiCard icon={RotateCcw} label="À réviser" value={kpis.revision} color="orange" />
+        {peutApprouver ? (
+          <>
+            <KpiCard icon={Inbox} label="À valider" value={kpis.awaitingDg} color="amber" />
+            <KpiCard icon={ShieldCheck} label="Validées" value={kpis.dgApproved} color="emerald" />
+            <KpiCard icon={RotateCcw} label="À réviser" value={kpis.revision} color="orange" />
+            <KpiCard icon={Send} label="En cours de saisie" value={kpis.enSaisie} color="slate" />
+          </>
+        ) : (
+          <>
+            <KpiCard icon={Send} label="À valider" value={kpis.submitted} color="blue" />
+            <KpiCard icon={Inbox} label="En attente de la DG" value={kpis.awaitingDg} color="amber" />
+            <KpiCard icon={ShieldCheck} label="Validées par la DG" value={kpis.dgApproved} color="emerald" />
+            <KpiCard icon={RotateCcw} label="À réviser" value={kpis.revision} color="orange" />
+          </>
+        )}
       </div>
 
       <Card>
         <CardContent className="pt-5 space-y-4">
+          <div className="space-y-1.5">
+            <p className="text-[13px] font-medium text-foreground/90">Étape</p>
+            <div className="flex flex-wrap gap-2">
+              {etapes.map((opt) => {
+                const nombre = horsEtape.filter((s) => estALEtape(s, opt.value)).length;
+                const actif = etape === opt.value;
+                return (
+                  <Button
+                    key={opt.value || "toutes"}
+                    variant={actif ? "primary" : "secondary"}
+                    size="sm"
+                    aria-pressed={actif}
+                    onClick={() => {
+                      setEtape(opt.value);
+                      setPage(0);
+                    }}
+                  >
+                    {opt.label}
+                    <span className={actif ? "tabular-nums opacity-90" : "tabular-nums text-muted-foreground"}>
+                      {nombre}
+                    </span>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1.5 flex-1 min-w-[220px]">
               <p className="text-[13px] font-medium text-foreground/90">Recherche</p>
@@ -366,82 +421,13 @@ export default function AdminSubmissionsPage() {
                     setSearch(e.target.value);
                     setPage(0);
                   }}
-                  placeholder="Groupe, chef de groupe, section…"
+                  placeholder="Direction, chef de groupe, section…"
                   className="pl-9"
                 />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <p className="text-[13px] font-medium text-foreground/90">Soumis depuis le</p>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => {
-                  setDateFrom(e.target.value);
-                  setPage(0);
-                }}
-                className="w-40"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <p className="text-[13px] font-medium text-foreground/90">Jusqu'au</p>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => {
-                  setDateTo(e.target.value);
-                  setPage(0);
-                }}
-                className="w-40"
-              />
-            </div>
-            <Button
-              variant={statusFilter === "SUBMITTED" ? "primary" : "secondary"}
-              size="sm"
-              onClick={() => {
-                setStatusFilter(statusFilter === "SUBMITTED" ? "" : "SUBMITTED");
-                setPage(0);
-              }}
-            >
-              <Send className="h-3.5 w-3.5" /> En attente uniquement
-            </Button>
-            <Button
-              variant={dgFilter === "PENDING" ? "primary" : "secondary"}
-              size="sm"
-              onClick={() => {
-                setDgFilter(dgFilter === "PENDING" ? "" : "PENDING");
-                setPage(0);
-              }}
-            >
-              <ShieldCheck className="h-3.5 w-3.5" /> En attente de la DG
-            </Button>
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={resetFilters}>
-                <RotateCcw className="h-3.5 w-3.5" /> Réinitialiser les filtres
-              </Button>
-            )}
-          </div>
-
-          <div className="flex flex-wrap gap-4">
             <div className="space-y-1.5 w-56">
-              <p className="text-[13px] font-medium text-foreground/90">Statut</p>
-              <NativeSelect
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value as SectionStatus | "");
-                  setPage(0);
-                }}
-              >
-                <option value="">Tous les statuts</option>
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
-            <div className="space-y-1.5 w-56">
-              <p className="text-[13px] font-medium text-foreground/90">Groupe</p>
+              <p className="text-[13px] font-medium text-foreground/90">Direction</p>
               <NativeSelect
                 value={groupFilter}
                 onChange={(e) => {
@@ -449,26 +435,12 @@ export default function AdminSubmissionsPage() {
                   setPage(0);
                 }}
               >
-                <option value="">Tous les groupes</option>
+                <option value="">Toutes les directions</option>
                 {groups.map(([id, name]) => (
                   <option key={id} value={id}>
                     {name}
                   </option>
                 ))}
-              </NativeSelect>
-            </div>
-            <div className="space-y-1.5 w-56">
-              <p className="text-[13px] font-medium text-foreground/90">Approbation DG</p>
-              <NativeSelect
-                value={dgFilter}
-                onChange={(e) => {
-                  setDgFilter(e.target.value as DgFilter);
-                  setPage(0);
-                }}
-              >
-                <option value="">Toutes</option>
-                <option value="PENDING">En attente de la DG</option>
-                <option value="APPROVED">Validées par la DG</option>
               </NativeSelect>
             </div>
             <div className="space-y-1.5 w-56">
@@ -492,7 +464,48 @@ export default function AdminSubmissionsPage() {
                 ))}
               </NativeSelect>
             </div>
+            <Button
+              variant={periodeOuverte || dateFrom || dateTo ? "primary" : "ghost"}
+              size="sm"
+              onClick={() => setPeriodeOuverte((o) => !o)}
+            >
+              <CalendarDays className="h-3.5 w-3.5" /> Date de soumission
+            </Button>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={resetFilters}>
+                <RotateCcw className="h-3.5 w-3.5" /> Réinitialiser
+              </Button>
+            )}
           </div>
+
+          {(periodeOuverte || dateFrom || dateTo) && (
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="space-y-1.5">
+                <p className="text-[13px] font-medium text-foreground/90">Soumis entre le</p>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => {
+                    setDateFrom(e.target.value);
+                    setPage(0);
+                  }}
+                  className="w-40"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[13px] font-medium text-foreground/90">et le</p>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => {
+                    setDateTo(e.target.value);
+                    setPage(0);
+                  }}
+                  className="w-40"
+                />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

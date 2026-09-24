@@ -1012,9 +1012,10 @@ class PsdBriefBuilder {
         // Revue client du 15/09/2026 : les tableaux par axe (cadre logique, plan d'actions, budget detaille) sont
         // reportes en annexe ; le corps garde la synthese du cadre logique. Revue de l'auditeur (21/09/2026) : plus
         // de texte d'introduction, un simple renvoi ; le budget par axe et par exercice revient dans le corps.
+        // Demande client du 23/09/2026 (titres et tableaux seulement) : la synthese du cadre logique (S09B), un
+        // texte, n'y figure plus ; ses intitules par direction restaient seuls, sans rien dessous.
         sub(b, "X.1 Cadre logique");
         b.add(annexReference(ANNEXE_CADRE_LOGIQUE));
-        b.addAll(logframeSyntheses(ctx));
         sub(b, "X.2 Opérationnalisation : plan d'actions " + PERIOD);
         b.add(annexReference(ANNEXE_PLANIFICATION));
         sub(b, "X.3 Budget du plan");
@@ -1149,7 +1150,6 @@ class PsdBriefBuilder {
      * d'intervention, ses indicateurs objectivement verifiables, leurs moyens de verification et les
      * conditions critiques. Sous un axe de l'entreprise, chaque case reunit les cadres logiques des
      * directions qu'il regroupe, chacun a sa couleur ; une formulation commune n'y figure qu'une fois.
-     * La synthese du cadre logique de chaque direction (S09B) se lit a part (cf. {@link #logframeSyntheses}).
      */
     private List<ExportBlock> logicalFrameworks(Context ctx) {
         return perAxis(ctx, axis -> logicalFramework(ctx, axis));
@@ -1188,12 +1188,13 @@ class PsdBriefBuilder {
         // Un axe sans cadre logique garde le sien, vide : les cinq niveaux du canevas, un tiret par case.
         List<ExportBlock> tables = new ArrayList<>();
         axisHeading(tables, axis, "");
+        List<ExportBlock.TableRow> rows = new ArrayList<>();
         if (!axis.objective().isBlank()) {
-            tables.add(new ExportBlock.Paragraph("Objectif : " + axis.objective()));
+            // En bandeau du tableau, et non en paragraphe : la note de synthese retire ses paragraphes.
+            rows.add(ExportBlock.TableRow.band("Objectif : " + axis.objective(), ExportBlock.Background.PRIMARY_LIGHT));
         } else if (!objectives.isEmpty()) {
             tables.add(new ExportBlock.AttributedList("Objectif", objectives.toAttributions()));
         }
-        List<ExportBlock.TableRow> rows = new ArrayList<>();
         cellsByLevel.forEach((level, cells) -> rows.add(new ExportBlock.TableRow(List.of(
                 rowLabel(SectionLabels.logframe(level)), attributedCell(cells.get(0)), attributedCell(cells.get(1)),
                 attributedCell(cells.get(2)), attributedCell(cells.get(3))))));
@@ -1201,26 +1202,6 @@ class PsdBriefBuilder {
                 "Indicateurs objectivement vérifiables (IOV)", "Moyens et sources de vérification",
                 "Conditions critiques / Hypothèses"), rows, List.of(17, 24, 21, 19, 19)));
         return tables;
-    }
-
-    /**
-     * Synthese du cadre logique (S09B) : la lecture d'ensemble que chaque direction en donne. Le client la garde
-     * dans le corps du document, en texte sous le nom de la direction, et en a retire le tableau.
-     */
-    private List<ExportBlock> logframeSyntheses(Context ctx) {
-        List<ExportBlock> b = new ArrayList<>();
-        for (WorkGroup group : ctx.groups) {
-            String note = JsonUtil.text(ctx.content(group, "S09B"), "synthesisNote").trim();
-            if (note.isEmpty()) {
-                continue;
-            }
-            if (b.isEmpty()) {
-                b.add(new ExportBlock.Heading("Synthèse du cadre logique", 3));
-            }
-            b.add(new ExportBlock.Heading(group.getName(), 4));
-            b.add(new ExportBlock.Paragraph(note));
-        }
-        return b;
     }
 
     /** Rubrique dont les tableaux sont reportes en annexe : le seul renvoi a l'annexe, qui existe toujours. */
@@ -1997,6 +1978,7 @@ class PsdBriefBuilder {
                 }
                 rows.add(new ExportBlock.TableRow(List.of(
                         single(actor, group, ctx),
+                        center(JsonUtil.dash(SectionLabels.stakeholderScope(JsonUtil.text(row, "scope")))),
                         new ExportBlock.Cell(JsonUtil.dash(rolesOf(row))),
                         new ExportBlock.Cell(JsonUtil.dash(JsonUtil.text(row, "expectations"))),
                         new ExportBlock.Cell(JsonUtil.dash(JsonUtil.text(row, "adaptationStrategy"))),
@@ -2005,9 +1987,9 @@ class PsdBriefBuilder {
                         new ExportBlock.Cell(JsonUtil.dash(JsonUtil.text(row, "actions"))))));
             }
         }
-        List<String> headers = List.of("Acteur (PP)", "Rôles / Responsabilités", "Attentes / Intérêt / Priorités",
+        List<String> headers = List.of("Acteur (PP)", "Portée", "Rôles / Responsabilités", "Attentes / Intérêt / Priorités",
                 "Stratégie d'adaptation", "Niveau importance", "Niveau influence", "Actions");
-        List<Integer> widths = List.of(14, 16, 16, 16, 11, 11, 16);
+        List<Integer> widths = List.of(13, 8, 15, 15, 15, 10, 10, 14);
         return List.of(rows.isEmpty() ? emptyTable(headers, widths) : new ExportBlock.Table(headers, rows, widths));
     }
 

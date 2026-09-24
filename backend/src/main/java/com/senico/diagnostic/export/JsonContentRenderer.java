@@ -75,13 +75,20 @@ public final class JsonContentRenderer {
                     out.add(new Line(indent, "#" + i));
                     renderNode(item, indent + 1, out);
                 } else {
-                    out.add(new Line(indent, "- " + item.asText()));
+                    out.add(new Line(indent, "- " + scalar(item)));
                 }
                 i++;
             }
         } else {
-            out.add(new Line(indent, node.asText()));
+            out.add(new Line(indent, scalar(node)));
         }
+    }
+
+    /** Un total calcule (un double) sortirait en notation scientifique avec asText : « 1.25E8 ». */
+    private static String scalar(JsonNode node) {
+        return node.isFloatingPointNumber()
+                ? node.decimalValue().setScale(2, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+                : node.asText();
     }
 
     private static void renderField(String key, JsonNode value, int indent, List<Line> out) {
@@ -90,7 +97,7 @@ public final class JsonContentRenderer {
             return;
         }
         if (value.isTextual() || value.isNumber() || value.isBoolean()) {
-            String text = value.isBoolean() ? (value.asBoolean() ? "Oui" : "Non") : value.asText();
+            String text = value.isBoolean() ? (value.asBoolean() ? "Oui" : "Non") : scalar(value);
             if (!text.isBlank()) {
                 out.add(new Line(indent, label + " : " + text));
             }

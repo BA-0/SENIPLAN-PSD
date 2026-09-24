@@ -465,7 +465,7 @@ public class WordExportService {
      */
     private void addPsdMergedStakeholders(XWPFDocument doc, SectionDef section, List<WorkGroup> groups,
                                            Map<String, SectionResponse> responsesByKey) {
-        String[] headers = {"Catégorie", "Portée", "Rôles", "Attentes", "Stratégie d'adaptation", "Importance", "Influence", "Actions", "Directions"};
+        String[] headers = {"Acteur (PP)", "Portée", "Rôles", "Attentes", "Stratégie d'adaptation", "Importance", "Influence", "Actions", "Directions"};
 
         Map<String, String[]> rowValuesByKey = new LinkedHashMap<>();
         Map<String, List<WorkGroup>> contributorsByKey = new LinkedHashMap<>();
@@ -479,8 +479,8 @@ public class WordExportService {
                         PsdBriefBuilder.rolesOf(row),
                         JsonUtil.text(row, "expectations"),
                         JsonUtil.text(row, "adaptationStrategy"),
-                        JsonUtil.text(row, "importance"),
-                        JsonUtil.text(row, "influence"),
+                        JsonUtil.text(row, "importance").isBlank() ? "" : SectionLabels.level(JsonUtil.text(row, "importance")),
+                        JsonUtil.text(row, "influence").isBlank() ? "" : SectionLabels.level(JsonUtil.text(row, "influence")),
                         JsonUtil.text(row, "actions")
                 };
                 String key = PsdCrossGroupMerge.normalize(String.join("|", values));
@@ -588,7 +588,8 @@ public class WordExportService {
 
         XWPFTable table = doc.createTable(PESTEL_AXES.length + 1, 5);
         table.setWidth("100%");
-        String[] headers = {"Axe", "Analyses", "Menaces", "Opportunités", "Actions"};
+        String[] headers = {"Items", "Analyses", "Menaces", "Opportunités",
+                "Actions pour atténuer les menaces ou saisir les opportunités"};
         for (int c = 0; c < headers.length; c++) {
             setCell(table.getRow(0).getCell(c), headers[c], true, ParagraphAlignment.LEFT, "FFFFFF", PRIMARY_HEX, 9);
         }

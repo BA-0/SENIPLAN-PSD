@@ -471,6 +471,10 @@ public class WordBlockEmitter {
             }
             for (XWPFTableCell cell : rows.get(r).getTableCells()) {
                 for (XWPFParagraph p : cell.getParagraphs()) {
+                    // POI 5.3 ne cree pas le pPr absent d'un paragraphe neuf : setKeepNext leverait un NPE.
+                    if (!p.getCTP().isSetPPr()) {
+                        p.getCTP().addNewPPr();
+                    }
                     p.setKeepNext(true);
                 }
             }

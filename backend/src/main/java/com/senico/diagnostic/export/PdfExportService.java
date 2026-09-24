@@ -622,7 +622,7 @@ public class PdfExportService {
      */
     private void addPsdMergedStakeholders(Document document, SectionDef section, List<WorkGroup> groups,
                                            Map<String, SectionResponse> responsesByKey) throws DocumentException {
-        String[] headers = {"Catégorie", "Portée", "Rôles", "Attentes", "Stratégie d'adaptation", "Importance", "Influence", "Actions", "Directions"};
+        String[] headers = {"Acteur (PP)", "Portée", "Rôles", "Attentes", "Stratégie d'adaptation", "Importance", "Influence", "Actions", "Directions"};
         // Corps en 7,5 points, comme les autres tableaux de plus de sept colonnes, et largeurs a la mesure
         // des contenus : en 9 points, « Catégorie », « Externe », « MOYEN » ou « Contractualisation » se
         // coupaient au milieu du mot, pendant que la colonne des pastilles occupait un sixieme du tableau.
@@ -642,8 +642,8 @@ public class PdfExportService {
                         PsdBriefBuilder.rolesOf(row),
                         JsonUtil.text(row, "expectations"),
                         JsonUtil.text(row, "adaptationStrategy"),
-                        JsonUtil.text(row, "importance"),
-                        JsonUtil.text(row, "influence"),
+                        JsonUtil.text(row, "importance").isBlank() ? "" : SectionLabels.level(JsonUtil.text(row, "importance")),
+                        JsonUtil.text(row, "influence").isBlank() ? "" : SectionLabels.level(JsonUtil.text(row, "influence")),
                         JsonUtil.text(row, "actions")
                 };
                 String key = PsdCrossGroupMerge.normalize(String.join("|", values));
@@ -753,7 +753,8 @@ public class PdfExportService {
         table.setWidths(new float[]{12, 22, 22, 22, 22});
         table.setSpacingBefore(4);
         table.setSpacingAfter(4);
-        addTableHeaderRow(table, "Axe", "Analyses", "Menaces", "Opportunités", "Actions");
+        addTableHeaderRow(table, "Items", "Analyses", "Menaces", "Opportunités",
+                "Actions pour atténuer les menaces ou saisir les opportunités");
 
         String[] columns = {"analysis", "threats", "opportunities", "actions"};
         for (String axisCode : PESTEL_AXES) {

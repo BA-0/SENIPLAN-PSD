@@ -250,12 +250,14 @@ class PsdBriefBuilderTest {
         assertThat(note).contains(
                 "Réseau national",                          // V. diagnostic
                 "Parc technique vieillissant",
-                "Devenir l'opérateur logistique de référence", "Fiabilité",  // IX. propositions des directions
                 "Croissance commerciale",                   // IX. et X.
                 "Lancer l'offre grands comptes",            // XII.1 synthese du cadre strategique
                 "Perte de parts de marché",                 // V.5 risques de criticite elevee
                 "1 000 FCFA",                               // budget global (600 + 400)
                 "Trimestrielle");                           // XI. pilotage
+        assertThat(note).as("demande client du 23/09/2026 : vision, mission et valeurs ne gardent que leurs titres")
+                .contains("IX.1 Vision", "IX.3 Valeurs")
+                .doesNotContain("Devenir l'opérateur logistique de référence", "Fiabilité");
         assertThat(blocs).as("demande client du 23/09/2026 : la note ne garde que titres, sous-titres et tableaux")
                 .noneMatch(bloc -> bloc instanceof ExportBlock.Paragraph || bloc instanceof ExportBlock.BulletList
                         || bloc instanceof ExportBlock.Callout);
@@ -412,6 +414,8 @@ class PsdBriefBuilderTest {
 
         assertThat(note).as("demande client du 23/09/2026 : plus de synthèse de l'analyse des ressources")
                 .doesNotContain("Marque connue de tous", "Une direction solide mais peu outillée");
+        assertThat(note).as("la synthèse du cadre logique, un texte, ne laisse pas d'intitulés vides")
+                .doesNotContain("Synthèse du cadre logique", "Un impact unique : une position commerciale consolidée");
         assertThat(note).as("demande client du 23/09/2026 : plus de matrice complète des risques en annexe ; "
                         + "la méthodologie du canevas suit la cartographie")
                 .doesNotContain("Présence (Oui/Non)", "Contentieux fournisseur")
@@ -605,9 +609,13 @@ class PsdBriefBuilderTest {
     void presenteLesPartiesPrenantesEnTableauSansMatrice() {
         WorkGroup commerciale = group(1, "Direction commerciale");
         saisie(commerciale, "S01", """
-                {"rows":[{"actor":"Ministère de tutelle","roles":"Tutelle","importance":"FORT","influence":"FORT"}]}""");
+                {"rows":[{"actor":"Ministère de tutelle","scope":"EXTERNE","roles":"Tutelle","importance":"FORT","influence":"FORT"}]}""");
 
         List<ExportBlock> blocs = build(commerciale);
+        assertThat(blocs).as("la portée saisie figure dans le tableau, comme dans le plan sectoriel")
+                .anyMatch(bloc -> bloc instanceof ExportBlock.Table table && table.columnHeaders().contains("Portée")
+                        && table.rows().stream().anyMatch(row -> row.cells().size() == table.columnHeaders().size()
+                                && contientTexte(row, SectionLabels.stakeholderScope("EXTERNE"))));
         int annexes = blocs.indexOf(blocs.stream()
                 .filter(bloc -> bloc instanceof ExportBlock.Heading heading && heading.text().equals(PsdBriefBuilder.ANNEXES))
                 .findFirst().orElseThrow());
@@ -698,9 +706,9 @@ class PsdBriefBuilderTest {
                 .findFirst().orElseThrow();
 
         assertThat(contientTexte(annexe.rows().get(0), "Direction Commerciale")).isTrue();
-        assertThat(annexe.rows().get(0).cells().get(1).text()).isEqualTo("Exprime les besoins de livraison");
+        assertThat(annexe.rows().get(0).cells().get(2).text()).isEqualTo("Exprime les besoins de livraison");
         assertThat(contientTexte(annexe.rows().get(1), "Fournisseurs de véhicules")).isTrue();
-        assertThat(annexe.rows().get(1).cells().get(1).text()).as("le seul nom, sans rôle décrit").isEqualTo("—");
+        assertThat(annexe.rows().get(1).cells().get(2).text()).as("le seul nom, sans rôle décrit").isEqualTo("—");
     }
 
     @Test
@@ -722,7 +730,7 @@ class PsdBriefBuilderTest {
                 .filter(table -> table.columnHeaders().contains("Acteur (PP)"))
                 .findFirst().orElseThrow();
         assertThat(contientTexte(annexe.rows().get(0), "ONG locale")).isTrue();
-        assertThat(annexe.rows().get(0).cells().get(1).text()).isEqualTo("Appui aux communautés");
+        assertThat(annexe.rows().get(0).cells().get(2).text()).isEqualTo("Appui aux communautés");
         assertThat(texte(blocs)).contains("Parc informatique", "Postes récents", "Mécénat");
     }
 
@@ -785,6 +793,11 @@ class PsdBriefBuilderTest {
 
         assertThat(note).contains("Être l'opérateur de référence du pays", "Axe 1 : Axe commun", "Servir mieux",
                 "Vendre plus", "Réparer vite");
+        assertThat(blocs).as("l'objectif arrêté par la DG coiffe le cadre logique de l'axe : un paragraphe serait retiré")
+                .anyMatch(bloc -> bloc instanceof ExportBlock.Table table
+                        && table.columnHeaders().contains("Logique d'intervention")
+                        && table.rows().stream().anyMatch(row -> row.band()
+                                && row.cells().get(0).text().equals("Objectif : Servir mieux")));
         assertThat(note)
                 .as("une vision arrêtée par la DG ne laisse plus place à celles des directions")
                 .doesNotContain("Vision de la direction commerciale");

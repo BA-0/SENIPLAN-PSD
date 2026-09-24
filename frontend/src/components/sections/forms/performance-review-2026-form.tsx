@@ -14,20 +14,20 @@ import type { SectionFormProps } from "./types";
 
 /** Les sept colonnes du modele client pour l'exercice en cours. */
 const COLUMNS = [
-  "Objectif",
-  "Indicateur",
-  "Résultat attendu",
-  "Écart",
+  "Objectifs",
+  "Indicateurs",
+  "Résultats attendus",
+  "Écarts",
   "Causes sous-jacentes",
   "Causes profondes",
   "Actions à entreprendre",
 ] as const;
-/** Exercices ecoules : les memes colonnes, le resultat y est celui obtenu ; causes et actions au pluriel. */
+/** Exercices ecoules : les memes colonnes, le resultat y est celui obtenu ; colonnes au pluriel. */
 const PAST_COLUMNS = [
-  "Objectif",
-  "Indicateur",
-  "Résultat obtenu",
-  "Écart",
+  "Objectifs",
+  "Indicateurs",
+  "Résultats obtenus",
+  "Écarts",
   "Causes sous-jacentes",
   "Causes profondes",
   "Actions entreprises",

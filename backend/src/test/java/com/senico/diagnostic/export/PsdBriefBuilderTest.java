@@ -660,8 +660,8 @@ class PsdBriefBuilderTest {
         ExportBlock.Table courante = tableauApres(blocs, "V.2 " + PerformanceReviewTables.CURRENT_TITLE);
 
         assertThat(passees.columnHeaders()).as("exercices écoulés : le résultat est celui obtenu")
-                .containsExactly("Objectif", "Indicateur", "Résultat obtenu", "Écart", "Causes sous-jacentes", "Causes profondes", "Actions entreprises");
-        assertThat(courante.columnHeaders()).containsExactly("Objectif", "Indicateur", "Résultat attendu", "Écart",
+                .containsExactly("Objectifs", "Indicateurs", "Résultats obtenus", "Écarts", "Causes sous-jacentes", "Causes profondes", "Actions entreprises");
+        assertThat(courante.columnHeaders()).containsExactly("Objectifs", "Indicateurs", "Résultats attendus", "Écarts",
                 "Causes sous-jacentes", "Causes profondes", "Actions à entreprendre");
         assertThat(passees.rows().stream().filter(ExportBlock.TableRow::band).map(row -> row.cells().get(0).text()))
                 .as("un bandeau par exercice écoulé, du plus ancien au plus récent")
@@ -856,7 +856,7 @@ class PsdBriefBuilderTest {
                 .map(ExportBlock.Table::columnHeaders).toList();
         assertThat(entetes).as("les tableaux du canevas, vides, sont tous là")
                 .anySatisfy(h -> assertThat(h).contains("Acteur (PP)"))                              // parties prenantes
-                .anySatisfy(h -> assertThat(h).contains("Résultat attendu"))             // bilan des performances
+                .anySatisfy(h -> assertThat(h).contains("Résultats attendus"))             // bilan des performances
                 .anySatisfy(h -> assertThat(h).contains("Défis à relever"))                          // ressources et compétences
                 .anySatisfy(h -> assertThat(h).containsSubsequence("Items", "Analyses", "Menaces", "Opportunités")) // PESTEL
                 .anySatisfy(h -> assertThat(h).contains("Liste des forces", "Liste des faiblesses"))  // mise en relation

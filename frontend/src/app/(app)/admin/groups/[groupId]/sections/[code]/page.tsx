@@ -46,7 +46,7 @@ import {
 import { listGroups } from "@/lib/api/groups";
 import { canAdminister, canApproveAsDg, canReview } from "@/lib/roles";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { extractErrorMessage } from "@/lib/api-client";
+import { extractErrorMessage, isVersionConflict } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
 import type { SectionType } from "@/types/common";
 
@@ -61,6 +61,8 @@ export default function AdminSectionReviewPage() {
   const [comment, setComment] = useState("");
   const [dgComment, setDgComment] = useState("");
   const [editContent, setEditContent] = useState<unknown>(null);
+  // Version ouverte en modification : la direction peut enregistrer pendant que l'admin corrige.
+  const [editBaseVersion, setEditBaseVersion] = useState(0);
   const { user } = useCurrentUser();
   // Le DG seul fait entrer une section dans les documents consolides, en la validant — depuis l'onglet « À valider ».
   const peutApprouver = canApproveAsDg(user?.role);
@@ -115,13 +117,16 @@ export default function AdminSectionReviewPage() {
   });
 
   const updateContentMutation = useMutation({
-    mutationFn: (content: unknown) => adminUpdateSectionContent(groupId, code, content),
+    mutationFn: (content: unknown) => adminUpdateSectionContent(groupId, code, content, editBaseVersion),
     onSuccess: () => {
       toast.success("Section mise à jour");
       setEditContent(null);
       invalidateAll();
     },
-    onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'enregistrement")),
+    onError: (error) =>
+      toast.error(extractErrorMessage(error, "Échec de l'enregistrement"), {
+        duration: isVersionConflict(error) ? 15_000 : undefined,
+      }),
   });
 
   const resetMutation = useMutation({
@@ -181,7 +186,10 @@ export default function AdminSectionReviewPage() {
 
             {!editing && peutRevoir && (
               <div className="flex items-center gap-2">
-                <Button variant="secondary" size="sm" onClick={() => setEditContent(data.content)}>
+                <Button variant="secondary" size="sm" onClick={() => {
+                    setEditBaseVersion(data.version);
+                    setEditContent(data.content);
+                  }}>
                   <Pencil className="h-4 w-4" /> Modifier
                 </Button>
                 {peutEffacer && (

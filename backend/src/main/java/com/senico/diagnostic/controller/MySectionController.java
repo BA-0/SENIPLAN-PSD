@@ -56,7 +56,7 @@ public class MySectionController {
             @PathVariable String code,
             @Valid @RequestBody SaveDraftRequest request) {
         User user = resolveUser(principal);
-        return ResponseEntity.ok(sectionEngineService.saveDraft(requireGroupId(principal), code, request.content(), user));
+        return ResponseEntity.ok(sectionEngineService.saveDraft(requireGroupId(principal), code, request.content(), request.baseVersion(), user));
     }
 
     @PostMapping("/sections/{code}/submit")

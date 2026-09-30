@@ -382,10 +382,17 @@ export interface PerformanceFrameworkContent {
 }
 
 // ---- S13 : Fiche d'indicateurs ----
+export type IndicatorCalculationType = "" | "RATIO_PERCENT" | "RATIO" | "GROWTH" | "DIFFERENCE" | "SUM" | "AVERAGE";
 export interface IndicatorRow {
   axisCode?: string; // AXE1..AXE4 : bandeau sous lequel la fiche range l'indicateur (absent sur les anciennes saisies)
   indicatorTitle: string;
   calculationMethod: string;
+  calculationType?: IndicatorCalculationType; // calcul automatique (absent sur les anciennes saisies : pas de calcul)
+  valueA?: string;
+  valueB?: string;
+  calculationValues?: string; // somme / moyenne : valeurs separees par « ; »
+  calculatedResult?: string; // calcule
+  calculationDetail?: string; // calcule : « 170 / 200 × 100 = 85 % »
   periodicity: string;
   collectionSource: string;
   verificationSource: string;

@@ -73,6 +73,11 @@ apiClient.interceptors.response.use(
   }
 );
 
+/** Enregistrement refuse : la section a ete modifiee depuis l'ouverture de la page (cf. SectionVersionConflictException). */
+export function isVersionConflict(error: unknown): boolean {
+  return axios.isAxiosError(error) && (error.response?.data as ApiErrorBody | undefined)?.code === "VERSION_CONFLICT";
+}
+
 export function extractErrorMessage(error: unknown, fallback = "Une erreur est survenue"): string {
   if (axios.isAxiosError(error)) {
     const body = error.response?.data as ApiErrorBody | undefined;

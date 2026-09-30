@@ -248,11 +248,13 @@ export async function updateUserUsername(userId: number, username: string): Prom
 export async function adminUpdateSectionContent<T>(
   groupId: number,
   code: string,
-  content: T
+  content: T,
+  baseVersion: number
 ): Promise<SectionContentResponse<T>> {
   const { data } = await apiClient.put<SectionContentResponse<T>>(
     `/admin/groups/${groupId}/sections/${code}/content`,
-    content
+    content,
+    { params: { baseVersion } }
   );
   return data;
 }

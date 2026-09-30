@@ -1,5 +1,6 @@
 package com.senico.diagnostic.export;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.senico.diagnostic.validation.DefaultSectionContentFactory;
 
 import java.util.LinkedHashMap;
@@ -201,5 +202,18 @@ public final class SectionLabels {
             out[i] = String.valueOf(values[i]);
         }
         return out;
+    }
+
+    /**
+     * Cellule « Modes de calcul » de la fiche d'indicateurs : la formule saisie, puis le calcul pose sur
+     * les valeurs (« 170 / 200 × 100 = 85 % ») quand le calcul automatique a pu se faire.
+     */
+    static String indicatorCalculation(JsonNode row) {
+        String method = JsonUtil.text(row, "calculationMethod").trim();
+        String detail = JsonUtil.text(row, "calculationDetail").trim();
+        if (detail.isEmpty()) {
+            return method;
+        }
+        return method.isEmpty() ? detail : method + System.lineSeparator() + detail;
     }
 }

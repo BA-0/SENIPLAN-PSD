@@ -2020,7 +2020,7 @@ class PsdBriefBuilder {
                 }
                 byAxis.computeIfAbsent(band, k -> new ArrayList<>()).add(new ExportBlock.TableRow(List.of(
                         single(title, group, ctx),
-                        new ExportBlock.Cell(JsonUtil.text(row, "calculationMethod")),
+                        new ExportBlock.Cell(SectionLabels.indicatorCalculation(row)),
                         new ExportBlock.Cell(JsonUtil.text(row, "periodicity")),
                         new ExportBlock.Cell(JsonUtil.text(row, "collectionSource")),
                         new ExportBlock.Cell(JsonUtil.text(row, "verificationSource")),

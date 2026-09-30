@@ -16,6 +16,13 @@ export function SaveIndicator({ status, savedAt }: { status: SaveStatus; savedAt
       </span>
     );
   }
+  if (status === "conflict") {
+    return (
+      <span className="flex items-center gap-1.5 text-[13px] text-accent-700 dark:text-accent-300">
+        <AlertCircle className="h-3.5 w-3.5" /> Section modifiée ailleurs — rechargez la page
+      </span>
+    );
+  }
   if (status === "error") {
     return (
       <span className="flex items-center gap-1.5 text-[13px] text-accent-700 dark:text-accent-300">

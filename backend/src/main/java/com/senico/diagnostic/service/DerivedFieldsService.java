@@ -26,7 +26,7 @@ import java.util.Optional;
  * Sections concernees : S05 (sync S04), S07 (agregation S01/S03/S04/S06), S08->S09-S12/S17
  * (intitules d'axes), S11 (totaux budget), S14 (criticite N x Q), S15 (pourcentages),
  * S16 (resultats/tresorerie auto), S01B (reprise de l'ancien bilan 2026), S03B (reprise S02),
- * S09B (reprise S09), S14B (totaux effectifs par annee).
+ * S09B (reprise S09), S13 (calcul automatique des indicateurs), S14B (totaux effectifs par annee).
  */
 @Service
 @RequiredArgsConstructor
@@ -74,7 +74,7 @@ public class DerivedFieldsService {
             case RESOURCES_SYNTHESIS -> applyResourcesSynthesisSync(groupId, content);
             case LOGFRAME_SYNTHESIS -> applyLogframeSynthesisSync(groupId, content);
             case STAFF_EVOLUTION -> applyStaffTotals(normalizeStaffRows(content));
-            case INDICATOR_SHEET -> applyIndicatorAxisTitles(groupId, content);
+            case INDICATOR_SHEET -> applyIndicatorCalculations(applyIndicatorAxisTitles(groupId, content));
             default -> content;
         };
     }
@@ -235,6 +235,119 @@ public class DerivedFieldsService {
         });
         content.set("axisTitles", titles);
         return content;
+    }
+
+    /**
+     * S13 : calcul automatique de chaque indicateur, a partir du type de calcul et des valeurs saisies.
+     * Le resultat ({@code calculatedResult}) et le calcul pose sur les valeurs ({@code calculationDetail},
+     * « 170 / 200 × 100 = 85 % ») sont retires quand le calcul est impossible : valeurs manquantes, non
+     * numeriques ou division par zero. Meme regle que l'ecran (frontend lib/indicator-calculation.ts).
+     */
+    private ObjectNode applyIndicatorCalculations(ObjectNode content) {
+        for (JsonNode rowNode : arrayOrEmpty(content, "rows")) {
+            if (!(rowNode instanceof ObjectNode row)) {
+                continue;
+            }
+            row.remove("calculatedResult");
+            row.remove("calculationDetail");
+            String[] outcome = computeIndicator(row);
+            if (outcome != null) {
+                row.put("calculatedResult", outcome[0]);
+                row.put("calculationDetail", outcome[1]);
+            }
+        }
+        return content;
+    }
+
+    /** {resultat, detail du calcul}, ou null si le calcul n'est pas possible. */
+    static String[] computeIndicator(JsonNode row) {
+        String type = row.path("calculationType").asText("");
+        if (type.equals("SUM") || type.equals("AVERAGE")) {
+            List<Double> values = new ArrayList<>();
+            for (String part : row.path("calculationValues").asText("").split("[;\n]")) {
+                if (part.isBlank()) {
+                    continue;
+                }
+                Double value = parseIndicatorNumber(part);
+                if (value == null) {
+                    return null;
+                }
+                values.add(value);
+            }
+            if (values.isEmpty()) {
+                return null;
+            }
+            double sum = values.stream().mapToDouble(Double::doubleValue).sum();
+            String listed = String.join(" + ", values.stream().map(DerivedFieldsService::formatIndicatorNumber).toList());
+            if (type.equals("SUM")) {
+                String result = formatIndicatorNumber(sum);
+                return new String[]{result, listed + " = " + result};
+            }
+            String result = formatIndicatorNumber(sum / values.size());
+            return new String[]{result, "(" + listed + ") / " + values.size() + " = " + result};
+        }
+
+        Double a = parseIndicatorNumber(row.path("valueA").asText(""));
+        Double b = parseIndicatorNumber(row.path("valueB").asText(""));
+        if (a == null || b == null) {
+            return null;
+        }
+        String fa = formatIndicatorNumber(a);
+        String fb = formatIndicatorNumber(b);
+        return switch (type) {
+            case "RATIO_PERCENT" -> {
+                if (b == 0) {
+                    yield null;
+                }
+                String result = formatIndicatorNumber(a / b * 100) + " %";
+                yield new String[]{result, fa + " / " + fb + " × 100 = " + result};
+            }
+            case "RATIO" -> {
+                if (b == 0) {
+                    yield null;
+                }
+                String result = formatIndicatorNumber(a / b);
+                yield new String[]{result, fa + " / " + fb + " = " + result};
+            }
+            case "GROWTH" -> {
+                if (b == 0) {
+                    yield null;
+                }
+                String result = formatSignedIndicatorNumber((a - b) / b * 100) + " %";
+                yield new String[]{result, "(" + fa + " − " + fb + ") / " + fb + " × 100 = " + result};
+            }
+            case "DIFFERENCE" -> {
+                String result = formatSignedIndicatorNumber(a - b);
+                yield new String[]{result, fa + " − " + fb + " = " + result};
+            }
+            default -> null;
+        };
+    }
+
+    /** « 1 250,5 », « 12,3 » ou « -4 » : espaces de milliers et virgule decimale acceptes. */
+    private static Double parseIndicatorNumber(String raw) {
+        String text = raw.replaceAll("[\\s\u00a0\u202f]", "").replaceFirst(",", ".");
+        if (!text.matches("[-+]?\\d+(\\.\\d+)?")) {
+            return null;
+        }
+        return Double.parseDouble(text);
+    }
+
+    /** Deux decimales au plus, en typographie francaise (« 1 250,5 »). */
+    private static String formatIndicatorNumber(double value) {
+        java.text.DecimalFormatSymbols symbols = new java.text.DecimalFormatSymbols(java.util.Locale.FRANCE);
+        symbols.setGroupingSeparator(' ');
+        symbols.setDecimalSeparator(',');
+        symbols.setMinusSign('-');
+        java.text.DecimalFormat format = new java.text.DecimalFormat("#,##0.##", symbols);
+        format.setRoundingMode(java.math.RoundingMode.HALF_UP);
+        String formatted = format.format(value);
+        return formatted.equals("-0") ? "0" : formatted;
+    }
+
+    private static String formatSignedIndicatorNumber(double value) {
+        double rounded = Math.round(value * 100d) / 100d;
+        return (rounded > 0 ? "+" : "") + formatIndicatorNumber(rounded);
     }
 
     // ---- S12 : groupe "Effets immediats" synchronise avec les effets (OS) definis en S10 ----

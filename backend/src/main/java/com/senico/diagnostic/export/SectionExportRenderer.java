@@ -595,7 +595,7 @@ public class SectionExportRenderer {
         List<JsonUtil.Column> columns = List.of(
                 // Intitules de colonnes du canevas client (fiche d'indicateurs).
                 new JsonUtil.Column("Intitulés indicateurs", n -> JsonUtil.text(n, "indicatorTitle")),
-                new JsonUtil.Column("Modes de calcul", n -> JsonUtil.text(n, "calculationMethod")),
+                new JsonUtil.Column("Modes de calcul", SectionLabels::indicatorCalculation),
                 new JsonUtil.Column("Périodicités", n -> JsonUtil.text(n, "periodicity")),
                 new JsonUtil.Column("Sources et moyens de collecte", n -> JsonUtil.text(n, "collectionSource")),
                 new JsonUtil.Column("Sources de vérification", n -> JsonUtil.text(n, "verificationSource")),

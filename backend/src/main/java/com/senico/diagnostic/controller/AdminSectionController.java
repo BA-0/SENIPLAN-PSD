@@ -103,10 +103,11 @@ public class AdminSectionController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long groupId,
             @PathVariable String code,
+            @RequestParam(required = false) Integer baseVersion,
             @RequestBody JsonNode content) {
         User admin = userRepository.findById(principal.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable"));
-        return ResponseEntity.ok(sectionEngineService.adminUpdateContent(groupId, code, content, admin));
+        return ResponseEntity.ok(sectionEngineService.adminUpdateContent(groupId, code, content, baseVersion, admin));
     }
 
     @DeleteMapping("/{code}")

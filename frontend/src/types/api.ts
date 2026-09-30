@@ -152,6 +152,8 @@ export interface ApiErrorBody {
   timestamp?: string;
   status: number;
   message: string;
+  /** « VERSION_CONFLICT » : la section a change depuis l'ouverture de la page, il faut la recharger. */
+  code?: string;
   fieldErrors?: Record<string, string>;
 }
 

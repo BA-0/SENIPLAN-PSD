@@ -111,4 +111,32 @@ class DerivedFieldsServiceTest {
         assertThat(content.at("/rows/5/gap").asText()).as("une ligne déjà au nouveau format reste telle quelle").isEqualTo("-2");
         assertThat(content.at("/rows/5/trend").asText()).isEmpty();
     }
+
+    @Test
+    @DisplayName("Fiche d'indicateurs : chaque indicateur est calculé à partir de son type de calcul et des valeurs saisies")
+    void calculeLesIndicateurs() throws Exception {
+        ObjectNode content = apply(SectionType.INDICATOR_SHEET, """
+                {"rows":[{"calculationType":"RATIO_PERCENT","valueA":"170","valueB":"200"},
+                         {"calculationType":"RATIO","valueA":"1 250,5","valueB":"2"},
+                         {"calculationType":"GROWTH","valueA":"90","valueB":"120"},
+                         {"calculationType":"DIFFERENCE","valueA":"12","valueB":"4,5"},
+                         {"calculationType":"SUM","calculationValues":"12 ; 15 ; 18"},
+                         {"calculationType":"AVERAGE","calculationValues":"12; 15; 18,5"},
+                         {"calculationType":"RATIO_PERCENT","valueA":"5","valueB":"0"},
+                         {"calculationType":"RATIO_PERCENT","valueA":"5","valueB":""},
+                         {"calculationType":"SUM","calculationValues":"12 ; douze"},
+                         {"calculationMethod":"Formule seule","calculatedResult":"ancien"}]}""");
+
+        assertThat(content.at("/rows/0/calculatedResult").asText()).isEqualTo("85 %");
+        assertThat(content.at("/rows/0/calculationDetail").asText()).isEqualTo("170 / 200 × 100 = 85 %");
+        assertThat(content.at("/rows/1/calculatedResult").asText()).isEqualTo("625,25");
+        assertThat(content.at("/rows/2/calculatedResult").asText()).isEqualTo("-25 %");
+        assertThat(content.at("/rows/3/calculationDetail").asText()).isEqualTo("12 − 4,5 = +7,5");
+        assertThat(content.at("/rows/4/calculationDetail").asText()).isEqualTo("12 + 15 + 18 = 45");
+        assertThat(content.at("/rows/5/calculationDetail").asText()).isEqualTo("(12 + 15 + 18,5) / 3 = 15,17");
+        assertThat(content.at("/rows/6").has("calculatedResult")).as("division par zéro").isFalse();
+        assertThat(content.at("/rows/7").has("calculatedResult")).as("valeur manquante").isFalse();
+        assertThat(content.at("/rows/8").has("calculatedResult")).as("valeur non numérique").isFalse();
+        assertThat(content.at("/rows/9").has("calculatedResult")).as("sans type de calcul, rien n'est calculé").isFalse();
+    }
 }

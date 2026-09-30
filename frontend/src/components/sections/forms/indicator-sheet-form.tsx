@@ -5,8 +5,10 @@ import { Fragment } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EditableCell } from "@/components/data-table/editable-cell";
 import { RemoveRowButton, TableAddRow } from "@/components/data-table/row-actions";
+import { NativeSelect } from "@/components/ui/native-select";
+import { CALCULATION_TYPES, calculationTypeOption, computeIndicator } from "@/lib/indicator-calculation";
 import { AXIS_CODES } from "@/types/sections";
-import type { IndicatorRow, IndicatorSheetContent } from "@/types/sections";
+import type { IndicatorCalculationType, IndicatorRow, IndicatorSheetContent } from "@/types/sections";
 import type { SectionFormProps } from "./types";
 
 function emptyRow(axisCode: string): IndicatorRow {
@@ -14,6 +16,10 @@ function emptyRow(axisCode: string): IndicatorRow {
     axisCode,
     indicatorTitle: "",
     calculationMethod: "",
+    calculationType: "",
+    valueA: "",
+    valueB: "",
+    calculationValues: "",
     periodicity: "",
     collectionSource: "",
     verificationSource: "",
@@ -54,7 +60,9 @@ export function IndicatorSheetForm({ content, onChange, readOnly }: SectionFormP
     return (
       <TableRow key={index}>
         <TableCell><EditableCell value={row.indicatorTitle} onChange={(v) => updateRow(index, { indicatorTitle: v })} readOnly={readOnly} multiline /></TableCell>
-        <TableCell><EditableCell value={row.calculationMethod} onChange={(v) => updateRow(index, { calculationMethod: v })} readOnly={readOnly} multiline /></TableCell>
+        <TableCell className="align-top">
+          <CalculationCell row={row} onChange={(patch) => updateRow(index, patch)} readOnly={readOnly} />
+        </TableCell>
         <TableCell><EditableCell value={row.periodicity} onChange={(v) => updateRow(index, { periodicity: v })} readOnly={readOnly} /></TableCell>
         <TableCell><EditableCell value={row.collectionSource} onChange={(v) => updateRow(index, { collectionSource: v })} readOnly={readOnly} multiline /></TableCell>
         <TableCell><EditableCell value={row.verificationSource} onChange={(v) => updateRow(index, { verificationSource: v })} readOnly={readOnly} multiline /></TableCell>
@@ -74,7 +82,7 @@ export function IndicatorSheetForm({ content, onChange, readOnly }: SectionFormP
         <TableHeader>
           <TableRow>
             <TableHead className="min-w-[180px] whitespace-normal">Intitulés indicateurs</TableHead>
-            <TableHead className="min-w-[180px]">Modes de calcul</TableHead>
+            <TableHead className="min-w-[260px]">Modes de calcul</TableHead>
             <TableHead className="min-w-[120px]">Périodicités</TableHead>
             <TableHead className="min-w-[180px] whitespace-normal">Sources et moyens de collecte</TableHead>
             <TableHead className="min-w-[180px] whitespace-normal">Sources de vérification</TableHead>
@@ -112,6 +120,83 @@ export function IndicatorSheetForm({ content, onChange, readOnly }: SectionFormP
           )}
         </TableBody>
       </Table>
+    </div>
+  );
+}
+
+/**
+ * « Modes de calcul » : la formule en toutes lettres, comme dans le canevas, puis le calcul automatique
+ * posé sur les valeurs saisies. Le résultat s'affiche pendant la saisie ; le serveur le recalcule à la
+ * lecture et pour l'export.
+ */
+function CalculationCell({
+  row,
+  onChange,
+  readOnly,
+}: {
+  row: IndicatorRow;
+  onChange: (patch: Partial<IndicatorRow>) => void;
+  readOnly?: boolean;
+}) {
+  const option = calculationTypeOption(row.calculationType);
+  const outcome = computeIndicator(row);
+  const isList = option.value === "SUM" || option.value === "AVERAGE";
+
+  return (
+    <div className="space-y-2">
+      <EditableCell
+        value={row.calculationMethod}
+        onChange={(v) => onChange({ calculationMethod: v })}
+        readOnly={readOnly}
+        placeholder="Formule en toutes lettres"
+        multiline
+      />
+      {(!readOnly || option.value) && (
+        <NativeSelect
+          cellStyle
+          value={option.value}
+          disabled={readOnly}
+          onChange={(e) => onChange({ calculationType: e.target.value as IndicatorCalculationType })}
+        >
+          {CALCULATION_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </NativeSelect>
+      )}
+      {!readOnly && option.value && !isList && (
+        <div className="grid grid-cols-2 gap-2">
+          <label className="space-y-1 text-[12px] text-muted-foreground">
+            <span>{option.a}</span>
+            <EditableCell value={row.valueA ?? ""} onChange={(v) => onChange({ valueA: v })} align="right" className="min-w-0" />
+          </label>
+          <label className="space-y-1 text-[12px] text-muted-foreground">
+            <span>{option.b}</span>
+            <EditableCell value={row.valueB ?? ""} onChange={(v) => onChange({ valueB: v })} align="right" className="min-w-0" />
+          </label>
+        </div>
+      )}
+      {!readOnly && isList && (
+        <label className="block space-y-1 text-[12px] text-muted-foreground">
+          <span>Valeurs, séparées par « ; »</span>
+          <EditableCell
+            value={row.calculationValues ?? ""}
+            onChange={(v) => onChange({ calculationValues: v })}
+            placeholder="12 ; 15 ; 18"
+          />
+        </label>
+      )}
+      {outcome.status === "ok" && (
+        <div className="rounded-md bg-primary-50 px-2.5 py-1.5 text-[13px] dark:bg-primary-500/10">
+          <div className="font-semibold tabular-nums text-foreground">Résultat : {outcome.result}</div>
+          <div className="tabular-nums text-muted-foreground">{outcome.detail}</div>
+        </div>
+      )}
+      {outcome.status === "error" && !readOnly && <p className="text-[12px] text-red-500 dark:text-red-400">{outcome.message}</p>}
+      {outcome.status === "incomplete" && !readOnly && (
+        <p className="text-[12px] italic text-muted-foreground">Saisissez les valeurs pour obtenir le résultat</p>
+      )}
     </div>
   );
 }

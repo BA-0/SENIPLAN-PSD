@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Lock, Save, Send, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock, RotateCw, Save, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
 import { SaveIndicator } from "./save-indicator";
@@ -53,6 +53,7 @@ export function SectionShell({
   nextSection,
   children,
 }: SectionShellProps) {
+  const conflict = saveStatus === "conflict";
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2.5">
@@ -78,14 +79,14 @@ export function SectionShell({
 
         {!locked && (
           <>
-            <Button variant="secondary" size="sm" onClick={onSaveNow} disabled={saveStatus === "saving"}>
+            <Button variant="secondary" size="sm" onClick={onSaveNow} disabled={saveStatus === "saving" || conflict}>
               <Save className="h-4 w-4" /> Enregistrer
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
                   variant="submit"
-                  disabled={submitting || !!submitBlockedReason}
+                  disabled={submitting || !!submitBlockedReason || conflict}
                   title={submitBlockedReason ?? undefined}
                 >
                   <Send className="h-4 w-4" /> Soumettre
@@ -109,6 +110,19 @@ export function SectionShell({
           </>
         )}
       </div>
+
+      {!locked && conflict && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-[13px] text-red-700 dark:text-red-300">
+          <span className="mr-auto">
+            Cette section a été modifiée depuis l&apos;ouverture de la page (autre onglet, autre membre de la
+            direction ou correction de l&apos;administration). Vos dernières modifications n&apos;ont pas été
+            enregistrées, pour ne pas effacer cette version. Rechargez la page pour reprendre sur la dernière version.
+          </span>
+          <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
+            <RotateCw className="h-4 w-4" /> Recharger la page
+          </Button>
+        </div>
+      )}
 
       {!locked && submitBlockedReason && (
         <div className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3 text-[13px] text-amber-700 dark:text-amber-300">

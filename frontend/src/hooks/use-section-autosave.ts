@@ -2,11 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { saveMySectionDraft } from "@/lib/api/me";
-import { extractErrorMessage } from "@/lib/api-client";
+import { extractErrorMessage, isVersionConflict } from "@/lib/api-client";
 import type { SectionContentResponse } from "@/types/common";
 
-/** « unsaved » : une saisie attend son enregistrement automatique (quelques secondes). */
-export type SaveStatus = "idle" | "unsaved" | "saving" | "saved" | "error";
+/**
+ * « unsaved » : une saisie attend son enregistrement automatique (quelques secondes).
+ * « conflict » : la section a ete modifiee ailleurs depuis l'ouverture de la page ; plus rien n'est
+ * enregistre tant que la page n'est pas rechargee, pour ne pas effacer cette modification.
+ */
+export type SaveStatus = "idle" | "unsaved" | "saving" | "saved" | "error" | "conflict";
 
 const AUTOSAVE_DEBOUNCE_MS = 2500;
 const AUTOSAVE_INTERVAL_MS = 20_000;
@@ -24,14 +28,28 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
   const lastSavedRef = useRef<string>("");
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirtyRef = useRef(false);
+  // Version de la section sur laquelle la page travaille : envoyee a chaque enregistrement, le serveur
+  // refuse si quelqu'un d'autre a enregistre entre-temps.
+  const versionRef = useRef(0);
+  const conflictRef = useRef(false);
 
   useEffect(() => {
     // Cle groupe + section : un contenu recu pour un autre groupe ne doit jamais rester affiche.
     const key = initial ? `${initial.groupId}:${code}` : null;
-    if (initial && initializedForKey.current !== key) {
+    // Affichee d'abord depuis le cache, la section peut recevoir ensuite une version plus recente du
+    // serveur : tant que rien n'a ete tape, on la reprend plutot que de travailler sur l'ancienne.
+    const newerUntouched =
+      initial &&
+      initializedForKey.current === key &&
+      initial.version > versionRef.current &&
+      !dirtyRef.current &&
+      JSON.stringify(contentRef.current) === lastSavedRef.current;
+    if (initial && (initializedForKey.current !== key || newerUntouched)) {
       contentRef.current = initial.content;
       setContent(initial.content);
       lastSavedRef.current = JSON.stringify(initial.content);
+      versionRef.current = initial.version;
+      conflictRef.current = false;
       initializedForKey.current = key;
       dirtyRef.current = false;
       setStatus("idle");
@@ -51,9 +69,10 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
   );
 
   const { mutate, mutateAsync } = useMutation({
-    mutationFn: (payload: T) => saveMySectionDraft<T>(code, payload),
+    mutationFn: (payload: T) => saveMySectionDraft<T>(code, payload, versionRef.current),
     onMutate: () => setStatus("saving"),
     onSuccess: (response) => {
+      versionRef.current = response.version;
       lastSavedRef.current = JSON.stringify(response.content);
       dirtyRef.current = false;
       setStatus("saved");
@@ -61,6 +80,13 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
       storeSaved(response);
     },
     onError: (error) => {
+      if (isVersionConflict(error)) {
+        conflictRef.current = true;
+        // Rien ne peut plus etre enregistre : ne pas retenir l'utilisateur qui recharge la page.
+        dirtyRef.current = false;
+        setStatus("conflict");
+        return;
+      }
       setStatus("error");
       toast.error(extractErrorMessage(error, "Échec de l'enregistrement automatique"));
     },
@@ -68,6 +94,7 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
 
   const doSave = useCallback(
     (payload: T) => {
+      if (conflictRef.current) return;
       const serialized = JSON.stringify(payload);
       if (serialized === lastSavedRef.current) return;
       mutate(payload);
@@ -81,6 +108,10 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
       if (prev === null) return;
       const next = updater(prev);
       contentRef.current = next;
+      if (conflictRef.current) {
+        setContent(next);
+        return;
+      }
       // Pas de serialisation du formulaire entier a chaque frappe : doSave compare de toute facon
       // avec le dernier enregistrement avant d'envoyer quoi que ce soit.
       dirtyRef.current = true;
@@ -103,6 +134,7 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = null;
     const pending = contentRef.current;
+    if (conflictRef.current) throw new Error("Section modifiée ailleurs : rechargez la page.");
     if (pending === null || JSON.stringify(pending) === lastSavedRef.current) return;
     await mutateAsync(pending);
   }, [mutateAsync]);
@@ -145,8 +177,8 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
       clearTimeout(debounceTimer.current);
       debounceTimer.current = null;
       const pending = contentRef.current;
-      if (pending === null || JSON.stringify(pending) === lastSavedRef.current) return;
-      saveMySectionDraft<T>(code, pending)
+      if (conflictRef.current || pending === null || JSON.stringify(pending) === lastSavedRef.current) return;
+      saveMySectionDraft<T>(code, pending, versionRef.current)
         .then(storeSaved)
         .catch((error) => toast.error(extractErrorMessage(error, "Échec de l'enregistrement automatique")));
     };

@@ -18,6 +18,7 @@ import com.senico.diagnostic.dto.section.SectionRevisionSummaryDto;
 import com.senico.diagnostic.dto.section.SectionStatusSummary;
 import com.senico.diagnostic.exception.ResourceNotFoundException;
 import com.senico.diagnostic.exception.SectionLockedException;
+import com.senico.diagnostic.exception.SectionVersionConflictException;
 import com.senico.diagnostic.repository.*;
 import com.senico.diagnostic.validation.DefaultSectionContentFactory;
 import com.senico.diagnostic.validation.SectionContentValidator;
@@ -114,7 +115,8 @@ public class SectionEngineService {
     }
 
     @Transactional
-    public SectionContentResponse saveDraft(Long groupId, String sectionCode, JsonNode rawContent, User actingUser) {
+    public SectionContentResponse saveDraft(Long groupId, String sectionCode, JsonNode rawContent, Integer baseVersion,
+                                            User actingUser) {
         WorkGroup group = resolveGroup(groupId);
         SectionDef section = resolveSection(sectionCode);
         GroupSectionStatus status = resolveStatus(group, section);
@@ -122,6 +124,11 @@ public class SectionEngineService {
         if (LOCKED_STATUSES.contains(status.getStatus())) {
             throw new SectionLockedException("Cette section est soumise et ne peut plus etre modifiee");
         }
+        // Une page restee ouverte renvoie tout le formulaire tel qu'elle l'a charge : sans ce controle,
+        // son enregistrement automatique effacerait ce qui a ete enregistre depuis (autre onglet, autre
+        // membre de la direction, correction de l'administration). Une page sans version (ouverte avant
+        // ce controle) est refusee de meme : il faut la recharger.
+        requireCurrentVersion(groupId, section, baseVersion, true);
 
         contentValidator.validate(section.getType(), rawContent, false);
         SectionResponse saved = persistContent(group, section, rawContent, actingUser);
@@ -143,10 +150,12 @@ public class SectionEngineService {
      * (SUBMITTED/VALIDATED) sans changer le statut de la section, pour de simples corrections ponctuelles.
      */
     @Transactional
-    public SectionContentResponse adminUpdateContent(Long groupId, String sectionCode, JsonNode rawContent, User adminUser) {
+    public SectionContentResponse adminUpdateContent(Long groupId, String sectionCode, JsonNode rawContent,
+                                                     Integer baseVersion, User adminUser) {
         WorkGroup group = resolveGroup(groupId);
         SectionDef section = resolveSection(sectionCode);
         GroupSectionStatus status = resolveStatus(group, section);
+        requireCurrentVersion(groupId, section, baseVersion, false);
 
         contentValidator.validate(section.getType(), rawContent, false);
         SectionResponse saved = persistContent(group, section, rawContent, adminUser);
@@ -358,6 +367,22 @@ public class SectionEngineService {
                 .archivedAt(archive.getArchivedAt())
                 .content(parseJson(archive.getContentJson()))
                 .build();
+    }
+
+    /**
+     * Refuse un enregistrement parti d'une version depassee. {@code required} : la version doit etre
+     * fournie (saisie des directions) ; sinon elle n'est controlee que si l'appelant l'envoie.
+     */
+    private void requireCurrentVersion(Long groupId, SectionDef section, Integer baseVersion, boolean required) {
+        if (baseVersion == null && !required) {
+            return;
+        }
+        int current = sectionResponseRepository.findByGroupIdAndSectionId(groupId, section.getId())
+                .map(SectionResponse::getVersion)
+                .orElse(0);
+        if (baseVersion == null || baseVersion != current) {
+            throw new SectionVersionConflictException();
+        }
     }
 
     private SectionResponse persistContent(WorkGroup group, SectionDef section, JsonNode rawContent, User actingUser) {

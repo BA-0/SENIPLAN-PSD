@@ -17,8 +17,13 @@ export async function getMySectionContent<T>(code: string): Promise<SectionConte
   return data;
 }
 
-export async function saveMySectionDraft<T>(code: string, content: T): Promise<SectionContentResponse<T>> {
-  const { data } = await apiClient.put<SectionContentResponse<T>>(`/me/sections/${code}/draft`, { content });
+/** {@code baseVersion} : version sur laquelle la page travaille ; le serveur refuse si la section a change depuis. */
+export async function saveMySectionDraft<T>(
+  code: string,
+  content: T,
+  baseVersion: number
+): Promise<SectionContentResponse<T>> {
+  const { data } = await apiClient.put<SectionContentResponse<T>>(`/me/sections/${code}/draft`, { content, baseVersion });
   return data;
 }
 

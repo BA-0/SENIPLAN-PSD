@@ -31,6 +31,14 @@ public class GlobalExceptionHandler {
         return body(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    /** Le code permet au client de distinguer ce refus d'un verrouillage et de proposer de recharger. */
+    @ExceptionHandler(SectionVersionConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleVersionConflict(SectionVersionConflictException ex) {
+        ResponseEntity<Map<String, Object>> response = body(HttpStatus.CONFLICT, ex.getMessage());
+        response.getBody().put("code", SectionVersionConflictException.CODE);
+        return response;
+    }
+
     @ExceptionHandler(InvalidSectionContentException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidContent(InvalidSectionContentException ex) {
         return body(HttpStatus.BAD_REQUEST, ex.getMessage());

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { KeyRound, LogOut, Menu, Volume2, VolumeX } from "lucide-react";
-import { canApproveAsDg, canPilot, ROLE_LABELS } from "@/lib/roles";
+import { canApproveAsDg, canPilot, isSupervisor, ROLE_LABELS } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -40,7 +40,8 @@ export function Header() {
         <div className="min-w-0">
           {/* Le DG n'administre pas : son espace porte son nom et sa mission, pas « Administration ». */}
           <p className="truncate text-sm font-medium text-foreground">
-            {user?.groupName ?? (canApproveAsDg(user?.role) ? "Direction Générale" : "Administration")}
+            {user?.groupName ??
+              (canApproveAsDg(user?.role) ? "Direction Générale" : isSupervisor(user?.role) ? "Supervision" : "Administration")}
           </p>
           <p className="truncate text-[12px] text-muted-foreground">
             {canApproveAsDg(user?.role) ? "Validation du Plan Stratégique" : user?.role ? ROLE_LABELS[user.role] : ""}

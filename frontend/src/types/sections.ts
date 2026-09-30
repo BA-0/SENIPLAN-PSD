@@ -2,6 +2,14 @@
 // Chaque forme correspond exactement au JSON produit/attendu par le backend
 // (validation/DefaultSectionContentFactory.java + service/DerivedFieldsService.java).
 
+/**
+ * Tableaux de synthese : champs pre-remplis par le serveur a partir des tableaux deja saisis
+ * (service/SynthesisPrefillService.java). A conserver tel quel dans le contenu enregistre.
+ */
+export interface AutoFilled {
+  autoFilled?: string[];
+}
+
 export type Level = "FORT" | "MOYEN" | "FAIBLE";
 
 // ---- S01 : Analyse des parties prenantes ----
@@ -126,7 +134,7 @@ export interface PestelContent {
 }
 
 // ---- S03B : Synthese de l'analyse des ressources ----
-export interface ResourcesSynthesisContent {
+export interface ResourcesSynthesisContent extends AutoFilled {
   synthesisNote: string;
   majorStrengths: string[];
   majorWeaknesses: string[];
@@ -209,12 +217,12 @@ export interface ConstraintsSynthesisRow {
   constraints: string[];
   challenges: string[];
 }
-export interface ConstraintsSynthesisContent {
+export interface ConstraintsSynthesisContent extends AutoFilled {
   rows: ConstraintsSynthesisRow[];
 }
 
 // ---- S07 : Inventaire (agregation en lecture depuis S01/S03/S04/S06) ----
-export interface InventoryContent {
+export interface InventoryContent extends AutoFilled {
   synthesisNote: string;
   stakeholders: StakeholderRow[];
   pestel: PestelRow[];
@@ -286,7 +294,7 @@ export interface LogframeSynthesisAxis {
   EXTRANTS: string;
   RESSOURCES_INTRANTS: string;
 }
-export interface LogframeSynthesisContent {
+export interface LogframeSynthesisContent extends AutoFilled {
   synthesisNote: string;
   axes: LogframeSynthesisAxis[];
 }
@@ -473,7 +481,7 @@ export interface SummaryAxis {
   axisTitle?: string;
   orientations: SummaryOrientation[];
 }
-export interface StrategicSummaryContent {
+export interface StrategicSummaryContent extends AutoFilled {
   vision: string;
   axes: SummaryAxis[];
 }

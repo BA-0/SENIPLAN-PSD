@@ -8,5 +8,10 @@ public enum Role {
      * Voir SecurityConfig pour la traduction en regles d'acces.
      */
     DIRECTEUR_GENERAL,
+    /**
+     * Superviseur : suit en temps reel tout l'espace de pilotage, en lecture seule. Il ne
+     * valide, n'approuve, ne modifie ni n'efface rien (cf. SecurityConfig).
+     */
+    SUPERVISEUR,
     GROUP_LEADER
 }

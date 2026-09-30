@@ -24,7 +24,7 @@ export type SectionType =
   | "FINANCING_PLAN"
   | "STRATEGIC_SUMMARY";
 
-export type Role = "ADMIN" | "DIRECTEUR_GENERAL" | "GROUP_LEADER";
+export type Role = "ADMIN" | "DIRECTEUR_GENERAL" | "SUPERVISEUR" | "GROUP_LEADER";
 
 export interface SectionStatusSummary {
   sectionId: number;

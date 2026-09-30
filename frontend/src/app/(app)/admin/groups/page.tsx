@@ -36,7 +36,7 @@ import {
   validateAllSubmitted,
 } from "@/lib/api/admin";
 import { downloadConsolidatedExcel, downloadGroupPdf, downloadGroupWord } from "@/lib/api/exports";
-import { canAdminister, canApproveAsDg } from "@/lib/roles";
+import { canAdminister, canApproveAsDg, canReview } from "@/lib/roles";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { createUserAccount, listUserAccounts, purgeGroupData, resetUserPassword, updateUserUsername } from "@/lib/api/admin";
 import type { UserAccount } from "@/lib/api/admin";
@@ -79,7 +79,7 @@ const accountSchema = z
   .object({
     username: usernameField,
     fullName: z.string().min(1, "Le nom complet est requis"),
-    role: z.enum(["ADMIN", "DIRECTEUR_GENERAL", "GROUP_LEADER"]),
+    role: z.enum(["ADMIN", "DIRECTEUR_GENERAL", "SUPERVISEUR", "GROUP_LEADER"]),
     groupId: z.string().optional(),
     password: z.union([z.string().min(8, "Au moins 8 caractères"), z.literal("")]).optional(),
   })
@@ -134,6 +134,7 @@ export default function AdminGroupsPage() {
   const peutAdministrer = canAdminister(user?.role);
   // Second niveau : le DG seul ouvre les documents consolides a une direction.
   const peutApprouver = canApproveAsDg(user?.role);
+  const peutRevoir = canReview(user?.role);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<WorkGroupDto | null>(null);
   const [newCredentials, setNewCredentials] = useState<{ username: string; password: string } | null>(null);
@@ -550,8 +551,8 @@ export default function AdminGroupsPage() {
                       <KeyRound className="h-4 w-4" />
                     </Button>
                   )}
-                  {/* Le DG ne valide que depuis l'onglet « À valider ». */}
-                  {!peutApprouver && (
+                  {/* Le DG ne valide que depuis l'onglet « À valider » ; le superviseur ne valide pas. */}
+                  {!peutApprouver && peutRevoir && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="secondary" size="sm" title="Valider toutes les sections soumises">
@@ -696,6 +697,7 @@ export default function AdminGroupsPage() {
                       <option value="DIRECTEUR_GENERAL">
                         Direction Générale — consulte et approuve les documents
                       </option>
+                      <option value="SUPERVISEUR">Superviseur — suit tout en temps réel, en lecture seule</option>
                     </NativeSelect>
                   </div>
 

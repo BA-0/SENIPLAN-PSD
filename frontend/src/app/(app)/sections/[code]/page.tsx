@@ -13,6 +13,12 @@ import { usePresencePublisher } from "@/hooks/use-presence-publisher";
 import { SectionShell } from "@/components/sections/section-shell";
 import { SectionFormRouter } from "@/components/sections/section-form-router";
 import type { SectionType } from "@/types/common";
+import type { AutoFilled } from "@/types/sections";
+
+function isAutoFilled(content: unknown): boolean {
+  const marker = (content as AutoFilled | null)?.autoFilled;
+  return Array.isArray(marker) && marker.length > 0;
+}
 
 export default function SectionFormPage() {
   const params = useParams<{ code: string }>();
@@ -100,6 +106,7 @@ export default function SectionFormPage() {
       onSubmit={() => submitMutation.mutate()}
       submitting={submitMutation.isPending}
       submitBlockedReason={getSubmitBlockedReason(data.type as SectionType, content)}
+      autoFilled={isAutoFilled(content)}
       prevSection={prevSection}
       nextSection={nextSection}
     >

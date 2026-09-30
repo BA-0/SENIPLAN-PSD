@@ -63,7 +63,7 @@ public class SecurityConfig {
                         // (selecteurs de groupe, ecrans de documents). L'ecriture sur /groups —
                         // creation, modification, mot de passe — reste a l'admin, juste en dessous.
                         .requestMatchers(HttpMethod.GET, "/api/v1/groups", "/api/v1/groups/*")
-                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_DIRECTEUR_GENERAL")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_DIRECTEUR_GENERAL", "ROLE_SUPERVISEUR")
                         // Administration technique : reste a l'admin, y compris vis-a-vis du DG.
                         // Ces regles precedent celle de /admin/** : la premiere qui correspond gagne.
                         .requestMatchers("/api/v1/groups/**").hasAuthority("ROLE_ADMIN")
@@ -97,6 +97,12 @@ public class SecurityConfig {
                         // connecte, toute autre methode est refusee (cf. PeerSectionController).
                         .requestMatchers(HttpMethod.GET, "/api/v1/peers/**").authenticated()
                         .requestMatchers("/api/v1/peers/**").denyAll()
+                        // Supervision : le superviseur lit tout le pilotage (tableaux de bord, soumissions,
+                        // documents, exports) et rien d'autre. Placee apres les regles propres a l'admin
+                        // (comptes, purge), qui restent fermees ; toute autre methode tombe sur la regle
+                        // suivante, qui ne l'inclut pas.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/**")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_DIRECTEUR_GENERAL", "ROLE_SUPERVISEUR")
                         // Consultation, revision et validation : admin et direction generale.
                         .requestMatchers("/api/v1/admin/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_DIRECTEUR_GENERAL")
                         .anyRequest().authenticated()

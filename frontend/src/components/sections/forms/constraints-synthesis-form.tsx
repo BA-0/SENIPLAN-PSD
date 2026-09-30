@@ -20,13 +20,13 @@ const EMPTY_ROW: ConstraintsSynthesisRow = {
  */
 export function ConstraintsSynthesisForm({ content, onChange, readOnly }: SectionFormProps<ConstraintsSynthesisContent>) {
   function updateRow(index: number, patch: Partial<ConstraintsSynthesisRow>) {
-    onChange((prev) => ({ rows: prev.rows.map((r, i) => (i === index ? { ...r, ...patch } : r)) }));
+    onChange((prev) => ({ ...prev, rows: prev.rows.map((r, i) => (i === index ? { ...r, ...patch } : r)) }));
   }
   function addRow() {
-    onChange((prev) => ({ rows: [...prev.rows, { ...EMPTY_ROW, constraints: [], challenges: [] }] }));
+    onChange((prev) => ({ ...prev, rows: [...prev.rows, { ...EMPTY_ROW, constraints: [], challenges: [] }] }));
   }
   function removeRow(index: number) {
-    onChange((prev) => ({ rows: prev.rows.filter((_, i) => i !== index) }));
+    onChange((prev) => ({ ...prev, rows: prev.rows.filter((_, i) => i !== index) }));
   }
 
   return (

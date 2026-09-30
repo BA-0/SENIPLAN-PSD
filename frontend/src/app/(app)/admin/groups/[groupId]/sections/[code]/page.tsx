@@ -44,7 +44,7 @@ import {
   reviewSection,
 } from "@/lib/api/admin";
 import { listGroups } from "@/lib/api/groups";
-import { canAdminister, canApproveAsDg } from "@/lib/roles";
+import { canAdminister, canApproveAsDg, canReview } from "@/lib/roles";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { extractErrorMessage } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/utils";
@@ -66,6 +66,8 @@ export default function AdminSectionReviewPage() {
   const peutApprouver = canApproveAsDg(user?.role);
   // Effacer le contenu d'une section reste a l'admin ; le DG valide, refuse et modifie.
   const peutEffacer = canAdminister(user?.role);
+  // Le superviseur consulte la section, son statut et son historique, sans agir dessus.
+  const peutRevoir = canReview(user?.role);
 
   const { data: groups } = useQuery({ queryKey: ["admin", "groups"], queryFn: listGroups });
   const { data: sections } = useQuery({
@@ -177,7 +179,7 @@ export default function AdminSectionReviewPage() {
               <StatusBadge status={data.status} />
             </div>
 
-            {!editing && (
+            {!editing && peutRevoir && (
               <div className="flex items-center gap-2">
                 <Button variant="secondary" size="sm" onClick={() => setEditContent(data.content)}>
                   <Pencil className="h-4 w-4" /> Modifier
@@ -312,7 +314,7 @@ export default function AdminSectionReviewPage() {
           )}
 
           {/* Le DG decide depuis la barre en tete de page : ce bloc reste celui du comite de pilotage. */}
-          {!editing && !peutApprouver && RETURNABLE_STATUSES.has(data.status) && (
+          {!editing && !peutApprouver && peutRevoir && RETURNABLE_STATUSES.has(data.status) && (
             <Card>
               <CardHeader>
                 <CardTitle>Revue de la section</CardTitle>

@@ -57,9 +57,12 @@ const linkKey = (groupId: number, axisCode: string) => `${groupId}:${axisCode}`;
 export function ConsolidatedAxesEditor({
   content,
   onSaved,
+  readOnly = false,
 }: {
   content: string;
   onSaved: () => Promise<unknown> | void;
+  /** Consultation seule (superviseur) : champs et boutons desactives, pas d'enregistrement. */
+  readOnly?: boolean;
 }) {
   const [axes, setAxes] = useState<ConsolidatedAxis[]>(() => parseAxes(content));
   const [dirty, setDirty] = useState(false);
@@ -155,7 +158,8 @@ export function ConsolidatedAxesEditor({
   }
 
   return (
-    <div className="space-y-6">
+    // Un fieldset desactive fige d'un coup tous les champs, listes et boutons qu'il contient.
+    <fieldset disabled={readOnly} className="m-0 min-w-0 space-y-6 border-0 p-0">
       <p className="text-[13px] text-muted-foreground">
         Définissez les axes communs à toute l&apos;entreprise — quatre ou cinq, comme dans un plan stratégique publié —
         puis rattachez-y chaque axe proposé par les directions. Les documents regroupent alors objectifs spécifiques,
@@ -292,11 +296,13 @@ export function ConsolidatedAxesEditor({
         )}
       </div>
 
-      <div className="flex justify-end">
-        <Button variant="primary" onClick={save} loading={saving} disabled={!dirty}>
-          Enregistrer les axes
-        </Button>
-      </div>
-    </div>
+      {!readOnly && (
+        <div className="flex justify-end">
+          <Button variant="primary" onClick={save} loading={saving} disabled={!dirty}>
+            Enregistrer les axes
+          </Button>
+        </div>
+      )}
+    </fieldset>
   );
 }

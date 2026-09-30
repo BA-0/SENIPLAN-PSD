@@ -15,6 +15,8 @@ import { listNarrativeBlocks, updateNarrativeBlock } from "@/lib/api/psd-narrati
 import { downloadPsdFinalPdf, downloadPsdFinalWord } from "@/lib/api/exports";
 import { extractErrorMessage } from "@/lib/api-client";
 import { AXES_CONSOLIDES_KEY, type NarrativeBlock } from "@/types/psd-narrative";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { canReview } from "@/lib/roles";
 
 /** Aide à la saisie des blocs dont la forme compte pour la mise en page des documents. */
 const HINTS: Record<string, string> = {
@@ -37,6 +39,9 @@ export default function AdminPsdFinalPage() {
   const [exportingWord, setExportingWord] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const { user } = useCurrentUser();
+  // Le superviseur lit le cadre strategique et telecharge les documents, sans rien modifier.
+  const lectureSeule = !canReview(user?.role);
 
   const { data: groups } = useQuery({ queryKey: ["admin", "groups"], queryFn: listGroups });
   const { data: blocks, refetch } = useQuery({ queryKey: ["admin", "psd-narrative"], queryFn: listNarrativeBlocks });
@@ -128,7 +133,7 @@ export default function AdminPsdFinalPage() {
           <CardTitle>Axes stratégiques de SENICO</CardTitle>
         </CardHeader>
         <CardContent>
-          <ConsolidatedAxesEditor content={axesBlock?.content ?? ""} onSaved={refetch} />
+          <ConsolidatedAxesEditor content={axesBlock?.content ?? ""} onSaved={refetch} readOnly={lectureSeule} />
         </CardContent>
       </Card>
 
@@ -151,7 +156,9 @@ export default function AdminPsdFinalPage() {
                 value={drafts[block.key] ?? ""}
                 onChange={(e) => setDrafts((d) => ({ ...d, [block.key]: e.target.value }))}
                 placeholder={`Saisir le texte « ${block.label} »…`}
+                readOnly={lectureSeule}
               />
+              {!lectureSeule && (
               <div className="flex justify-end">
                 <Button
                   size="sm"
@@ -162,6 +169,7 @@ export default function AdminPsdFinalPage() {
                   Enregistrer
                 </Button>
               </div>
+              )}
             </div>
           ))}
         </CardContent>

@@ -2,10 +2,13 @@ import type { Role } from "@/types/common";
 
 /**
  * Deux questions distinctes se posent partout dans l'interface, et les confondre est la
- * source d'erreur la plus probable maintenant qu'il existe trois roles :
+ * source d'erreur la plus probable maintenant qu'il existe quatre roles :
  *
- *   « qui voit l'espace de pilotage ? »  -> l'admin et la direction generale
+ *   « qui voit l'espace de pilotage ? »  -> l'admin, la direction generale et le superviseur
  *   « qui peut administrer ? »           -> l'admin seul
+ *
+ * Le superviseur suit tout en temps reel, en lecture seule : il ne valide, n'approuve, ne
+ * modifie ni n'efface rien. D'ou la distinction entre canPilot (voir) et canReview (agir).
  *
  * Le DG consulte tout, arbitre tout et peut corriger une soumission, mais ne cree pas de groupe,
  * ne reinitialise pas de mot de passe, ne demarre pas de cycle et n'efface pas les saisies des directions. Ces
@@ -19,7 +22,7 @@ import type { Role } from "@/types/common";
 
 /** Acces a l'espace de pilotage (tableaux de bord, soumissions, documents, projection). */
 export function canPilot(role: Role | undefined): boolean {
-  return role === "ADMIN" || role === "DIRECTEUR_GENERAL";
+  return role === "ADMIN" || role === "DIRECTEUR_GENERAL" || role === "SUPERVISEUR";
 }
 
 /** Administration technique : groupes, comptes, cycles, effacement des saisies. */
@@ -29,7 +32,12 @@ export function canAdminister(role: Role | undefined): boolean {
 
 /** Validation, refus et modification des sections soumises : l'admin et la direction generale. */
 export function canReview(role: Role | undefined): boolean {
-  return canPilot(role);
+  return role === "ADMIN" || role === "DIRECTEUR_GENERAL";
+}
+
+/** Supervision en lecture seule : voit tout le pilotage en temps reel, n'agit sur rien. */
+export function isSupervisor(role: Role | undefined): boolean {
+  return role === "SUPERVISEUR";
 }
 
 /**
@@ -49,5 +57,6 @@ export function homePathFor(role: Role | undefined): string {
 export const ROLE_LABELS: Record<Role, string> = {
   ADMIN: "Comité de pilotage",
   DIRECTEUR_GENERAL: "Direction Générale",
+  SUPERVISEUR: "Supervision (lecture seule)",
   GROUP_LEADER: "Espace chef de groupe",
 };

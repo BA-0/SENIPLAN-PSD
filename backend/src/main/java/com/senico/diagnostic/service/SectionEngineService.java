@@ -53,6 +53,7 @@ public class SectionEngineService {
     private final SectionContentValidator contentValidator;
     private final DefaultSectionContentFactory defaultContentFactory;
     private final DerivedFieldsService derivedFieldsService;
+    private final SynthesisPrefillService synthesisPrefillService;
     private final ProgressService progressService;
     private final ActivityLogService activityLogService;
     private final RealtimeEventPublisher realtimeEventPublisher;
@@ -404,7 +405,13 @@ public class SectionEngineService {
                         .updatedBy(actingUser.getId())
                         .build());
 
+        // Une synthese pre-remplie a l'ecran mais jamais retouchee n'est pas encore en base : elle
+        // part avec la soumission, sans quoi la direction soumettrait un tableau vide.
         JsonNode content = parseJson(response.getContentJson());
+        if (content instanceof ObjectNode editable
+                && !synthesisPrefillService.apply(section.getType(), groupId, editable).isEmpty()) {
+            response = persistContent(group, section, editable, actingUser);
+        }
         contentValidator.validate(section.getType(), content, true);
 
         status.setStatus(SectionStatus.SUBMITTED);
@@ -798,6 +805,11 @@ public class SectionEngineService {
                 : defaultContentFactory.buildDefault(section.getType());
 
         content = derivedFieldsService.apply(section.getType(), group.getId(), content);
+        // Synthese pas encore commencee : proposition tiree des tableaux deja saisis. Une section
+        // soumise ou validee s'affiche telle qu'elle a ete transmise.
+        if (!LOCKED_STATUSES.contains(status.getStatus())) {
+            synthesisPrefillService.apply(section.getType(), group.getId(), content);
+        }
 
         return SectionContentResponse.builder()
                 .sectionId(section.getId())

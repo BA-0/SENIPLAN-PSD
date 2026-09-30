@@ -37,6 +37,7 @@ public class UserAccountService {
     private static final Map<Role, String> ROLE_LABELS = Map.of(
             Role.ADMIN, "Administrateur",
             Role.DIRECTEUR_GENERAL, "Direction Générale",
+            Role.SUPERVISEUR, "Superviseur",
             Role.GROUP_LEADER, "Chef de groupe"
     );
 

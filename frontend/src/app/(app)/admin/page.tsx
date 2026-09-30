@@ -33,7 +33,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { extractErrorMessage } from "@/lib/api-client";
-import { canApproveAsDg, canPilot } from "@/lib/roles";
+import { canApproveAsDg, canReview, isSupervisor } from "@/lib/roles";
 import { DgApprovalBanner } from "@/components/dg-approval-banner";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useRealtimeAdmin } from "@/hooks/use-realtime-admin";
@@ -43,7 +43,8 @@ export default function AdminDashboardPage() {
   useRealtimeAdmin();
   const { user } = useCurrentUser();
   // Effacer le fil d'activité : l'admin et la direction générale.
-  const peutEffacer = canPilot(user?.role);
+  // Le superviseur suit le fil en direct sans pouvoir l'effacer.
+  const peutEffacer = canReview(user?.role);
   const queryClient = useQueryClient();
   const retirerActivite = useMutation({
     mutationFn: (id: number) => deleteAdminActivity(id),
@@ -130,7 +131,13 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1>{estDg ? "Tableau de bord — Direction Générale" : "Tableau de bord administrateur"}</h1>
+        <h1>
+          {estDg
+            ? "Tableau de bord — Direction Générale"
+            : isSupervisor(user?.role)
+              ? "Tableau de bord — Supervision"
+              : "Tableau de bord administrateur"}
+        </h1>
         <p className="text-[13px] text-muted-foreground mt-1">Suivi en temps réel du Plan Stratégique 2027-2031</p>
       </div>
 

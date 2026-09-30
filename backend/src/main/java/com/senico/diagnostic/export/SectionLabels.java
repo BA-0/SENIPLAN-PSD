@@ -10,7 +10,7 @@ import java.util.Map;
  * definies cote client dans frontend/src/types/sections.ts. Reutilise les tableaux
  * de cles deja presents dans DefaultSectionContentFactory plutot que de les redefinir.
  */
-final class SectionLabels {
+public final class SectionLabels {
 
     private SectionLabels() {
     }
@@ -113,7 +113,7 @@ final class SectionLabels {
 
     static final String[] YEARS = toStrings(DefaultSectionContentFactory.YEARS);
 
-    static String stakeholderCategory(String key) {
+    public static String stakeholderCategory(String key) {
         return STAKEHOLDER_CATEGORY_LABELS.getOrDefault(key, key);
     }
 
@@ -121,7 +121,7 @@ final class SectionLabels {
         return STAKEHOLDER_SCOPE_LABELS.getOrDefault(key, key);
     }
 
-    static String resource(String key) {
+    public static String resource(String key) {
         return RESOURCE_LABELS.getOrDefault(key, key);
     }
 

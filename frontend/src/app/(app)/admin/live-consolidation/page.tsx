@@ -101,7 +101,8 @@ export default function LiveConsolidationPage() {
     queryKey: ["admin", "live", "compare", activeCode, groupIds],
     queryFn: () => compareSection(activeCode, groupIds),
     enabled: groupIds.length > 0,
-    refetchInterval: 20_000,
+    // Les evenements temps reel rafraichissent la comparaison ; le polling ne sert que sans eux.
+    refetchInterval: connected ? false : 60_000,
   });
 
   // Si le referentiel des sections arrive apres coup et ne contient pas le code actif

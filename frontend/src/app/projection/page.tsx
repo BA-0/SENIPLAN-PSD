@@ -97,8 +97,8 @@ function ProjectionPage() {
     },
   });
   const connected = useConnectionStore((s) => s.connected);
-  // Meme regle que le tableau de bord admin : le temps reel suffit, le polling n'est qu'un filet.
-  const pollInterval = connected ? 120_000 : 15_000;
+  // Meme regle que le tableau de bord admin : pas de polling quand le temps reel est connecte.
+  const pollInterval = connected ? false : 60_000;
   const voiceEnabled = useVoiceNotificationsStore((s) => s.enabled);
   const toggleVoice = useVoiceNotificationsStore((s) => s.toggle);
 

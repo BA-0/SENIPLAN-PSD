@@ -84,7 +84,7 @@ export default function AdminSubmissionsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "submissions"],
     queryFn: getAdminSubmissions,
-    refetchInterval: 15_000,
+    refetchInterval: 60_000,
   });
 
   /** Approbation en masse des lignes cochees : on envoie les lignes exactes, jamais ce que l'ecran ne montrait pas. */

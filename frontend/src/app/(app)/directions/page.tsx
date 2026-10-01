@@ -19,7 +19,7 @@ export default function PeerDirectionsPage() {
   const { data: groups, isLoading } = useQuery({
     queryKey: ["peers", "groups"],
     queryFn: listPeerGroups,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
   useRealtimePeers(groups?.map((g) => g.id) ?? []);

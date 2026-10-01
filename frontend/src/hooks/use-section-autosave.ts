@@ -12,7 +12,8 @@ import type { SectionContentResponse } from "@/types/common";
  */
 export type SaveStatus = "idle" | "unsaved" | "saving" | "saved" | "error" | "conflict";
 
-const AUTOSAVE_DEBOUNCE_MS = 2500;
+// 10 s apres la derniere frappe : chaque enregistrement compte dans la limite de requetes du pare-feu AWS.
+const AUTOSAVE_DEBOUNCE_MS = 10_000;
 const AUTOSAVE_INTERVAL_MS = 20_000;
 
 export function useSectionAutosave<T>(code: string, initial: SectionContentResponse<T> | undefined) {
@@ -131,7 +132,7 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
 
 
   // Avant une soumission : le serveur valide ce qu'il a en base, pas ce qui est a l'ecran. Une
-  // frappe de moins de 2,5 s serait sinon soumise sans elle, puis refusee une fois la section
+  // frappe de moins de 10 s serait sinon soumise sans elle, puis refusee une fois la section
   // verrouillee.
   const flush = useCallback(async () => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -172,7 +173,7 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
     return () => clearInterval(interval);
   }, [doSave]);
 
-  // Passer a une autre section moins de 2,5 s apres une frappe annulait l'enregistrement differe :
+  // Passer a une autre section moins de 10 s apres une frappe annulait l'enregistrement differe :
   // la saisie en attente etait perdue. Elle part desormais aussitot.
   useEffect(() => {
     return () => {

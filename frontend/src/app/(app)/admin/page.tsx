@@ -42,10 +42,10 @@ import { useConnectionStore } from "@/store/connection-store";
 
 export default function AdminDashboardPage() {
   useRealtimeAdmin();
-  // Temps reel connecte : les evenements STOMP rafraichissent deja les donnees, le polling ne sert
-  // plus que de filet (au rythme de 15 s, il contribuait aux blocages 403 du pare-feu AWS).
+  // Temps reel connecte : les evenements STOMP rafraichissent deja les donnees, aucun polling. Sans
+  // lui, une actualisation par minute : le pare-feu AWS bloque au-dela de 100 requetes par IP.
   const connected = useConnectionStore((s) => s.connected);
-  const pollInterval = connected ? 120_000 : 15_000;
+  const pollInterval = connected ? false : 60_000;
   const { user } = useCurrentUser();
   // Effacer le fil d'activité : l'admin et la direction générale.
   // Le superviseur suit le fil en direct sans pouvoir l'effacer.

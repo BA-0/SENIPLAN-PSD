@@ -63,7 +63,7 @@ export function Sidebar() {
     queryKey: ["me", "sections", "nav"],
     queryFn: listMySections,
     enabled: !isAdmin,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
   // Pour le DG, le menu dit combien de sections attendent sa validation : c'est sa seule tache.

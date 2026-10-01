@@ -31,7 +31,7 @@ export default function PeerSectionPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["peers", "section", groupId, code],
     queryFn: () => getPeerSectionContent(groupId, code),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
   useRealtimePeers([groupId]);

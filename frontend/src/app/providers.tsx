@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
+import axios from "axios";
 import { useAuthStore } from "@/store/auth-store";
+import { isNetworkPausedError } from "@/lib/api-client";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -14,7 +16,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: {
             staleTime: 15_000,
             refetchOnWindowFocus: false,
-            retry: 1,
+            // Pas de nouvel essai sur un refus (403/429, ou pause pare-feu) : il ne ferait que prolonger le
+            // blocage du pare-feu AWS. Les autres erreurs (reseau, 5xx) ont droit a un second essai.
+            retry: (failureCount, error) => {
+              const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+              if (status === 403 || status === 429 || isNetworkPausedError(error)) return false;
+              return failureCount < 1;
+            },
           },
         },
       })

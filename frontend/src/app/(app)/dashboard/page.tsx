@@ -65,7 +65,7 @@ export default function GroupDashboardPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {data.sectionsWithAdminComment.map((s) => (
-              <Link
+              <Link prefetch={false}
                 key={s.code}
                 href={`/sections/${s.code}`}
                 className="flex items-start gap-3 rounded-lg border border-orange-100 dark:border-orange-500/20 bg-orange-50/60 dark:bg-orange-500/10 p-3 hover:bg-orange-50 dark:hover:bg-orange-500/15 transition-colors"
@@ -107,7 +107,7 @@ export default function GroupDashboardPage() {
                   )}
                   <div className="divide-y divide-border border-t border-border">
                     {subGroup.sections.map((s) => (
-                      <Link
+                      <Link prefetch={false}
                         key={s.code}
                         href={`/sections/${s.code}`}
                         className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-primary-50/60 dark:hover:bg-white/5 transition-colors"
@@ -132,7 +132,7 @@ export default function GroupDashboardPage() {
       {data.nextSections.length > 0 && (
         <div className="flex justify-end">
           <Button asChild variant="primary">
-            <Link href={`/sections/${data.nextSections[0].code}`}>
+            <Link prefetch={false} href={`/sections/${data.nextSections[0].code}`}>
               Continuer avec « {data.nextSections[0].title} » <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>

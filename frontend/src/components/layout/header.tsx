@@ -68,7 +68,7 @@ export function Header() {
             </Button>
           )}
           <Button variant="ghost" size="icon" className="h-9 w-9" asChild title="Changer mon mot de passe">
-            <Link href="/change-password">
+            <Link prefetch={false} href="/change-password">
               <KeyRound className="h-4 w-4" />
             </Link>
           </Button>

@@ -39,7 +39,7 @@ export default function PeerSectionPage() {
 
   return (
     <div className="space-y-5">
-      <Link
+      <Link prefetch={false}
         href={`/directions/${groupId}`}
         className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-primary-600 transition-colors"
       >

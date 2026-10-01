@@ -109,7 +109,7 @@ export default function SynthesisPage() {
           <p className="text-[13px] text-muted-foreground">
             Le mot du DG, la vision, la mission, les valeurs, les axes stratégiques et le dispositif de pilotage se
             rédigent sur la page{" "}
-            <Link href="/admin/psd-final" className="font-medium text-primary-600 underline-offset-2 hover:underline">
+            <Link prefetch={false} href="/admin/psd-final" className="font-medium text-primary-600 underline-offset-2 hover:underline">
               Plan Stratégique de SENICO
             </Link>
             . Ces textes rédigés figurent dans le Plan Stratégique de SENICO ; la note n&apos;en garde que les tableaux.

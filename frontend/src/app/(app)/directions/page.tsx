@@ -60,7 +60,7 @@ function PeerGroupCard({ group }: { group: PeerGroupDto }) {
   const typingSection = useGroupTypingSection(group.id);
 
   return (
-    <Link href={`/directions/${group.id}`} className="group block">
+    <Link prefetch={false} href={`/directions/${group.id}`} className="group block">
       <Card className="h-full overflow-hidden transition-shadow group-hover:shadow-md">
         <div className="h-1.5" style={{ backgroundColor: group.color ?? "#2D7A45" }} />
         <CardContent className="pt-4 space-y-3">

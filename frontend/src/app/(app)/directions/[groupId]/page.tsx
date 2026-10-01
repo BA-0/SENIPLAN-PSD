@@ -34,7 +34,7 @@ export default function PeerGroupPage() {
 
   return (
     <div className="space-y-5">
-      <Link
+      <Link prefetch={false}
         href="/directions"
         className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-primary-600 transition-colors"
       >
@@ -89,7 +89,7 @@ export default function PeerGroupPage() {
                     )}
                     <div className="divide-y divide-border border-t border-border">
                       {subGroup.sections.map((s) => (
-                        <Link
+                        <Link prefetch={false}
                           key={s.code}
                           href={`/directions/${groupId}/sections/${s.code}`}
                           className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-primary-50/60 dark:hover:bg-white/5 transition-colors"

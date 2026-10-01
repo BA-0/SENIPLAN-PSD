@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { saveMySectionDraft } from "@/lib/api/me";
-import { extractErrorMessage, isVersionConflict } from "@/lib/api-client";
+import { extractErrorMessage, isNetworkPausedError, isVersionConflict } from "@/lib/api-client";
 import type { SectionContentResponse } from "@/types/common";
 
 /**
@@ -88,6 +88,9 @@ export function useSectionAutosave<T>(code: string, initial: SectionContentRespo
         return;
       }
       setStatus("error");
+      // Pause pare-feu : le bandeau l'explique deja, la saisie reste en attente et repartira au
+      // prochain passage de l'intervalle, sans un toast toutes les 20 s.
+      if (isNetworkPausedError(error)) return;
       toast.error(extractErrorMessage(error, "Échec de l'enregistrement automatique"));
     },
   });

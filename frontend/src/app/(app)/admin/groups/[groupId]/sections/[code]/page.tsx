@@ -142,7 +142,7 @@ export default function AdminSectionReviewPage() {
 
   return (
     <div className="space-y-5">
-      <Link
+      <Link prefetch={false}
         href={peutApprouver ? "/admin/submissions?dg=PENDING" : "/admin/submissions"}
         className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-primary-600 transition-colors"
       >
@@ -235,7 +235,7 @@ export default function AdminSectionReviewPage() {
 
                 {!data.dgApprovedAt && (
                   <Button asChild>
-                    <Link href="/admin/submissions?dg=PENDING">
+                    <Link prefetch={false} href="/admin/submissions?dg=PENDING">
                       <CheckCircle2 className="h-4 w-4" /> Valider depuis « À valider »
                     </Link>
                   </Button>

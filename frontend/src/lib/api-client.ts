@@ -1,5 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/store/auth-store";
+import { isNetworkPaused, useNetworkPauseStore } from "@/store/network-pause-store";
 import type { ApiErrorBody } from "@/types/api";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
@@ -9,7 +10,30 @@ export const apiClient = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+const NETWORK_PAUSED = "ERR_NETWORK_PAUSED";
+
+/**
+ * Blocage du pare-feu AWS devant l'application : il repond 403 ou 429 par une page HTML, alors que
+ * l'API repond toujours en JSON (y compris ses propres 403, comme PASSWORD_CHANGE_REQUIRED).
+ */
+function isGatewayBlock(error: AxiosError): boolean {
+  const status = error.response?.status;
+  if (status !== 403 && status !== 429) return false;
+  const contentType = String(error.response?.headers?.["content-type"] ?? "");
+  return contentType.includes("text/html");
+}
+
+/** Requete non envoyee : le pare-feu bloque le poste, l'application attend la fin de la pause. */
+export function isNetworkPausedError(error: unknown): error is AxiosError {
+  return axios.isAxiosError(error) && error.code === NETWORK_PAUSED;
+}
+
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  if (isNetworkPaused()) {
+    return Promise.reject(
+      new AxiosError("Connexion momentanément limitée par le pare-feu", NETWORK_PAUSED, config)
+    );
+  }
   const token = useAuthStore.getState().accessToken;
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -38,6 +62,11 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiErrorBody>) => {
     const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+
+    if (isGatewayBlock(error)) {
+      useNetworkPauseStore.getState().pause();
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry
         && !originalRequest.url?.includes("/auth/")) {
@@ -79,6 +108,7 @@ export function isVersionConflict(error: unknown): boolean {
 }
 
 export function extractErrorMessage(error: unknown, fallback = "Une erreur est survenue"): string {
+  if (isNetworkPausedError(error)) return error.message;
   if (axios.isAxiosError(error)) {
     const body = error.response?.data as ApiErrorBody | undefined;
     return body?.message ?? fallback;

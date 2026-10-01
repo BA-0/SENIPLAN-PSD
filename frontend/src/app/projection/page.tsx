@@ -97,6 +97,8 @@ function ProjectionPage() {
     },
   });
   const connected = useConnectionStore((s) => s.connected);
+  // Meme regle que le tableau de bord admin : le temps reel suffit, le polling n'est qu'un filet.
+  const pollInterval = connected ? 120_000 : 15_000;
   const voiceEnabled = useVoiceNotificationsStore((s) => s.enabled);
   const toggleVoice = useVoiceNotificationsStore((s) => s.toggle);
 
@@ -109,20 +111,20 @@ function ProjectionPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "dashboard"],
     queryFn: getAdminDashboard,
-    refetchInterval: 15_000,
+    refetchInterval: pollInterval,
   });
 
   const { data: activity } = useQuery({
     queryKey: ["admin", "activity"],
     queryFn: () => getAdminActivity(50),
-    refetchInterval: 15_000,
+    refetchInterval: pollInterval,
   });
 
   const { data: matrix } = useQuery({
     queryKey: ["admin", "matrix"],
     queryFn: getAdminMatrix,
     enabled: detail !== null,
-    refetchInterval: detail !== null ? 15_000 : false,
+    refetchInterval: detail !== null ? pollInterval : false,
   });
 
   const milestoneActivity = useMemo(
@@ -207,7 +209,7 @@ function ProjectionPage() {
           >
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
-          <Link
+          <Link prefetch={false}
             href="/admin"
             title="Quitter la projection"
             className="h-9 w-9 rounded-full bg-accent-500/15 border border-accent-500/40 text-red-300 flex items-center justify-center hover:bg-accent-500 hover:border-accent-500 hover:text-white hover:scale-110 active:scale-95 transition-all duration-200"

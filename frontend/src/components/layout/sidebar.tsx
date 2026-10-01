@@ -72,7 +72,7 @@ export function Sidebar() {
     queryKey: ["admin", "submissions"],
     queryFn: getAdminSubmissions,
     enabled: isDg,
-    refetchInterval: 15_000,
+    refetchInterval: 60_000,
   });
   const aValider = (submissions ?? []).filter(attendLaDg).length;
 
@@ -204,7 +204,7 @@ export function Sidebar() {
               active={pathname.startsWith("/admin/psd-final")}
               collapsed={showCollapsed}
             />
-            <Link
+            <Link prefetch={false}
               href="/projection"
               target="_blank"
               rel="noopener noreferrer"
@@ -293,7 +293,7 @@ export function Sidebar() {
                   })()}
                   {(showCollapsed || open) &&
                     partSections.map((s) => (
-                      <Link
+                      <Link prefetch={false}
                         key={s.code}
                         href={`/sections/${s.code}`}
                         title={s.title}
@@ -362,7 +362,7 @@ function NavItem({
   badge?: number;
 }) {
   return (
-    <Link
+    <Link prefetch={false}
       href={href}
       title={label}
       className={cn(

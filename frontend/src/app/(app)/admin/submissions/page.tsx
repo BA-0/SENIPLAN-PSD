@@ -804,7 +804,7 @@ function SubmissionRow({
             </AlertDialog>
           )}
           <Button variant="ghost" size="icon" asChild title="Voir la section">
-            <Link href={`/admin/groups/${s.groupId}/sections/${s.sectionCode}`}>
+            <Link prefetch={false} href={`/admin/groups/${s.groupId}/sections/${s.sectionCode}`}>
               <Eye className="h-4 w-4" />
             </Link>
           </Button>

@@ -25,7 +25,7 @@ const ADMIN_VOICE_MESSAGES: Partial<Record<string, (entry: ActivityEntryDto) => 
  * de section, plus une annonce dediee lorsque la direction termine la totalite de ses sections.
  * options.onSubmitAll permet a l'appelant de reagir visuellement (bandeau, etc.)
  * a ce dernier evenement, independamment du reglage vocal.
- * Le polling (refetchInterval: 15s) configure sur les queries sert de repli
+ * Le polling configure sur les queries (15 s sans WebSocket, 2 min avec) sert de repli
  * si la connexion WebSocket est indisponible.
  */
 export function useRealtimeAdmin(options?: { voice?: boolean; onSubmitAll?: (entry: ActivityEntryDto) => void }) {
@@ -44,6 +44,7 @@ export function useRealtimeAdmin(options?: { voice?: boolean; onSubmitAll?: (ent
       client.subscribe("/topic/admin/progress", () => {
         queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] });
         queryClient.invalidateQueries({ queryKey: ["admin", "matrix"] });
+        queryClient.invalidateQueries({ queryKey: ["admin", "submissions"] });
       });
       client.subscribe("/topic/admin/activity", (message) => {
         queryClient.invalidateQueries({ queryKey: ["admin", "activity"] });

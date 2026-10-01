@@ -70,7 +70,7 @@ export function StatusHeatmap({
                 const sectionName = titleByCode?.get(code) ?? `Section ${index + 1}`;
                 return (
                   <td key={code} className="p-1 border-t border-border">
-                    <Link
+                    <Link prefetch={false}
                       href={`/admin/groups/${groupId}/sections/${code}`}
                       title={`${sectionName} — ${sectionStatusLabel(status)}`}
                       className={cn("block h-7 w-7 rounded-md mx-auto transition-transform hover:scale-110", CELL_COLOR[status])}

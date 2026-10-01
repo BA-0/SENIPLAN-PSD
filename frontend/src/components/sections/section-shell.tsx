@@ -152,7 +152,7 @@ export function SectionShell({
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-4 border-t border-border">
         {prevSection ? (
           <Button asChild variant="secondary" size="sm" className="justify-start sm:justify-center">
-            <Link href={`/sections/${prevSection.code}`} className="min-w-0">
+            <Link prefetch={false} href={`/sections/${prevSection.code}`} className="min-w-0">
               <ChevronLeft className="h-4 w-4 shrink-0" /> <span className="truncate">{prevSection.title}</span>
             </Link>
           </Button>
@@ -161,7 +161,7 @@ export function SectionShell({
         )}
         {nextSection ? (
           <Button asChild variant="secondary" size="sm" className="justify-end sm:justify-center">
-            <Link href={`/sections/${nextSection.code}`} className="min-w-0">
+            <Link prefetch={false} href={`/sections/${nextSection.code}`} className="min-w-0">
               <span className="truncate">{nextSection.title}</span> <ChevronRight className="h-4 w-4 shrink-0" />
             </Link>
           </Button>

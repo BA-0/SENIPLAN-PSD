@@ -480,7 +480,7 @@ export default function AdminGroupsPage() {
                       style={{ backgroundColor: g.color ?? "transparent" }}
                       title={g.color ?? undefined}
                     />
-                    <Link href={`/admin/groups/${g.id}/sections/S01`} className="text-[14px] font-medium text-foreground hover:text-primary-600">
+                    <Link prefetch={false} href={`/admin/groups/${g.id}/sections/S01`} className="text-[14px] font-medium text-foreground hover:text-primary-600">
                       {g.name}
                     </Link>
                     {!g.enabled && <span className="text-[11px] rounded-full bg-muted text-muted-foreground px-2 py-0.5">Désactivé</span>}

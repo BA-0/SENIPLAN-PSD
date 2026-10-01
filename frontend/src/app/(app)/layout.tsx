@@ -5,6 +5,7 @@ import Image from "next/image";
 import { AuthGuard } from "@/components/layout/auth-guard";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { NetworkPauseBanner } from "@/components/network-pause-banner";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -27,7 +28,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <Header />
-          <main className="flex-1 p-4 sm:p-6 max-w-[1400px] w-full mx-auto">{children}</main>
+          <main className="flex-1 p-4 sm:p-6 max-w-[1400px] w-full mx-auto">
+            <NetworkPauseBanner />
+            {children}
+          </main>
         </div>
       </div>
     </AuthGuard>

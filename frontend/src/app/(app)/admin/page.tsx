@@ -38,9 +38,14 @@ import { DgApprovalBanner } from "@/components/dg-approval-banner";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useRealtimeAdmin } from "@/hooks/use-realtime-admin";
 import { useIsGroupTyping } from "@/store/presence-store";
+import { useConnectionStore } from "@/store/connection-store";
 
 export default function AdminDashboardPage() {
   useRealtimeAdmin();
+  // Temps reel connecte : les evenements STOMP rafraichissent deja les donnees, le polling ne sert
+  // plus que de filet (au rythme de 15 s, il contribuait aux blocages 403 du pare-feu AWS).
+  const connected = useConnectionStore((s) => s.connected);
+  const pollInterval = connected ? 120_000 : 15_000;
   const { user } = useCurrentUser();
   // Effacer le fil d'activité : l'admin et la direction générale.
   // Le superviseur suit le fil en direct sans pouvoir l'effacer.
@@ -64,7 +69,7 @@ export default function AdminDashboardPage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin", "dashboard"],
     queryFn: getAdminDashboard,
-    refetchInterval: 15_000,
+    refetchInterval: pollInterval,
   });
 
   // Indicateurs du DG : ce qui attend sa validation, ce qui est deja dans les documents.
@@ -73,7 +78,7 @@ export default function AdminDashboardPage() {
     queryKey: ["admin", "submissions"],
     queryFn: getAdminSubmissions,
     enabled: estDg,
-    refetchInterval: 15_000,
+    refetchInterval: pollInterval,
   });
   const aValider = (submissions ?? []).filter(attendLaDg).length;
   const integrees = (submissions ?? []).filter((s) => s.dgApprovedAt).length;
@@ -81,7 +86,7 @@ export default function AdminDashboardPage() {
   const { data: matrix, isError: isMatrixError } = useQuery({
     queryKey: ["admin", "matrix"],
     queryFn: getAdminMatrix,
-    refetchInterval: 15_000,
+    refetchInterval: pollInterval,
   });
 
   const ACTIVITY_PAGE_SIZE = 20;
@@ -95,7 +100,7 @@ export default function AdminDashboardPage() {
   } = useQuery({
     queryKey: ["admin", "activity", activityLimit],
     queryFn: () => getAdminActivity(activityLimit),
-    refetchInterval: 15_000,
+    refetchInterval: pollInterval,
   });
 
   const orderByCode = useMemo(() => {
@@ -145,7 +150,7 @@ export default function AdminDashboardPage() {
 
       {estDg ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link href="/admin/submissions?dg=PENDING" className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40">
+          <Link prefetch={false} href="/admin/submissions?dg=PENDING" className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40">
             <KpiCard icon={Send} label="À valider" value={aValider} subtitle="sections soumises en attente de vous" color="blue" />
           </Link>
           <KpiCard
@@ -284,7 +289,7 @@ export default function AdminDashboardPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Groupes de travail</CardTitle>
-          <Link
+          <Link prefetch={false}
             href="/admin/submissions?status=SUBMITTED"
             className="flex items-center gap-1 text-[13px] font-medium text-primary-600 hover:text-primary-700"
           >
@@ -294,7 +299,7 @@ export default function AdminDashboardPage() {
         <CardContent className="p-0">
           <div className="divide-y divide-border">
             {data.groups.map((g) => (
-              <Link
+              <Link prefetch={false}
                 key={g.groupId}
                 href={`/admin/groups/${g.groupId}/sections/${pendingSectionCode(g.groupId)}`}
                 className="flex items-center justify-between px-5 py-3 hover:bg-primary-50/60 dark:hover:bg-white/5 transition-colors"

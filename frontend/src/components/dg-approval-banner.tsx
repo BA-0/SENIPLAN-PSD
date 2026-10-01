@@ -16,7 +16,7 @@ export function DgApprovalBanner() {
   const { data: submissions } = useQuery({
     queryKey: ["admin", "submissions"],
     queryFn: getAdminSubmissions,
-    refetchInterval: 15_000,
+    refetchInterval: 60_000,
   });
   const aTraiter = fileDuDg(submissions);
 
@@ -46,7 +46,7 @@ export function DgApprovalBanner() {
         </span>
       </p>
       <Button asChild>
-        <Link href="/admin/submissions?dg=PENDING">
+        <Link prefetch={false} href="/admin/submissions?dg=PENDING">
           Aller à « À valider » <ArrowRight className="h-4 w-4" />
         </Link>
       </Button>

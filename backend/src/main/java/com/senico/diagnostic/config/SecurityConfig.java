@@ -3,6 +3,7 @@ package com.senico.diagnostic.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.senico.diagnostic.security.JwtAuthenticationFilter;
 import com.senico.diagnostic.security.PasswordChangeGuardFilter;
+import com.senico.diagnostic.security.SynthesisNoteAccess;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -36,6 +38,7 @@ public class SecurityConfig {
     private final PasswordChangeGuardFilter passwordChangeGuardFilter;
     private final UserDetailsService userDetailsService;
     private final ObjectMapper objectMapper;
+    private final SynthesisNoteAccess synthesisNoteAccess;
 
     @Value("${app.cors.allowed-origins}")
     private String allowedOrigins;
@@ -93,6 +96,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/admin/groups/*/sections/validate-all", "/api/v1/admin/validations/**")
                         .hasAuthority("ROLE_ADMIN")
+                        // Correction de la note de synthese : la Direction Generale et les comptes
+                        // nommes dans app.synthesis-note.editors (dir.generale), cf. SynthesisNoteAccess.
+                        .requestMatchers("/api/v1/synthesis-note", "/api/v1/synthesis-note/**")
+                        .access((authentication, context) ->
+                                new AuthorizationDecision(synthesisNoteAccess.canEdit(authentication.get())))
                         // Consultation croisee entre directions : lecture seule pour tout compte
                         // connecte, toute autre methode est refusee (cf. PeerSectionController).
                         .requestMatchers(HttpMethod.GET, "/api/v1/peers/**").authenticated()

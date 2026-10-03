@@ -1,4 +1,5 @@
 import type { Role } from "@/types/common";
+import type { AuthUser } from "@/types/api";
 
 /**
  * Deux questions distinctes se posent partout dans l'interface, et les confondre est la
@@ -47,6 +48,15 @@ export function isSupervisor(role: Role | undefined): boolean {
  */
 export function canApproveAsDg(role: Role | undefined): boolean {
   return role === "DIRECTEUR_GENERAL";
+}
+
+/**
+ * Correction de la note de synthese : la Direction Generale, et le compte de chef de groupe
+ * dir.generale. Le serveur le dit a la connexion (canEditSynthesisNote) et le verifie a chaque
+ * requete ; le role DG suffit tant qu'une session ouverte avant cette regle n'a pas ete rafraichie.
+ */
+export function canEditSynthesisNote(user: Pick<AuthUser, "role" | "canEditSynthesisNote"> | null | undefined): boolean {
+  return !!user && (user.canEditSynthesisNote === true || user.role === "DIRECTEUR_GENERAL");
 }
 
 /** Page d'accueil selon le role, apres connexion ou redirection. */

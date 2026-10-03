@@ -180,4 +180,20 @@ class DirectionGeneraleAccessIT {
         mockMvc.perform(get("/api/v1/admin/dashboard").with(compte("dir.commerciale")))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @DisplayName("La note de synthese se corrige depuis le compte DG et le compte dir.generale, pas ailleurs")
+    void laNoteDeSyntheseSeCorrigeALaDirectionGenerale() throws Exception {
+        for (String compte : new String[]{"m.dia", "dir.generale"}) {
+            mockMvc.perform(get("/api/v1/synthesis-note").with(compte(compte))).andExpect(status().isOk());
+            // Une note vide est refusee (400) : l'acces est passe, sans rien ecrire.
+            mockMvc.perform(put("/api/v1/synthesis-note")
+                            .contentType("application/json").content("{\"blocks\":[]}").with(compte(compte)))
+                    .andExpect(status().isBadRequest());
+        }
+        mockMvc.perform(get("/api/v1/synthesis-note").with(compte("dir.commerciale")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/api/v1/synthesis-note").with(compte("admin")))
+                .andExpect(status().isForbidden());
+    }
 }

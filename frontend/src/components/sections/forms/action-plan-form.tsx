@@ -8,6 +8,7 @@ import { RemoveRowButton, TableAddRow } from "@/components/data-table/row-action
 import { directionAxisLabel } from "@/lib/utils";
 import { PLAN_YEARS } from "@/types/sections";
 import type { ActionPlanContent, ActionPlanEffect, ActionPlanRow } from "@/types/sections";
+import { AxisTitleField, renameAxis } from "./axis-title-field";
 import type { SectionFormProps } from "./types";
 
 const EMPTY_ROW: ActionPlanRow = {
@@ -24,7 +25,7 @@ const EMPTY_ROW: ActionPlanRow = {
  * effet (EFFET n — OSn, avec son intitule) et sous chacun ses extrants, activites, annees de
  * realisation prevues et responsables. La direction ajoute ses effets et ses extrants.
  */
-export function ActionPlanForm({ content, onChange, readOnly }: SectionFormProps<ActionPlanContent>) {
+export function ActionPlanForm({ content, onChange, readOnly, canEditAxes }: SectionFormProps<ActionPlanContent>) {
   function updateAxis(axisIndex: number, updater: (effects: ActionPlanEffect[]) => ActionPlanEffect[]) {
     onChange((prev) => ({
       ...prev,
@@ -70,7 +71,10 @@ export function ActionPlanForm({ content, onChange, readOnly }: SectionFormProps
       </TabsList>
 
       {content.axes.map((axis, axisIndex) => (
-        <TabsContent key={axis.axisCode} value={axis.axisCode}>
+        <TabsContent key={axis.axisCode} value={axis.axisCode} className="space-y-3">
+          {!readOnly && canEditAxes && (
+            <AxisTitleField value={axis.axisTitle} onChange={(t) => onChange((prev) => renameAxis(prev, axisIndex, t))} />
+          )}
           <Table>
             <TableHeader>
               <TableRow>

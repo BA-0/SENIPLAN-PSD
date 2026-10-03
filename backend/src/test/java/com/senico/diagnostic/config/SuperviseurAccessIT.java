@@ -91,6 +91,12 @@ class SuperviseurAccessIT {
                         .with(sup))
                 .andExpect(status().isForbidden());
         mockMvc.perform(post("/api/v1/admin/validations/all").with(sup)).andExpect(status().isForbidden());
+        // Correction de la note de synthese : reservee a la Direction Generale (et a dir.generale).
+        mockMvc.perform(get("/api/v1/synthesis-note").with(sup)).andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/v1/synthesis-note")
+                        .contentType("application/json").content("{\"blocks\":[]}").with(sup))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/api/v1/synthesis-note").with(sup)).andExpect(status().isForbidden());
         mockMvc.perform(put(section + "/content")
                         .contentType("application/json").content("{\"rows\":[]}").with(sup))
                 .andExpect(status().isForbidden());

@@ -8,6 +8,7 @@ import { KeyedRowAdder, RemoveRowButton, TableAddRow, insertInModelOrder, remain
 import { directionAxisLabel } from "@/lib/utils";
 import { PERFORMANCE_LEVEL_LABELS, PLAN_YEARS } from "@/types/sections";
 import type { PerformanceFrameworkContent, PerformanceGroup, PerformanceRow } from "@/types/sections";
+import { AxisTitleField, renameAxis } from "./axis-title-field";
 import type { SectionFormProps } from "./types";
 
 const LOGFRAME_LEVELS = Object.keys(PERFORMANCE_LEVEL_LABELS);
@@ -26,7 +27,7 @@ const EMPTY_ROW: PerformanceRow = {
  * resultats, indicateurs et cibles annuelles. La direction ajoute les niveaux qu'elle renseigne ;
  * les effets (OS) du plan d'actions sont rappeles sous le bandeau des effets immediats.
  */
-export function PerformanceFrameworkForm({ content, onChange, readOnly }: SectionFormProps<PerformanceFrameworkContent>) {
+export function PerformanceFrameworkForm({ content, onChange, readOnly, canEditAxes }: SectionFormProps<PerformanceFrameworkContent>) {
   function updateAxis(axisIndex: number, updater: (groups: PerformanceGroup[]) => PerformanceGroup[]) {
     onChange((prev) => ({ axes: prev.axes.map((a, i) => (i === axisIndex ? { ...a, groups: updater(a.groups) } : a)) }));
   }
@@ -63,6 +64,9 @@ export function PerformanceFrameworkForm({ content, onChange, readOnly }: Sectio
 
       {content.axes.map((axis, axisIndex) => (
         <TabsContent key={axis.axisCode} value={axis.axisCode} className="space-y-3">
+          {!readOnly && canEditAxes && (
+            <AxisTitleField value={axis.axisTitle} onChange={(t) => onChange((prev) => renameAxis(prev, axisIndex, t))} />
+          )}
           <Table>
             <TableHeader>
               <TableRow>

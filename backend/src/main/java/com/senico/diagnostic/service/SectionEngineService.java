@@ -42,6 +42,10 @@ public class SectionEngineService {
 
     private static final Set<SectionStatus> LOCKED_STATUSES = Set.of(SectionStatus.SUBMITTED, SectionStatus.VALIDATED);
     private static final int MAX_REVISIONS = 20;
+    private static final int SECTION_AXES_ID = 8;
+    /** Sections qui reprennent les intitules d'axes de S08 (cf. DerivedFieldsService#applyAxisTitleSync). */
+    private static final Set<SectionType> AXIS_TITLE_SECTIONS = Set.of(SectionType.LOGICAL_FRAMEWORK,
+            SectionType.STRATEGIC_SUMMARY, SectionType.ACTION_PLAN, SectionType.PERFORMANCE_FRAMEWORK, SectionType.BUDGET);
 
     private final WorkGroupRepository workGroupRepository;
     private final SectionDefRepository sectionDefRepository;
@@ -159,6 +163,7 @@ public class SectionEngineService {
 
         contentValidator.validate(section.getType(), rawContent, false);
         SectionResponse saved = persistContent(group, section, rawContent, adminUser);
+        propagateAxisTitles(group, section, rawContent, adminUser);
 
         // Le DG approuve un texte, pas une case a cocher : si l'admin le corrige apres coup,
         // l'approbation ne couvre plus ce qui serait consolide. Elle tombe donc, et il faut la
@@ -805,6 +810,72 @@ public class SectionEngineService {
     }
 
     // ---------------------------------------------------------------------
+
+    /**
+     * Un intitule d'axe corrige par l'admin ou le DG depuis une section qui le reprend (cadre logique,
+     * plan d'actions, budget...) n'y est qu'une copie : a la lecture, DerivedFieldsService le
+     * resynchronise depuis S08. La correction est donc reportee dans S08, d'ou elle vaut pour toutes
+     * les sections de la direction. Un intitule vide ne remplace rien.
+     */
+    private void propagateAxisTitles(WorkGroup group, SectionDef section, JsonNode content, User actingUser) {
+        if (!AXIS_TITLE_SECTIONS.contains(section.getType())) {
+            return;
+        }
+        JsonNode axes = content.get("axes");
+        if (axes == null || !axes.isArray()) {
+            return;
+        }
+        SectionResponse axesResponse = sectionResponseRepository
+                .findByGroupIdAndSectionId(group.getId(), SECTION_AXES_ID).orElse(null);
+        if (axesResponse == null) {
+            return;
+        }
+        JsonNode source = parseJson(axesResponse.getContentJson());
+        JsonNode sourceAxes = source.get("axes");
+        if (sourceAxes == null || !sourceAxes.isArray()) {
+            return;
+        }
+
+        boolean changed = false;
+        for (JsonNode axis : axes) {
+            String code = axis.path("axisCode").asText("");
+            String title = axis.path("axisTitle").asText("").trim();
+            if (code.isEmpty() || title.isEmpty()) {
+                continue;
+            }
+            for (JsonNode src : sourceAxes) {
+                if (src instanceof ObjectNode sourceAxis && code.equals(sourceAxis.path("axisCode").asText(""))) {
+                    if (!title.equals(sourceAxis.path("title").asText("").trim())) {
+                        sourceAxis.put("title", title);
+                        changed = true;
+                    }
+                    break;
+                }
+            }
+        }
+        if (!changed) {
+            return;
+        }
+
+        archiveRevision(axesResponse, actingUser);
+        axesResponse.setContentJson(writeJson(source));
+        axesResponse.setVersion(axesResponse.getVersion() + 1);
+        axesResponse.setUpdatedAt(LocalDateTime.now());
+        axesResponse.setUpdatedBy(actingUser.getId());
+        sectionResponseRepository.save(axesResponse);
+
+        // Meme regle que adminUpdateContent : corrige par l'admin, S08 perd l'approbation du DG.
+        SectionDef axesSection = axesResponse.getSection();
+        GroupSectionStatus axesStatus = resolveStatus(group, axesSection);
+        if (axesStatus.isDgApproved() && actingUser.getRole() != Role.DIRECTEUR_GENERAL) {
+            clearDgApproval(axesStatus);
+            activityLogService.log(group, actingUser, ActivityLogService.ACTION_DG_APPROVAL_REVOKED, axesSection);
+        }
+        axesStatus.setLastActivityAt(LocalDateTime.now());
+        groupSectionStatusRepository.save(axesStatus);
+        activityLogService.log(group, actingUser, ActivityLogService.ACTION_ADMIN_EDIT, axesSection);
+        publishProgress(group, axesSection, axesStatus);
+    }
 
     private void archiveRevision(SectionResponse existing, User actingUser) {
         SectionResponseRevision revision = SectionResponseRevision.builder()

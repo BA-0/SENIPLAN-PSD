@@ -39,3 +39,4 @@ frontend/tsconfig.tsbuildinfo
 
 # Configuration locale du serveur (CORS, etc.)
 backend/config/application.properties
+backups/

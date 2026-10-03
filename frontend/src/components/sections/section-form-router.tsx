@@ -30,11 +30,12 @@ interface SectionFormRouterProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onChange: (updater: (prev: any) => any) => void;
   readOnly: boolean;
+  canEditAxes?: boolean;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export function SectionFormRouter({ type, content, onChange, readOnly }: SectionFormRouterProps) {
-  const props = { content: content as any, onChange: onChange as any, readOnly };
+export function SectionFormRouter({ type, content, onChange, readOnly, canEditAxes }: SectionFormRouterProps) {
+  const props = { content: content as any, onChange: onChange as any, readOnly, canEditAxes };
 
   switch (type) {
     case "STAKEHOLDERS":

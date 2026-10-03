@@ -122,7 +122,7 @@ final class PsdCrossGroupMerge {
         return (double) intersection.size() / union.size() >= SIMILARITY_THRESHOLD;
     }
 
-    private static Set<String> stems(String text) {
+    static Set<String> stems(String text) {
         Set<String> stems = new HashSet<>();
         for (String word : NON_WORD.split(normalize(text))) {
             if (word.length() <= 2 || STOPWORDS.contains(word)) {

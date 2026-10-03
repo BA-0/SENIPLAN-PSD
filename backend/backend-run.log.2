@@ -1,0 +1,76 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< com.senico:diagnostic-strategique >------------------
+[INFO] Building SENICO Diagnostic Strategique 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.3.4:run (default-cli) > test-compile @ diagnostic-strategique >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ diagnostic-strategique ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 52 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ diagnostic-strategique ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ diagnostic-strategique ---
+[INFO] skip non existing resourceDirectory C:\wamp64\www\seniplan\SENIPLAN-PSD\backend\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ diagnostic-strategique ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:3.3.4:run (default-cli) < test-compile @ diagnostic-strategique <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.3.4:run (default-cli) @ diagnostic-strategique ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-10-03T17:59:21.078Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] c.s.diagnostic.DiagnosticApplication     : Starting DiagnosticApplication using Java 21.0.12 with PID 20440 (C:\wamp64\www\seniplan\SENIPLAN-PSD\backend\target\classes started by cherif.ba in C:\wamp64\www\seniplan\SENIPLAN-PSD\backend)
+2026-10-03T17:59:21.081Z DEBUG 20440 --- [senico-diagnostic-strategique] [           main] c.s.diagnostic.DiagnosticApplication     : Running with Spring Boot v3.3.4, Spring v6.1.13
+2026-10-03T17:59:21.081Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] c.s.diagnostic.DiagnosticApplication     : The following 1 profile is active: "dev"
+2026-10-03T17:59:24.030Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-10-03T17:59:24.233Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 195 ms. Found 11 JPA repository interfaces.
+2026-10-03T17:59:25.872Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-10-03T17:59:25.893Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-03T17:59:25.904Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.30]
+2026-10-03T17:59:26.025Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-10-03T17:59:26.029Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 4838 ms
+2026-10-03T17:59:27.001Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-10-03T17:59:27.410Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@2a16d4dc
+2026-10-03T17:59:27.416Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-10-03T17:59:27.541Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:mysql://localhost:3306/senico_diagnostic (MySQL 8.4)
+2026-10-03T17:59:27.564Z  WARN 20440 --- [senico-diagnostic-strategique] [           main] o.f.c.internal.database.base.Database    : Flyway upgrade recommended: MySQL 8.4 is newer than this version of Flyway and support has not been tested. The latest supported version of MySQL is 8.1.
+2026-10-03T17:59:27.726Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 46 migrations (execution time 00:00.134s)
+2026-10-03T17:59:27.752Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema `senico_diagnostic`: 46
+2026-10-03T17:59:27.760Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.f.core.internal.command.DbMigrate      : Schema `senico_diagnostic` is up to date. No migration necessary.
+2026-10-03T17:59:27.953Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-10-03T17:59:28.103Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.3.Final
+2026-10-03T17:59:28.171Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-10-03T17:59:28.765Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-10-03T17:59:30.826Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-10-03T17:59:30.889Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-10-03T17:59:31.497Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-10-03T17:59:32.434Z DEBUG 20440 --- [senico-diagnostic-strategique] [           main] c.s.d.security.JwtAuthenticationFilter   : Filter 'jwtAuthenticationFilter' configured for use
+2026-10-03T17:59:32.439Z DEBUG 20440 --- [senico-diagnostic-strategique] [           main] c.s.d.s.PasswordChangeGuardFilter        : Filter 'passwordChangeGuardFilter' configured for use
+2026-10-03T17:59:33.749Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] eAuthenticationProviderManagerConfigurer : Global AuthenticationManager configured with AuthenticationProvider bean with name authenticationProvider
+2026-10-03T17:59:33.755Z  WARN 20440 --- [senico-diagnostic-strategique] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with an AuthenticationProvider bean. UserDetailsService beans will not be used for username/password login. Consider removing the AuthenticationProvider bean. Alternatively, consider using the UserDetailsService in a manually instantiated DaoAuthenticationProvider.
+2026-10-03T17:59:34.845Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-10-03T17:59:35.891Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2026-10-03T17:59:35.904Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2026-10-03T17:59:35.906Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@30df67b8]]
+2026-10-03T17:59:35.911Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2026-10-03T17:59:35.935Z  INFO 20440 --- [senico-diagnostic-strategique] [           main] c.s.diagnostic.DiagnosticApplication     : Started DiagnosticApplication in 15.72 seconds (process running for 16.374)
+2026-10-03T17:59:36.210Z  INFO 20440 --- [senico-diagnostic-strategique] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-03T17:59:36.213Z  INFO 20440 --- [senico-diagnostic-strategique] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-03T17:59:36.218Z  INFO 20440 --- [senico-diagnostic-strategique] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 3 ms
+2026-10-03T18:00:35.872Z  INFO 20440 --- [senico-diagnostic-strategique] [MessageBroker-4] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[24 current WS(24)-HttpStream(0)-HttpPoll(0), 24 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(24)-CONNECTED(24)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 8, active threads = 0, queued tasks = 0, completed tasks = 147], outboundChannel[pool size = 8, active threads = 0, queued tasks = 0, completed tasks = 38], sockJsScheduler[pool size = 4, active threads = 1, queued tasks = 25, completed tasks = 50]

@@ -47,6 +47,15 @@ export function downloadSynthesisNoteWord() {
   return downloadBlob("/admin/exports/synthesis/word", "note-de-synthese-plan-strategique-2027-2031.docx");
 }
 
+/** Note de synthèse, depuis l'écran de correction : ouvert aussi au compte dir.generale, hors pilotage. */
+export function downloadCorrectedSynthesisNotePdf() {
+  return downloadBlob("/synthesis-note/pdf", "note-de-synthese-plan-strategique-2027-2031.pdf");
+}
+
+export function downloadCorrectedSynthesisNoteWord() {
+  return downloadBlob("/synthesis-note/word", "note-de-synthese-plan-strategique-2027-2031.docx");
+}
+
 export function downloadPsdFinalPdf() {
   return downloadBlob("/admin/exports/psd-final/pdf", "plan-strategique-senico-2027-2031.pdf");
 }

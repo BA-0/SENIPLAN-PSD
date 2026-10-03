@@ -35,6 +35,9 @@ app:
   security:
     login-rate-limit-attempts: 5
     login-rate-limit-window-seconds: 60
+  synthesis-note:
+    # Comptes qui corrigent la note de synthese en plus du role DG (separes par des virgules).
+    editors: ${SYNTHESIS_NOTE_EDITORS:dir.generale}
 
 management:
   endpoints:

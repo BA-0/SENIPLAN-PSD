@@ -7,6 +7,7 @@ import { KeyedRowAdder, RemoveRowButton, insertInModelOrder, remainingOptions } 
 import { directionAxisLabel } from "@/lib/utils";
 import { LOGFRAME_LABELS } from "@/types/sections";
 import type { LogicalFrameworkContent } from "@/types/sections";
+import { AxisTitleField, renameAxis } from "./axis-title-field";
 import type { SectionFormProps } from "./types";
 
 const LOGFRAME_LEVELS = Object.keys(LOGFRAME_LABELS);
@@ -19,7 +20,7 @@ type LogframeRow = LogicalFrameworkContent["axes"][number]["rows"][number];
  * avec sa logique d'intervention, ses IOV, ses moyens de verification et ses hypotheses. La direction
  * ajoute les niveaux qu'elle renseigne.
  */
-export function LogicalFrameworkForm({ content, onChange, readOnly }: SectionFormProps<LogicalFrameworkContent>) {
+export function LogicalFrameworkForm({ content, onChange, readOnly, canEditAxes }: SectionFormProps<LogicalFrameworkContent>) {
   function updateAxis(axisIndex: number, patch: Partial<LogicalFrameworkContent["axes"][number]>) {
     onChange((prev) => ({ axes: prev.axes.map((a, i) => (i === axisIndex ? { ...a, ...patch } : a)) }));
   }
@@ -51,6 +52,9 @@ export function LogicalFrameworkForm({ content, onChange, readOnly }: SectionFor
 
       {content.axes.map((axis, axisIndex) => (
         <TabsContent key={axis.axisCode} value={axis.axisCode} className="space-y-3">
+          {!readOnly && canEditAxes && (
+            <AxisTitleField value={axis.axisTitle} onChange={(t) => onChange((prev) => renameAxis(prev, axisIndex, t))} />
+          )}
           <Table>
             <TableHeader>
               <TableRow>

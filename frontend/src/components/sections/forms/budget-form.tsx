@@ -8,6 +8,7 @@ import { RemoveRowButton, TableAddRow } from "@/components/data-table/row-action
 import { directionAxisLabel, formatFcfa } from "@/lib/utils";
 import { PLAN_YEARS } from "@/types/sections";
 import type { BudgetContent, BudgetEffect, BudgetRow } from "@/types/sections";
+import { AxisTitleField, renameAxis } from "./axis-title-field";
 import type { SectionFormProps } from "./types";
 
 const EMPTY_ROW: BudgetRow = {
@@ -22,7 +23,7 @@ const EMPTY_ROW: BudgetRow = {
  * (EFFET n — OSn, avec son intitule), sous chacun ses extrants et leurs montants annuels, puis les
  * totaux de l'effet et de l'axe. Les totaux sont calcules par le serveur a chaque enregistrement.
  */
-export function BudgetForm({ content, onChange, readOnly }: SectionFormProps<BudgetContent>) {
+export function BudgetForm({ content, onChange, readOnly, canEditAxes }: SectionFormProps<BudgetContent>) {
   function updateAxis(axisIndex: number, updater: (effects: BudgetEffect[]) => BudgetEffect[]) {
     onChange((prev) => ({
       ...prev,
@@ -69,7 +70,10 @@ export function BudgetForm({ content, onChange, readOnly }: SectionFormProps<Bud
       </TabsList>
 
       {content.axes.map((axis, axisIndex) => (
-        <TabsContent key={axis.axisCode} value={axis.axisCode}>
+        <TabsContent key={axis.axisCode} value={axis.axisCode} className="space-y-3">
+          {!readOnly && canEditAxes && (
+            <AxisTitleField value={axis.axisTitle} onChange={(t) => onChange((prev) => renameAxis(prev, axisIndex, t))} />
+          )}
           <Table>
             <TableHeader>
               <TableRow>

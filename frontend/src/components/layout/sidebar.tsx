@@ -16,6 +16,7 @@ import {
   MonitorPlay,
   Radio,
   ClipboardList,
+  PencilLine,
   ChevronDown,
   Eye,
   ChevronsLeft,
@@ -31,7 +32,7 @@ import { downloadMyGroupPdf } from "@/lib/api/exports";
 import { extractErrorMessage } from "@/lib/api-client";
 import { useMobileNavStore } from "@/store/mobile-nav-store";
 import { StatusDot } from "./status-dot";
-import { canApproveAsDg, canPilot } from "@/lib/roles";
+import { canApproveAsDg, canEditSynthesisNote, canPilot } from "@/lib/roles";
 import { getAdminSubmissions } from "@/lib/api/admin";
 import { attendLaDg } from "@/lib/dg-queue";
 import { countValidated, findPartForCode, groupSectionsByPart } from "@/lib/section-groups";
@@ -49,6 +50,7 @@ export function Sidebar() {
   // Le DG partage l'espace de pilotage de l'admin ; seules les actions
   // d'administration technique, dans les pages elles-memes, lui sont fermees.
   const isAdmin = canPilot(user?.role);
+  const peutCorrigerNote = canEditSynthesisNote(user);
   // Le repli icone n'a de sens qu'en sidebar dockee (lg+) : dans le tiroir
   // mobile, toujours ouvert, on garde les libelles lisibles.
   const showCollapsed = collapsed && !mobileOpen;
@@ -197,6 +199,16 @@ export function Sidebar() {
               active={pathname.startsWith("/admin/synthesis")}
               collapsed={showCollapsed}
             />
+            {/* Correction de la note : la Direction Generale (cf. SynthesisNoteAccess). */}
+            {peutCorrigerNote && (
+              <NavItem
+                href="/correction-synthese"
+                icon={PencilLine}
+                label="Corriger la note de synthèse"
+                active={pathname.startsWith("/correction-synthese")}
+                collapsed={showCollapsed}
+              />
+            )}
             <NavItem
               href="/admin/psd-final"
               icon={FileText}
@@ -234,6 +246,16 @@ export function Sidebar() {
               active={pathname.startsWith("/directions")}
               collapsed={showCollapsed}
             />
+            {/* Le compte dir.generale corrige aussi la note de synthese, sans acceder au pilotage. */}
+            {peutCorrigerNote && (
+              <NavItem
+                href="/correction-synthese"
+                icon={PencilLine}
+                label="Corriger la note de synthèse"
+                active={pathname.startsWith("/correction-synthese")}
+                collapsed={showCollapsed}
+              />
+            )}
             {!showCollapsed && (
               <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
                 Sections du canevas

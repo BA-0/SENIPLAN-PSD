@@ -8,6 +8,7 @@ import { EditableCell } from "@/components/data-table/editable-cell";
 import { RemoveRowButton, TableAddRow } from "@/components/data-table/row-actions";
 import { directionAxisLabel } from "@/lib/utils";
 import type { StrategicSummaryContent, SummaryAction, SummaryOrientation } from "@/types/sections";
+import { AxisTitleField, renameAxis } from "./axis-title-field";
 import type { SectionFormProps } from "./types";
 
 /**
@@ -15,7 +16,7 @@ import type { SectionFormProps } from "./types";
  * en tete, puis pour chaque axe son bandeau et ses orientations strategiques (OS), chacune fusionnee
  * sur les lignes de ses actions, avec les contraintes a lever ou opportunites a saisir.
  */
-export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFormProps<StrategicSummaryContent>) {
+export function StrategicSummaryForm({ content, onChange, readOnly, canEditAxes }: SectionFormProps<StrategicSummaryContent>) {
   function updateAxis(axisIndex: number, updater: (orientations: SummaryOrientation[]) => SummaryOrientation[]) {
     onChange((prev) => ({
       ...prev,
@@ -80,7 +81,13 @@ export function StrategicSummaryForm({ content, onChange, readOnly }: SectionFor
         {content.axes.map((axis, axisIndex) => (
           <Fragment key={axis.axisCode}>
             <TableRow band>
-              <TableCell colSpan={colCount}>{directionAxisLabel(axis.axisCode, axis.axisTitle)}</TableCell>
+              <TableCell colSpan={colCount}>
+                {!readOnly && canEditAxes ? (
+                  <AxisTitleField value={axis.axisTitle} onChange={(t) => onChange((prev) => renameAxis(prev, axisIndex, t))} />
+                ) : (
+                  directionAxisLabel(axis.axisCode, axis.axisTitle)
+                )}
+              </TableCell>
             </TableRow>
 
             {axis.orientations.map((orientation, orientationIndex) => {

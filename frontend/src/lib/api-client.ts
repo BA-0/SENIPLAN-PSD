@@ -49,8 +49,10 @@ async function refreshAccessToken(): Promise<string | null> {
 
   try {
     const response = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
-    const { accessToken } = response.data;
+    const { accessToken, user } = response.data;
     useAuthStore.getState().setAccessToken(accessToken);
+    // Les droits affiches (onglets) suivent le serveur sans attendre une nouvelle connexion.
+    if (user) useAuthStore.setState({ user });
     return accessToken;
   } catch {
     useAuthStore.getState().clear();

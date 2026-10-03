@@ -295,6 +295,7 @@ export default function AdminSectionReviewPage() {
             content={editing ? editContent : data.content}
             onChange={(updater) => setEditContent((prev: unknown) => updater(prev))}
             readOnly={!editing}
+            canEditAxes={peutRevoir}
           />
 
           {editing && (

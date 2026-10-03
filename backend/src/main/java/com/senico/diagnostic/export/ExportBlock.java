@@ -1,12 +1,34 @@
 package com.senico.diagnostic.export;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
 import java.util.List;
 
 /**
  * Representation intermediaire, independante d'OpenPDF/POI, d'un contenu de section a exporter.
  * SectionExportRenderer produit une List&lt;ExportBlock&gt; par section ; PdfBlockEmitter et
  * WordBlockEmitter la traduisent chacun dans leur API de mise en page respective.
+ *
+ * <p>Serialisable en JSON (champ {@code type}) : la note de synthese corrigee par la Direction
+ * Generale est conservee sous cette forme (cf. SynthesisNoteService).</p>
  */
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = ExportBlock.Heading.class, name = "HEADING"),
+        @JsonSubTypes.Type(value = ExportBlock.Paragraph.class, name = "PARAGRAPH"),
+        @JsonSubTypes.Type(value = ExportBlock.KeyValueList.class, name = "KEY_VALUE_LIST"),
+        @JsonSubTypes.Type(value = ExportBlock.BulletList.class, name = "BULLET_LIST"),
+        @JsonSubTypes.Type(value = ExportBlock.AttributedList.class, name = "ATTRIBUTED_LIST"),
+        @JsonSubTypes.Type(value = ExportBlock.AttributedQuadrant.class, name = "ATTRIBUTED_QUADRANT"),
+        @JsonSubTypes.Type(value = ExportBlock.ColorLegend.class, name = "COLOR_LEGEND"),
+        @JsonSubTypes.Type(value = ExportBlock.Table.class, name = "TABLE"),
+        @JsonSubTypes.Type(value = ExportBlock.Callout.class, name = "CALLOUT"),
+        @JsonSubTypes.Type(value = ExportBlock.MetricGrid.class, name = "METRIC_GRID"),
+        @JsonSubTypes.Type(value = ExportBlock.Quadrant.class, name = "QUADRANT"),
+        @JsonSubTypes.Type(value = ExportBlock.Chart.class, name = "CHART"),
+})
 public sealed interface ExportBlock {
 
     /**
@@ -107,6 +129,7 @@ public sealed interface ExportBlock {
             return new Cell("", false, Align.LEFT, Background.NONE, List.of(), 0);
         }
 
+        @JsonIgnore
         public boolean isCovered() {
             return rowSpan == 0;
         }
@@ -165,6 +188,7 @@ public sealed interface ExportBlock {
             this(columnHeaders, rows, widths, List.of());
         }
 
+        @JsonIgnore
         public boolean showsHeaders() {
             return columnHeaders.stream().anyMatch(header -> header != null && !header.isBlank());
         }

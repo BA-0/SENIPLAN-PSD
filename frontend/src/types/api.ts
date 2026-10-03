@@ -9,6 +9,8 @@ export interface AuthUser {
   groupName: string | null;
   /** Mot de passe encore celui remis par l'admin : l'application reste fermée tant qu'il n'est pas remplacé. */
   mustChangePassword: boolean;
+  /** Peut corriger la note de synthèse : le DG et le compte dir.generale (cf. SynthesisNoteAccess). */
+  canEditSynthesisNote?: boolean;
 }
 
 export interface AuthResponse {

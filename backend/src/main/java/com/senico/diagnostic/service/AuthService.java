@@ -8,6 +8,7 @@ import com.senico.diagnostic.exception.RateLimitExceededException;
 import com.senico.diagnostic.repository.UserRepository;
 import com.senico.diagnostic.security.JwtService;
 import com.senico.diagnostic.security.LoginRateLimiter;
+import com.senico.diagnostic.security.SynthesisNoteAccess;
 import com.senico.diagnostic.security.UserPrincipal;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final LoginRateLimiter rateLimiter;
     private final PasswordEncoder passwordEncoder;
+    private final SynthesisNoteAccess synthesisNoteAccess;
 
     @Transactional
     public AuthResponse login(LoginRequest request, String clientIp) {
@@ -132,6 +134,7 @@ public class AuthService {
                         .groupId(user.getGroup() != null ? user.getGroup().getId() : null)
                         .groupName(user.getGroup() != null ? user.getGroup().getName() : null)
                         .mustChangePassword(user.isMustChangePassword())
+                        .canEditSynthesisNote(synthesisNoteAccess.canEdit(user.getUsername(), user.getRole()))
                         .build())
                 .build();
     }

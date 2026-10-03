@@ -18,7 +18,9 @@ public record AuthResponse(
             Long groupId,
             String groupName,
             /** Vrai tant que le titulaire n'a pas remplace le mot de passe qu'on lui a remis. */
-            boolean mustChangePassword
+            boolean mustChangePassword,
+            /** Peut corriger la note de synthese (cf. SynthesisNoteAccess). */
+            boolean canEditSynthesisNote
     ) {
     }
 }

@@ -4,13 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { FileDown, FileText } from "lucide-react";
+import { FileDown, FileText, PencilLine } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { listGroups } from "@/lib/api/groups";
 import { downloadSynthesisNotePdf, downloadSynthesisNoteWord } from "@/lib/api/exports";
 import { extractErrorMessage } from "@/lib/api-client";
+import { canEditSynthesisNote } from "@/lib/roles";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 /** Les parties de la note, dans l'ordre du document (cf. PsdBriefBuilder côté serveur). */
 const PARTS: { title: string; description: string }[] = [
@@ -68,6 +70,8 @@ const PARTS: { title: string; description: string }[] = [
 export default function SynthesisPage() {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportingWord, setExportingWord] = useState(false);
+  const { user } = useCurrentUser();
+  const peutCorriger = canEditSynthesisNote(user);
 
   const { data: groups } = useQuery({ queryKey: ["admin", "groups"], queryFn: listGroups });
 
@@ -114,6 +118,9 @@ export default function SynthesisPage() {
             </Link>
             . Ces textes rédigés figurent dans le Plan Stratégique de SENICO ; la note n&apos;en garde que les tableaux.
           </p>
+          <p className="text-[13px] text-muted-foreground">
+            Si la Direction Générale a corrigé la note, les téléchargements reprennent sa version corrigée.
+          </p>
           <div className="flex flex-wrap gap-3">
             <Button variant="primary" onClick={() => handleExport("pdf")} loading={exportingPdf}>
               <FileDown className="h-4 w-4" /> Télécharger le PDF
@@ -121,6 +128,13 @@ export default function SynthesisPage() {
             <Button variant="secondary" onClick={() => handleExport("word")} loading={exportingWord}>
               <FileText className="h-4 w-4" /> Télécharger le Word
             </Button>
+            {peutCorriger && (
+              <Button variant="secondary" asChild>
+                <Link prefetch={false} href="/correction-synthese">
+                  <PencilLine className="h-4 w-4" /> Corriger la note
+                </Link>
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -61,6 +61,7 @@ public class WordExportService {
     private final ExportContentReader exportContentReader;
     private final PsdSynthesisBuilder psdSynthesisBuilder;
     private final PsdBriefBuilder psdBriefBuilder;
+    private final SynthesisNoteService synthesisNoteService;
     private final WordBlockEmitter wordBlockEmitter;
 
     public byte[] exportGroupRecap(WorkGroup group) {
@@ -130,19 +131,8 @@ public class WordExportService {
     /** Note de synthese : pendant Word de {@link PdfExportService#exportSynthesisNote()}. */
     public byte[] exportSynthesisNote() {
         try (XWPFDocument doc = new XWPFDocument(); ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            List<WorkGroup> groups = workGroupRepository.findByEnabledTrueOrderByIdAsc();
-            Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
-                    .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
-            Map<String, SectionResponse> responsesByKey = sectionResponseRepository.findAll().stream()
-                    .collect(Collectors.toMap(r -> r.getGroup().getId() + ":" + r.getSection().getId(), r -> r));
-            Map<String, GroupSectionStatus> statusesByKey = groupSectionStatusRepository.findAllWithGroupAndSection().stream()
-                    .collect(Collectors.toMap(s -> s.getGroup().getId() + ":" + s.getSection().getId(), s -> s));
-
-            // Meme regle de perimetre que le PDF : seules les sections approuvees par le DG sont
-            // resumees. Le filtre etait absent ici, la ou les trois autres exports l'appliquent.
-            responsesByKey = PsdApprovedContent.approvedOnly(responsesByKey, statusesByKey);
-
-            List<ExportBlock> blocks = psdBriefBuilder.build(groups, sectionsByCode, responsesByKey, statusesByKey, narratives());
+            // Version corrigee par la Direction Generale s'il y en a une, sinon le document genere.
+            List<ExportBlock> blocks = synthesisNoteService.effectiveBlocks();
 
             addFooter(doc, "Plan Stratégique 2027-2031 — Note de synthèse");
             addSynthesisNoteCoverPage(doc);

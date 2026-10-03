@@ -270,6 +270,19 @@ class PsdBriefBuilderTest {
         assertThat(blocs)
                 .as("le budget s'accompagne de son graphique")
                 .anyMatch(bloc -> bloc instanceof ExportBlock.Chart);
+
+        // Demande client du 03/10/2026 : la version corrigee par le DG est conservee en JSON ; relue,
+        // elle doit redonner exactement la note, sans quoi ses exports s'ecarteraient de l'original.
+        ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
+        com.fasterxml.jackson.core.type.TypeReference<List<ExportBlock>> type = new com.fasterxml.jackson.core.type.TypeReference<>() {
+        };
+        try {
+            assertThat(mapper.readValue(mapper.writerFor(type).writeValueAsString(blocs), type))
+                    .as("la note relue depuis le JSON est identique a la note generee")
+                    .isEqualTo(blocs);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new AssertionError(e);
+        }
     }
 
     @Test
@@ -309,7 +322,7 @@ class PsdBriefBuilderTest {
                         "OS2 : Conquérir les grands comptes", "Action 2.1 : Créer une cellule grands comptes",
                         "Concurrence des majors");
         assertThat(note).as("synthèse du cadre stratégique : budget de chaque action et objectif de l'axe, sans récapitulatif")
-                .contains("Budget (M FCFA)", "Objectif", "Développer le chiffre d'affaires")
+                .contains("Budget (FCFA)", "Objectif", "Développer le chiffre d'affaires")
                 .doesNotContain("Récapitulatif des axes", "Cible 2031");
         assertThat(note).as("fiche des indicateurs : moyens de collecte")
                 .contains("Sources et moyens de collecte", "Extraction du logiciel de facturation");
@@ -367,7 +380,7 @@ class PsdBriefBuilderTest {
         assertThat(lignes.get(5).cells().get(4).isCovered()).isTrue();
 
         String note = texte(blocs);
-        assertThat(note).contains("Orientations stratégiques (OS) : 2", "Budget (M FCFA)", "Objectif")
+        assertThat(note).contains("Orientations stratégiques (OS) : 2", "Budget (FCFA)", "Objectif")
                 .doesNotContain("Récapitulatif des axes");
     }
 
@@ -456,12 +469,12 @@ class PsdBriefBuilderTest {
                 .filter(table -> table.columnHeaders().contains("Totaux"))
                 .findFirst().orElseThrow();
         List<ExportBlock.Cell> costs = budget.rows().get(1).cells();
-        assertThat(costs.get(2).text()).isEqualTo("15");
-        assertThat(costs.get(3).text()).isEqualTo("25");
-        assertThat(costs.get(7).text()).as("total de l'activité, en millions").isEqualTo("40");
+        assertThat(costs.get(2).text()).isEqualTo("15 000 000 FCFA");
+        assertThat(costs.get(3).text()).isEqualTo("25 000 000 FCFA");
+        assertThat(costs.get(7).text()).as("total de l'activité, en FCFA").isEqualTo("40 000 000 FCFA");
         List<ExportBlock.Cell> axisTotal = budget.rows().get(budget.rows().size() - 1).cells();
         assertThat(axisTotal.get(0).text()).isEqualTo("Total de l'axe");
-        assertThat(axisTotal.get(7).text()).isEqualTo("40");
+        assertThat(axisTotal.get(7).text()).isEqualTo("40 000 000 FCFA");
     }
 
     @Test
@@ -512,7 +525,7 @@ class PsdBriefBuilderTest {
         List<ExportBlock.Cell> totalGeneral = grandTotal.rows().getLast().cells();
         assertThat(totalGeneral.get(0).text()).as("le budget détaillé se clôt sur le total général du canevas")
                 .isEqualTo("TOTAL GÉNÉRAL");
-        assertThat(totalGeneral.getLast().text()).isEqualTo("15");
+        assertThat(totalGeneral.getLast().text()).isEqualTo("15 000 000 FCFA");
 
         assertThat(texte(builder.planSection("S17", groups, sectionsByCode, responsesByKey, statusesByKey, narratives).orElseThrow()))
                 .contains("Tableau de synthèse du cadre stratégique", "OS1 : Gagner des parts de marché")
@@ -767,6 +780,43 @@ class PsdBriefBuilderTest {
     }
 
     @Test
+    @DisplayName("Un axe de direction pas encore rattaché rejoint de lui-même l'axe de l'entreprise le plus proche")
+    void rattacheDOfficeUnAxeDeDirectionOublie() {
+        WorkGroup ventes = group(1, "Direction Ventes AES");
+        WorkGroup technique = group(2, "Direction technique");
+        saisie(ventes, "S08", """
+                {"axes":[{"axisCode":"AXE1","title":"Augmenter nos parts de marché","objective":"Etre leader",
+                           "specificObjectives":["Vendre plus de bouillon"]},
+                         {"axisCode":"AXE4","title":"Fidéliser nos consommateurs","objective":"Fidélité à nos marques"}]}""");
+        saisie(technique, "S08", """
+                {"axes":[{"axisCode":"AXE1","title":"Fiabilité des machines"}]}""");
+        saisie(ventes, "S11", """
+                {"axes":[{"axisCode":"AXE1","effects":[{"rows":[{"activities":"Défendre KADI POULET","years":{"2027":300}}]}]}]}""");
+        narratives.put(NarrativeBlockKey.AXES_CONSOLIDES, """
+                {"axes":[{"title":"Croissance commerciale et expérience client",
+                          "objective":"Accroître le chiffre d'affaires et les parts de marché des marques de SENICO",
+                          "links":[]},
+                         {"title":"Modernisation de l'outil de production","objective":"Fiabiliser les machines",
+                          "links":[{"groupId":2,"axisCode":"AXE1"}]}]}""");
+
+        List<ExportBlock> blocs = build(ventes, technique);
+        assertThat(texte(blocs))
+                .as("les objectifs de l'axe rattaché d'office paraissent sous l'axe 1")
+                .contains("Vendre plus de bouillon");
+        ExportBlock.Chart chart = blocs.stream()
+                .filter(ExportBlock.Chart.class::isInstance).map(ExportBlock.Chart.class::cast)
+                .filter(c -> c.kind() == ExportBlock.ChartKind.STACKED_COLUMNS)
+                .findFirst().orElseThrow();
+        assertThat(chart.series())
+                .as("le budget de l'axe rattaché d'office compte sous l'axe 1, pas « non rattaché »")
+                .anySatisfy(series -> {
+                    assertThat(series.name()).isEqualTo("Axe 1 : Croissance commerciale et expérience client");
+                    assertThat(series.values().get(0)).isEqualTo(300d);
+                })
+                .noneSatisfy(series -> assertThat(series.name()).isEqualTo("Axes non rattachés"));
+    }
+
+    @Test
     @DisplayName("Le cadre stratégique arrêté par la DG remplace les propositions des directions")
     void publieLeCadreArreteParLaDirectionGenerale() {
         WorkGroup commerciale = group(1, "Direction commerciale");
@@ -863,7 +913,7 @@ class PsdBriefBuilderTest {
                 .anySatisfy(h -> assertThat(h).contains("Sources", "Analyse"))                       // analyse causale
                 .anySatisfy(h -> assertThat(h).contains("Actions d'atténuation"))                    // risques élevés
                 .anySatisfy(h -> assertThat(h).contains("Contraintes"))                 // contraintes / défis
-                .anySatisfy(h -> assertThat(h).contains("Total (M FCFA)"))                           // budget par axe
+                .anySatisfy(h -> assertThat(h).contains("Total (FCFA)"))                           // budget par axe
                 .anySatisfy(h -> assertThat(h).contains("Sources de financement"))                   // plan de financement
                 .anySatisfy(h -> assertThat(h).contains("Années", "M", "F", "Total"))                // effectifs
                 .anySatisfy(h -> assertThat(h).contains("Logique d'intervention"))                   // annexe 2 : cadre logique

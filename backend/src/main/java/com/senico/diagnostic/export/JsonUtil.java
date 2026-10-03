@@ -94,11 +94,6 @@ final class JsonUtil {
         return RATE_FORMAT.format(value);
     }
 
-    /** Montant exprime en millions, a une decimale : l'unite des tableaux de budget de la note. */
-    static String formatMillions(double amount) {
-        return RATE_FORMAT.format(amount / 1_000_000d);
-    }
-
     /**
      * Montant en toutes lettres pour le corps du texte, comme dans un PSD publie :
      * « 12,51 milliards FCFA » plutot que « 12 511 100 000 FCFA ».

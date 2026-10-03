@@ -311,7 +311,6 @@ class PsdBriefBuilder {
                 {"IA", "Intelligence artificielle"},
                 {"IOV", "Indicateur objectivement vérifiable"},
                 {"KPI", "Indicateur clé de performance"},
-                {"M FCFA", "Millions de francs CFA"},
                 {"OS", "Orientation stratégique"},
                 {"PESTEL", "Analyse des facteurs politiques, économiques, socioculturels, technologiques, environnementaux et légaux"},
                 {"PMO", "Cellule de coordination du Plan Stratégique (Project Management Office)"},
@@ -1235,7 +1234,7 @@ class PsdBriefBuilder {
                     for (String year : YEARS) {
                         cells.add(center(ctx.scheduled(action, year) ? "✓" : ""));
                     }
-                    cells.add(new ExportBlock.Cell(JsonUtil.dash(action.responsible())));
+                    cells.add(new ExportBlock.Cell(JsonUtil.dash(ctx.responsible(action))));
                     rows.add(new ExportBlock.TableRow(cells));
                 }
             }
@@ -1294,15 +1293,16 @@ class PsdBriefBuilder {
                             double amount = amount(action, YEARS[y]);
                             axisYears[y] += amount;
                             rowTotal += amount;
-                            cells.add(right(amount > 0 ? JsonUtil.formatMillions(amount) : "—"));
+                            cells.add(right(amount > 0 ? JsonUtil.formatCurrency(amount) : "—"));
                         }
                         if (rowTotal <= 0) {
                             rowTotal = action.cost();
                         }
                         axisTotal += rowTotal;
-                        cells.add(new ExportBlock.Cell(rowTotal > 0 ? JsonUtil.formatMillions(rowTotal) : "—", true,
+                        cells.add(new ExportBlock.Cell(rowTotal > 0 ? JsonUtil.formatCurrency(rowTotal) : "—", true,
                                 ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
-                        cells.add(new ExportBlock.Cell(JsonUtil.dash(action.responsible())));
+                        cells.add(new ExportBlock.Cell(JsonUtil.dash(action.responsible().isEmpty()
+                                ? ctx.responsible(action) : action.responsible())));
                         rows.add(new ExportBlock.TableRow(cells));
                     }
                 }
@@ -1327,18 +1327,18 @@ class PsdBriefBuilder {
             total.add(new ExportBlock.Cell("Total de l'axe", true, ExportBlock.Align.LEFT, ExportBlock.Background.NONE));
             total.add(new ExportBlock.Cell(""));
             for (double yearTotal : axisYears) {
-                total.add(new ExportBlock.Cell(JsonUtil.formatMillions(yearTotal), true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
+                total.add(new ExportBlock.Cell(JsonUtil.formatCurrency(yearTotal), true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
             }
-            total.add(new ExportBlock.Cell(JsonUtil.formatMillions(axisTotal), true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
+            total.add(new ExportBlock.Cell(JsonUtil.formatCurrency(axisTotal), true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
             total.add(new ExportBlock.Cell(""));
             rows.add(new ExportBlock.TableRow(total, true, ExportBlock.Background.PRIMARY_LIGHT));
             tables.add(new ExportBlock.Table(headers, rows, widths));
 
             for (int y = 0; y < YEARS.length; y++) {
                 grandYears[y] += axisYears[y];
-                recap.add(right(JsonUtil.formatMillions(axisYears[y])));
+                recap.add(right(JsonUtil.formatCurrency(axisYears[y])));
             }
-            recap.add(new ExportBlock.Cell(JsonUtil.formatMillions(axisTotal), true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
+            recap.add(new ExportBlock.Cell(JsonUtil.formatCurrency(axisTotal), true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
             grandRows.add(new ExportBlock.TableRow(recap));
             grandTotal += axisTotal;
         }
@@ -1349,9 +1349,9 @@ class PsdBriefBuilder {
             List<ExportBlock.Cell> grand = new ArrayList<>();
             grand.add(new ExportBlock.Cell("TOTAL GÉNÉRAL", true, ExportBlock.Align.LEFT, ExportBlock.Background.NONE));
             for (double yearTotal : grandYears) {
-                grand.add(new ExportBlock.Cell(JsonUtil.formatMillions(yearTotal), true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
+                grand.add(new ExportBlock.Cell(JsonUtil.formatCurrency(yearTotal), true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
             }
-            grand.add(new ExportBlock.Cell(JsonUtil.formatMillions(grandTotal), true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
+            grand.add(new ExportBlock.Cell(JsonUtil.formatCurrency(grandTotal), true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
             grandRows.add(new ExportBlock.TableRow(grand, true, ExportBlock.Background.PRIMARY_LIGHT));
 
             List<String> grandHeaders = new ArrayList<>(List.of("Axe stratégique"));
@@ -1508,7 +1508,7 @@ class PsdBriefBuilder {
         List<String> headers = new ArrayList<>();
         headers.add(ctx.plan.consolidated() ? "Axe stratégique" : "Direction");
         headers.addAll(List.of(YEARS));
-        headers.add("Total (M FCFA)");
+        headers.add("Total (FCFA)");
         headers.add("Part");
         List<Integer> widths = new ArrayList<>(List.of(29));
         widths.addAll(java.util.Collections.nCopies(YEARS.length, 9));
@@ -1521,10 +1521,10 @@ class PsdBriefBuilder {
             List<ExportBlock.Cell> cells = new ArrayList<>();
             cells.add(new ExportBlock.Cell(line.label()));
             for (int y = 0; y < YEARS.length; y++) {
-                cells.add(right(empty ? "—" : JsonUtil.formatMillions(line.years()[y])));
+                cells.add(right(empty ? "—" : JsonUtil.formatCurrency(line.years()[y])));
                 yearTotals[y] += line.years()[y];
             }
-            cells.add(new ExportBlock.Cell(empty ? "—" : JsonUtil.formatMillions(sum(line.years())), true,
+            cells.add(new ExportBlock.Cell(empty ? "—" : JsonUtil.formatCurrency(sum(line.years())), true,
                     ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
             cells.add(right(empty ? "—" : JsonUtil.formatPercent(sum(line.years()) / total * 100)));
             rows.add(new ExportBlock.TableRow(cells));
@@ -1536,10 +1536,10 @@ class PsdBriefBuilder {
         List<ExportBlock.Cell> totalCells = new ArrayList<>();
         totalCells.add(new ExportBlock.Cell("TOTAL", true, ExportBlock.Align.LEFT, ExportBlock.Background.NONE));
         for (double yearTotal : yearTotals) {
-            totalCells.add(new ExportBlock.Cell(empty ? "—" : JsonUtil.formatMillions(yearTotal), true,
+            totalCells.add(new ExportBlock.Cell(empty ? "—" : JsonUtil.formatCurrency(yearTotal), true,
                     ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
         }
-        totalCells.add(new ExportBlock.Cell(empty ? "—" : JsonUtil.formatMillions(total), true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
+        totalCells.add(new ExportBlock.Cell(empty ? "—" : JsonUtil.formatCurrency(total), true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
         totalCells.add(new ExportBlock.Cell(empty ? "—" : "100 %", true, ExportBlock.Align.RIGHT, ExportBlock.Background.NONE));
         rows.add(new ExportBlock.TableRow(totalCells, true, ExportBlock.Background.PRIMARY_LIGHT));
         b.add(new ExportBlock.Table(headers, rows, widths));
@@ -1566,9 +1566,9 @@ class PsdBriefBuilder {
                 + JsonUtil.formatPercent(sum(top.years()) / total * 100) + " de l'enveloppe.");
         if (yearTotals[0] > 0) {
             double change = (yearTotals[YEARS.length - 1] - yearTotals[0]) / yearTotals[0] * 100;
-            reading.append(" Le budget annuel prévu passera de ").append(JsonUtil.formatMillions(yearTotals[0]))
-                    .append(" millions FCFA en ").append(FIRST_YEAR).append(" à ")
-                    .append(JsonUtil.formatMillions(yearTotals[YEARS.length - 1])).append(" millions FCFA en ")
+            reading.append(" Le budget annuel prévu passera de ").append(JsonUtil.formatCurrency(yearTotals[0]))
+                    .append(" en ").append(FIRST_YEAR).append(" à ")
+                    .append(JsonUtil.formatCurrency(yearTotals[YEARS.length - 1])).append(" en ")
                     .append(LAST_YEAR).append(" (").append(change >= 0 ? "+" : "")
                     .append(JsonUtil.formatPercent(change)).append(").");
         }
@@ -1860,7 +1860,7 @@ class PsdBriefBuilder {
                     lines.add(new ArrayList<>(List.of(
                             a == 0 ? osCell.spanning(actions.size()) : ExportBlock.Cell.covered(),
                             single("Action " + os + "." + (a + 1) + " : " + action.label(), group, ctx),
-                            right(action.cost() > 0 ? JsonUtil.formatMillions(action.cost()) : "—"))));
+                            right(action.cost() > 0 ? JsonUtil.formatCurrency(action.cost()) : "—"))));
                     constraints.add(action.constraint());
                 }
             }
@@ -1901,7 +1901,7 @@ class PsdBriefBuilder {
     /** Les intitules de colonnes de la synthese, repetes sous le bandeau de chaque axe comme dans le modele client. */
     private static ExportBlock.TableRow summaryHeaderRow() {
         return new ExportBlock.TableRow(List.of(new ExportBlock.Cell("Orientation stratégique (OS)"),
-                new ExportBlock.Cell("Actions"), new ExportBlock.Cell("Budget (M FCFA)"), new ExportBlock.Cell("Objectif"),
+                new ExportBlock.Cell("Actions"), new ExportBlock.Cell("Budget (FCFA)"), new ExportBlock.Cell("Objectif"),
                 new ExportBlock.Cell("Contraintes à lever ou opportunités à saisir")),
                 true, ExportBlock.Background.PRIMARY_LIGHT);
     }
@@ -2265,6 +2265,11 @@ class PsdBriefBuilder {
         private final Map<String, List<ActionRow>> actionsByKey = new LinkedHashMap<>();
         /** Coches du plan d'actions (S10) par activite d'un axe de direction : les exercices ou elle est programmee. */
         private final Map<String, JsonNode> schedules = new LinkedHashMap<>();
+        /**
+         * Responsables saisis au plan d'actions (S10), par activite d'un axe de direction : le budget
+         * (S11), qui fournit les actions, laisse souvent sa colonne Responsable vide.
+         */
+        private final Map<String, String> plannedResponsibles = new LinkedHashMap<>();
         private final Map<String, WorkGroup> groupByKey = new LinkedHashMap<>();
         private final AxisPlan plan;
 
@@ -2334,7 +2339,12 @@ class PsdBriefBuilder {
                                 activity = JsonUtil.text(row, "extrant").trim();
                             }
                             if (!activity.isEmpty()) {
-                                schedules.putIfAbsent(key + "|" + PsdCrossGroupMerge.normalize(activity), row.get("years"));
+                                String activityKey = key + "|" + PsdCrossGroupMerge.normalize(activity);
+                                schedules.putIfAbsent(activityKey, row.get("years"));
+                                String responsible = JsonUtil.text(row, "responsible").trim();
+                                if (!responsible.isEmpty()) {
+                                    plannedResponsibles.putIfAbsent(activityKey, responsible);
+                                }
                             }
                         }
                     }
@@ -2363,6 +2373,12 @@ class PsdBriefBuilder {
                 actionsByKey.computeIfAbsent(key, k -> new ArrayList<>()).add(new ActionRow(group, key, objective, activity,
                         extrant, JsonUtil.num(row, costField), JsonUtil.text(row, "responsible").trim(), row.get("years")));
             }
+        }
+
+        /** Responsable de l'action : celui du plan d'actions (S10), a defaut celui du budget (S11). */
+        private String responsible(ActionRow action) {
+            String planned = plannedResponsibles.get(action.key() + "|" + PsdCrossGroupMerge.normalize(action.activity()));
+            return planned != null ? planned : action.responsible();
         }
 
         /** Exercices ou l'action est programmee : les coches du plan d'actions (S10), a defaut les annees budgetees. */
@@ -2416,22 +2432,144 @@ class PsdBriefBuilder {
             }
 
             Set<String> linked = new HashSet<>();
-            List<PlanAxis> axes = new ArrayList<>();
-            for (int i = 0; i < config.size(); i++) {
-                PsdConsolidatedAxes.Axis axis = config.get(i);
+            List<Set<String>> keysByAxis = new ArrayList<>();
+            List<List<DirectionAxis>> membersByAxis = new ArrayList<>();
+            for (PsdConsolidatedAxes.Axis axis : config) {
                 Set<String> keys = new LinkedHashSet<>();
                 axis.links().forEach(link -> keys.add(link.groupId() + ":" + link.axisCode()));
                 linked.addAll(keys);
-                List<DirectionAxis> members = directionAxes.stream()
+                keysByAxis.add(keys);
+                membersByAxis.add(new ArrayList<>(directionAxes.stream()
                         .filter(member -> keys.contains(key(member.group(), member.axisCode())))
-                        .toList();
-                axes.add(new PlanAxis(axis.title(), axis.objective(),
-                        i < AXIS_COLORS.size() ? AXIS_COLORS.get(i) : UNLINKED_COLOR, members, keys));
+                        .toList()));
             }
-            List<DirectionAxis> unlinked = directionAxes.stream()
-                    .filter(axis -> !linked.contains(key(axis.group(), axis.axisCode())))
-                    .toList();
-            return new AxisPlan(true, axes, unlinked);
+
+            // Un axe de direction que l'admin n'a pas encore rattache rejoint de lui-meme l'axe de
+            // l'entreprise dont le vocabulaire est le plus proche : une section approuvee doit
+            // paraitre a sa place dans la note sans attendre l'arbitrage. Le rattachement saisi
+            // sur l'ecran du Plan Strategique reste prioritaire et peut corriger ce choix.
+            List<Set<String>> axisStems = new ArrayList<>();
+            for (int i = 0; i < config.size(); i++) {
+                PsdConsolidatedAxes.Axis axis = config.get(i);
+                StringBuilder text = new StringBuilder(axis.title()).append(' ').append(axis.objective());
+                membersByAxis.get(i).forEach(member -> text.append(' ').append(matchText(member, false)));
+                axisStems.add(meaningfulStems(text.toString()));
+            }
+            List<DirectionAxis> candidates = new ArrayList<>(directionAxes);
+            Set<String> declared = new HashSet<>();
+            directionAxes.forEach(axis -> declared.add(key(axis.group(), axis.axisCode())));
+            for (String key : orphanKeys(declared)) {
+                WorkGroup group = groupOf(key);
+                if (group != null) {
+                    String axisCode = key.substring(key.indexOf(':') + 1);
+                    candidates.add(new DirectionAxis(group, axisCode, programmedTitle(group, axisCode), List.of()));
+                }
+            }
+            List<DirectionAxis> unlinked = new ArrayList<>();
+            for (DirectionAxis candidate : candidates) {
+                String key = key(candidate.group(), candidate.axisCode());
+                if (linked.contains(key)) {
+                    continue;
+                }
+                int best = closestAxis(meaningfulStems(matchText(candidate, true)), axisStems);
+                if (best < 0) {
+                    if (declared.contains(key)) {
+                        unlinked.add(candidate);
+                    }
+                    continue;
+                }
+                linked.add(key);
+                keysByAxis.get(best).add(key);
+                if (!candidate.title().isBlank()) {
+                    membersByAxis.get(best).add(candidate);
+                }
+            }
+
+            List<PlanAxis> axes = new ArrayList<>();
+            for (int i = 0; i < config.size(); i++) {
+                PsdConsolidatedAxes.Axis axis = config.get(i);
+                axes.add(new PlanAxis(axis.title(), axis.objective(),
+                        i < AXIS_COLORS.size() ? AXIS_COLORS.get(i) : UNLINKED_COLOR,
+                        List.copyOf(membersByAxis.get(i)), keysByAxis.get(i)));
+            }
+            return new AxisPlan(true, axes, List.copyOf(unlinked));
+        }
+
+        /** Axes programmes au budget (S11) ou au plan d'actions (S10) sans etre declares aux axes (S08). */
+        private List<String> orphanKeys(Set<String> declared) {
+            Set<String> keys = new LinkedHashSet<>(budgetByKey.keySet());
+            keys.addAll(actionsByKey.keySet());
+            keys.removeAll(declared);
+            return new ArrayList<>(keys);
+        }
+
+        /** Intitule d'un axe tel que le budget (S11), a defaut le plan d'actions (S10), le reprend. */
+        private String programmedTitle(WorkGroup group, String axisCode) {
+            for (String code : List.of("S11", "S10")) {
+                for (JsonNode axis : JsonUtil.arr(content(group, code), "axes")) {
+                    if (axisCode.equals(JsonUtil.text(axis, "axisCode"))) {
+                        String title = JsonUtil.text(axis, "axisTitle").trim();
+                        if (!title.isEmpty()) {
+                            return title;
+                        }
+                    }
+                }
+            }
+            return "";
+        }
+
+        /**
+         * Ce qui dit le sens d'un axe de direction : intitule et objectifs (S08), et, cote axe a
+         * rattacher, les effets vises par son budget ou son plan d'actions. Les actions elles-memes
+         * sont trop nombreuses et trop concretes : elles noieraient le rapprochement.
+         */
+        private String matchText(DirectionAxis axis, boolean withEffects) {
+            StringBuilder text = new StringBuilder(axis.title());
+            axis.objectives().forEach(objective -> text.append(' ').append(objective));
+            for (JsonNode declared : JsonUtil.arr(content(axis.group(), "S08"), "axes")) {
+                if (axis.axisCode().equals(JsonUtil.text(declared, "axisCode"))) {
+                    text.append(' ').append(JsonUtil.text(declared, "objective"));
+                }
+            }
+            if (withEffects) {
+                Set<String> effects = new LinkedHashSet<>();
+                actionsByKey.getOrDefault(key(axis.group(), axis.axisCode()), List.of())
+                        .forEach(action -> effects.add(action.objective()));
+                effects.forEach(effect -> text.append(' ').append(effect));
+            }
+            return text.toString();
+        }
+
+        /** Mots trop communs a tous les axes pour departager : « renforcer », « nos »... */
+        private static final Set<String> GENERIC_STEMS = Set.of(
+                "nos", "notre", "nous", "senico", "axe", "renfor", "develo", "amelio", "assure", "mettre", "mise",
+                "place", "niveau", "object", "strate", "action", "activi", "ensemb", "garant",
+                "efface", "effica", "groupe", "entrep", "toutes");
+
+        private static Set<String> meaningfulStems(String text) {
+            Set<String> stems = PsdCrossGroupMerge.stems(text == null ? "" : text);
+            stems.removeAll(GENERIC_STEMS);
+            return stems;
+        }
+
+        /**
+         * L'axe de l'entreprise le plus proche de l'axe de direction : racines communes, rapportees a
+         * la taille des deux vocabulaires (cosinus) pour qu'un axe qui regroupe deja beaucoup de
+         * directions n'attire pas tout. Le premier en cas d'egalite ; -1 si aucun mot n'est commun.
+         */
+        private static int closestAxis(Set<String> stems, List<Set<String>> axisStems) {
+            int best = -1;
+            double bestScore = 0;
+            for (int i = 0; i < axisStems.size(); i++) {
+                Set<String> shared = new HashSet<>(stems);
+                shared.retainAll(axisStems.get(i));
+                double score = shared.isEmpty() ? 0 : shared.size() / Math.sqrt((double) stems.size() * axisStems.get(i).size());
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = i;
+                }
+            }
+            return best;
         }
 
         private double[] budgetOf(Collection<String> keys) {

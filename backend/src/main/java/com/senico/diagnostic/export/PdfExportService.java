@@ -212,14 +212,66 @@ public class PdfExportService {
     public byte[] exportSynthesisNote() {
         // Version corrigee par la Direction Generale s'il y en a une, sinon le document genere.
         List<ExportBlock> blocks = synthesisNoteService.effectiveBlocks();
-        return renderSynthesisNote(blocks);
+        return renderSynthesisNote(blocks, "Plan Stratégique 2027-2031 — Note de synthèse", "NOTE DE SYNTHÈSE",
+                "Le résumé consolidé de l'ensemble des directions — diagnostic, enjeux, cadre "
+                        + "stratégique, budget et pilotage — pour le Conseil d'Administration et le comité "
+                        + "de pilotage.");
+    }
+
+    /**
+     * Synthese des SWOT et des recommandations (cf. {@link PsdBriefBuilder#swotAndRecommendations}) : meme
+     * perimetre et meme mise en page que la note de synthese, dont elle ne reprend que ces tableaux.
+     */
+    public byte[] exportSwotRecommendations() {
+        List<WorkGroup> groups = workGroupRepository.findByEnabledTrueOrderByIdAsc();
+        Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
+                .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
+        Map<String, SectionResponse> responsesByKey = sectionResponseRepository.findAll().stream()
+                .collect(Collectors.toMap(r -> key(r.getGroup().getId(), r.getSection().getId()), r -> r));
+        Map<String, GroupSectionStatus> statusesByKey = groupSectionStatusRepository.findAllWithGroupAndSection().stream()
+                .collect(Collectors.toMap(s -> key(s.getGroup().getId(), s.getSection().getId()), s -> s));
+
+        // Seules les sections approuvees par le DG, comme les autres documents qui font foi.
+        responsesByKey = PsdApprovedContent.approvedOnly(responsesByKey, statusesByKey);
+
+        List<ExportBlock> blocks = psdBriefBuilder.swotAndRecommendations(groups, sectionsByCode, responsesByKey,
+                statusesByKey, narratives());
+        return renderSynthesisNote(blocks, "Plan Stratégique 2027-2031 — Synthèse des SWOT et des recommandations",
+                "SYNTHÈSE DES SWOT ET DES RECOMMANDATIONS",
+                "Les forces, faiblesses, opportunités et menaces relevées par l'ensemble des directions, "
+                        + "les stratégies qu'elles en tirent, leurs recommandations, puis la synthèse du cadre "
+                        + "stratégique par axe.");
+    }
+
+    /**
+     * Synthese des recommandations strategiques (cf. {@link PsdBriefBuilder#strategicRecommendations}) :
+     * le tableau d'inventaire du canevas en document a part, sur le perimetre et la mise en page de la note.
+     */
+    public byte[] exportStrategicRecommendations() {
+        List<WorkGroup> groups = workGroupRepository.findByEnabledTrueOrderByIdAsc();
+        Map<String, SectionDef> sectionsByCode = sectionDefRepository.findAllByOrderByOrderAsc().stream()
+                .collect(Collectors.toMap(SectionDef::getCode, sd -> sd));
+        Map<String, SectionResponse> responsesByKey = sectionResponseRepository.findAll().stream()
+                .collect(Collectors.toMap(r -> key(r.getGroup().getId(), r.getSection().getId()), r -> r));
+        Map<String, GroupSectionStatus> statusesByKey = groupSectionStatusRepository.findAllWithGroupAndSection().stream()
+                .collect(Collectors.toMap(s -> key(s.getGroup().getId(), s.getSection().getId()), s -> s));
+
+        // Seules les sections approuvees par le DG, comme les autres documents qui font foi.
+        responsesByKey = PsdApprovedContent.approvedOnly(responsesByKey, statusesByKey);
+
+        List<ExportBlock> blocks = psdBriefBuilder.strategicRecommendations(groups, sectionsByCode, responsesByKey,
+                statusesByKey, narratives());
+        return renderSynthesisNote(blocks, "Plan Stratégique 2027-2031 — Synthèse des recommandations stratégiques",
+                "SYNTHÈSE DES RECOMMANDATIONS STRATÉGIQUES",
+                "Ce que l'ensemble des directions retient de ses analyses — SWOT, PESTEL, parties prenantes "
+                        + "et analyse causale — pour fonder les orientations stratégiques.");
     }
 
     private record RenderedNote(byte[] pdf, Map<String, Integer> pages) {
     }
 
     /** Revue de l'auditeur (22/09/2026) : la note n'a plus de page de sommaire ; la page de garde ouvre sur le corps. */
-    private byte[] renderSynthesisNote(List<ExportBlock> blocks) {
+    private byte[] renderSynthesisNote(List<ExportBlock> blocks, String footerLabel, String badgeLabel, String summary) {
         try {
             Document document = new Document(PageSize.A4, 48, 48, 56, 64);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -227,11 +279,11 @@ public class PdfExportService {
             // Un graphique qui ne tient plus en bas de page passe a la suivante sans que le texte
             // qui le suit ne remonte avant lui.
             writer.setStrictImageSequence(true);
-            DocumentFooter footer = new DocumentFooter("Plan Stratégique 2027-2031 — Note de synthèse");
+            DocumentFooter footer = new DocumentFooter(footerLabel);
             writer.setPageEvent(footer);
             document.open();
 
-            addSynthesisNoteCoverPage(document);
+            addSynthesisNoteCoverPage(document, badgeLabel, summary);
             pdfBlockEmitter.emit(document, writer, blocks);
 
             document.close();
@@ -254,7 +306,7 @@ public class PdfExportService {
      * Page de garde sur le modele d'un PSD publie : logo, filet, titre du plan en grand, badge
      * de la nature du document, puis le lieu et la date en toutes lettres.
      */
-    private void addSynthesisNoteCoverPage(Document document) throws DocumentException {
+    private void addSynthesisNoteCoverPage(Document document, String badgeLabel, String summary) throws DocumentException {
         Paragraph topSpacer = new Paragraph(" ");
         topSpacer.setSpacingAfter(70);
         document.add(topSpacer);
@@ -292,7 +344,7 @@ public class PdfExportService {
         badge.setWidthPercentage(62);
         badge.setSpacingBefore(46);
         badge.setHorizontalAlignment(Element.ALIGN_CENTER);
-        PdfPCell badgeCell = new PdfPCell(new Paragraph("NOTE DE SYNTHÈSE",
+        PdfPCell badgeCell = new PdfPCell(new Paragraph(badgeLabel,
                 PdfFonts.font(14, Font.BOLD, Color.WHITE)));
         badgeCell.setBackgroundColor(PRIMARY);
         badgeCell.setPadding(14);
@@ -301,11 +353,7 @@ public class PdfExportService {
         badge.addCell(badgeCell);
         document.add(badge);
 
-        Paragraph description = new Paragraph(
-                "Le résumé consolidé de l'ensemble des directions — diagnostic, enjeux, cadre "
-                        + "stratégique, budget et pilotage — pour le Conseil d'Administration et le comité "
-                        + "de pilotage.",
-                PdfFonts.font(11, Font.ITALIC, SLATE));
+        Paragraph description = new Paragraph(summary, PdfFonts.font(11, Font.ITALIC, SLATE));
         description.setAlignment(Element.ALIGN_CENTER);
         description.setSpacingBefore(24);
         description.setIndentationLeft(50);

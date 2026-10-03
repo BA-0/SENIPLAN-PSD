@@ -600,6 +600,26 @@ function BlockEditor({ block, onChange, lockedColumns = 0 }: { block: NoteBlock;
           className="border-border text-[13px]"
         />
       );
+    case "PROSE":
+      return (
+        <div className="space-y-2">
+          {block.paragraphs.map((text, i) => (
+            <TextField
+              key={i}
+              ariaLabel="Paragraphe"
+              value={text}
+              onChange={(v) => onChange((b) => { if (b.type === "PROSE") b.paragraphs[i] = v; })}
+              className="border-border text-[13px]"
+            />
+          ))}
+        </div>
+      );
+    case "PLACEHOLDER":
+      return (
+        <div className="rounded-lg border border-dashed border-border px-4 py-3 text-[12.5px] text-muted-foreground">
+          Emplacement réservé « {block.label} » : rempli ailleurs, il ne se corrige pas ici.
+        </div>
+      );
     case "BULLET_LIST":
       return (
         <ListCard

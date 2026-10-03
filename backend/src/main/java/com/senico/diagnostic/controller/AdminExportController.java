@@ -83,6 +83,20 @@ public class AdminExportController {
         return fileResponse(docx, DOCX_MEDIA_TYPE, "note-de-synthese-plan-strategique-2027-2031.docx");
     }
 
+    /** Synthese des SWOT et des recommandations : SWOT consolide, strategies croisees et recommandations. */
+    @GetMapping("/swot-recommandations/pdf")
+    public ResponseEntity<byte[]> exportSwotRecommendationsPdf() {
+        byte[] pdf = pdfExportService.exportSwotRecommendations();
+        return fileResponse(pdf, MediaType.APPLICATION_PDF, "synthese-swot-recommandations-2027-2031.pdf");
+    }
+
+    /** Synthese des recommandations strategiques : le tableau d'inventaire du diagnostic, toutes directions confondues. */
+    @GetMapping("/recommandations-strategiques/pdf")
+    public ResponseEntity<byte[]> exportStrategicRecommendationsPdf() {
+        byte[] pdf = pdfExportService.exportStrategicRecommendations();
+        return fileResponse(pdf, MediaType.APPLICATION_PDF, "synthese-recommandations-strategiques-2027-2031.pdf");
+    }
+
     @GetMapping("/psd-final/pdf")
     public ResponseEntity<byte[]> exportPsdFinalPdf() {
         byte[] pdf = pdfExportService.exportPsdFinalDocument();

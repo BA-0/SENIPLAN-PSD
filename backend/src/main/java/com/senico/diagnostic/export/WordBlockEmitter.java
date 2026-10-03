@@ -59,6 +59,8 @@ public class WordBlockEmitter {
             case ExportBlock.Table t -> table(doc, t);
             case ExportBlock.Quadrant q -> quadrant(doc, q);
             case ExportBlock.Callout c -> callout(doc, c);
+            case ExportBlock.Placeholder p -> placeholder(doc, p);
+            case ExportBlock.Prose pr -> pr.paragraphs().forEach(text -> paragraph(doc, new ExportBlock.Paragraph(text)));
             case ExportBlock.MetricGrid m -> metricGrid(doc, m);
             case ExportBlock.AttributedList a -> attributedList(doc, a);
             case ExportBlock.AttributedQuadrant a -> attributedQuadrant(doc, a);
@@ -289,6 +291,31 @@ public class WordBlockEmitter {
         run.setBold(warning);
         run.setFontSize(10);
         run.setColor(warning ? WARNING_TEXT_HEX : DARK_HEX);
+        doc.createParagraph().setSpacingAfter(80);
+    }
+
+    /**
+     * Emplacement reserve : un cadre vide a filet gris clair, legende d'une mention discrete, qui tient
+     * la place d'un texte arrete par la Direction Generale (cf. PsdBriefBuilder). Deux lignes vides sous
+     * la mention menagent la zone a remplir.
+     */
+    private void placeholder(XWPFDocument doc, ExportBlock.Placeholder ph) {
+        XWPFTable table = doc.createTable(1, 1);
+        table.setWidth("100%");
+        table.setTopBorder(XWPFTable.XWPFBorderType.SINGLE, 6, 0, "E2E8F0");
+        table.setBottomBorder(XWPFTable.XWPFBorderType.SINGLE, 6, 0, "E2E8F0");
+        table.setLeftBorder(XWPFTable.XWPFBorderType.SINGLE, 6, 0, "E2E8F0");
+        table.setRightBorder(XWPFTable.XWPFBorderType.SINGLE, 6, 0, "E2E8F0");
+        XWPFTableCell cell = table.getRow(0).getCell(0);
+        XWPFParagraph p = cell.getParagraphs().isEmpty() ? cell.addParagraph() : cell.getParagraphs().get(0);
+        XWPFRun run = p.createRun();
+        run.setText(ph.label());
+        run.setItalic(true);
+        run.setFontSize(9);
+        run.setColor(SLATE_HEX);
+        // Zone a remplir : deux lignes vides sous la mention.
+        cell.addParagraph();
+        cell.addParagraph();
         doc.createParagraph().setSpacingAfter(80);
     }
 

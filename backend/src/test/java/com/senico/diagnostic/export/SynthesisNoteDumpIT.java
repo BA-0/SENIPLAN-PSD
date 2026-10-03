@@ -32,6 +32,8 @@ class SynthesisNoteDumpIT {
         Path directory = Files.createDirectories(Path.of("target", "exports"));
         Files.write(directory.resolve("note-de-synthese.docx"), docx);
         Files.write(directory.resolve("note-de-synthese.pdf"), pdfExportService.exportSynthesisNote());
+        Files.write(directory.resolve("synthese-swot-recommandations.pdf"), pdfExportService.exportSwotRecommendations());
+        Files.write(directory.resolve("synthese-recommandations-strategiques.pdf"), pdfExportService.exportStrategicRecommendations());
         Files.write(directory.resolve("plan-strategique-senico.pdf"), pdfExportService.exportPsdFinalDocument());
         Files.write(directory.resolve("plan-strategique-senico.docx"), wordExportService.exportPsdFinalDocument());
 

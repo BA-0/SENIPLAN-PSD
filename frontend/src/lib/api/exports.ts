@@ -56,6 +56,16 @@ export function downloadCorrectedSynthesisNoteWord() {
   return downloadBlob("/synthesis-note/word", "note-de-synthese-plan-strategique-2027-2031.docx");
 }
 
+/** Synthèse des SWOT et des recommandations : SWOT consolidé, stratégies croisées et recommandations. */
+export function downloadSwotRecommendationsPdf() {
+  return downloadBlob("/admin/exports/swot-recommandations/pdf", "synthese-swot-recommandations-2027-2031.pdf");
+}
+
+/** Synthèse des recommandations stratégiques : le tableau d'inventaire du diagnostic, toutes directions confondues. */
+export function downloadStrategicRecommendationsPdf() {
+  return downloadBlob("/admin/exports/recommandations-strategiques/pdf", "synthese-recommandations-strategiques-2027-2031.pdf");
+}
+
 export function downloadPsdFinalPdf() {
   return downloadBlob("/admin/exports/psd-final/pdf", "plan-strategique-senico-2027-2031.pdf");
 }

@@ -237,6 +237,117 @@ class PsdBriefBuilder {
         return b;
     }
 
+    static final String SWOT_SYNTHESE = "I. Synthèse des analyses SWOT";
+    static final String SWOT_STRATEGIES = "II. Mise en relation du diagnostic stratégique";
+    static final String RECOMMANDATIONS = "III. Recommandations";
+    static final String SYNTHESE_CADRE = "IV. Synthèse du cadre stratégique";
+
+    /**
+     * Synthese des SWOT et des recommandations : un document court, tire des memes tableaux que la note.
+     * Le SWOT de toutes les directions fondu sur la grille du canevas, les strategies qu'elles en tirent
+     * (mise en relation), puis les recommandations : celles de la matrice des ressources (S02) et les
+     * actions du PESTEL (S03). Le tableau d'inventaire (S07) n'y figure pas : il reprend un a un les constats
+     * du SWOT, deja lus en premiere partie. La legende des couleurs ouvre le document : sans elle, la
+     * couleur d'un constat n'attribue rien. Le tableau de synthese du cadre strategique (axes et OS) clot
+     * le document : ce a quoi le diagnostic et les recommandations aboutissent.
+     */
+    List<ExportBlock> swotAndRecommendations(List<WorkGroup> groups, Map<String, SectionDef> sectionsByCode,
+                                             Map<String, SectionResponse> responsesByKey,
+                                             Map<String, GroupSectionStatus> statusesByKey,
+                                             Map<NarrativeBlockKey, String> narratives) {
+        Context ctx = new Context(groups, sectionsByCode, responsesByKey, statusesByKey, narratives, LocalDate.now(DAKAR));
+        List<ExportBlock> b = new ArrayList<>();
+        b.add(new ExportBlock.ColorLegend("Code couleur des directions", ctx.groups.stream()
+                .map(group -> new ExportBlock.Attribution(group.getName(), List.of(colorOf(group, ctx.groups))))
+                .toList()));
+
+        part(b, SWOT_SYNTHESE);
+        b.add(mergedSwot(ctx));
+
+        part(b, SWOT_STRATEGIES);
+        b.addAll(crossedStrategies(ctx));
+
+        part(b, RECOMMANDATIONS);
+        sub(b, "III.1 Recommandations sur les ressources et les compétences");
+        b.add(resourceRecommendations(ctx));
+        sub(b, "III.2 Actions pour atténuer les menaces ou saisir les opportunités");
+        b.add(pestelActions(ctx));
+
+        part(b, SYNTHESE_CADRE);
+        b.addAll(strategicSummaryTable(ctx));
+        return b;
+    }
+
+    static final String RECOMMANDATIONS_STRATEGIQUES = "I. Synthèse des recommandations stratégiques";
+    static final String NOTES_DES_DIRECTIONS = "II. Notes de synthèse des directions";
+
+    /**
+     * Synthese des recommandations strategiques (S07) en document a part : le tableau d'inventaire du
+     * canevas (SWOT, PESTEL, parties prenantes, analyse causale), puis la note de synthese de chaque
+     * direction. La legende des couleurs ouvre le document, comme pour la synthese des SWOT.
+     */
+    List<ExportBlock> strategicRecommendations(List<WorkGroup> groups, Map<String, SectionDef> sectionsByCode,
+                                               Map<String, SectionResponse> responsesByKey,
+                                               Map<String, GroupSectionStatus> statusesByKey,
+                                               Map<NarrativeBlockKey, String> narratives) {
+        Context ctx = new Context(groups, sectionsByCode, responsesByKey, statusesByKey, narratives, LocalDate.now(DAKAR));
+        List<ExportBlock> b = new ArrayList<>();
+        b.add(new ExportBlock.ColorLegend("Code couleur des directions", ctx.groups.stream()
+                .map(group -> new ExportBlock.Attribution(group.getName(), List.of(colorOf(group, ctx.groups))))
+                .toList()));
+
+        part(b, RECOMMANDATIONS_STRATEGIQUES);
+        b.add(inventoryTable(ctx));
+
+        part(b, NOTES_DES_DIRECTIONS);
+        b.addAll(inventory(ctx));
+        return b;
+    }
+
+    /** Recommandations de la matrice des ressources (S02), une ligne par ressource qui en porte. */
+    private ExportBlock.Table resourceRecommendations(Context ctx) {
+        Map<String, Contributions> byResource = new LinkedHashMap<>();
+        for (WorkGroup group : ctx.groups) {
+            for (JsonNode row : JsonUtil.arr(ctx.content(group, "S02"), "rows")) {
+                String key = JsonUtil.text(row, "resourceKey").trim();
+                if (!key.isEmpty()) {
+                    byResource.computeIfAbsent(key, k -> new Contributions(ctx.groups))
+                            .addLines(group, JsonUtil.text(row, "recommendations"));
+                }
+            }
+        }
+        List<ExportBlock.TableRow> rows = new ArrayList<>();
+        byResource.forEach((resource, items) -> {
+            if (!items.isEmpty()) {
+                rows.add(new ExportBlock.TableRow(List.of(rowLabel(SectionLabels.resource(resource)), attributedCell(items))));
+            }
+        });
+        List<String> headers = List.of("Ressources", "Recommandations");
+        List<Integer> widths = List.of(28, 72);
+        return rows.isEmpty() ? emptyTable(headers, widths) : new ExportBlock.Table(headers, rows, widths);
+    }
+
+    /** Actions du PESTEL (S03), une ligne par item qui en porte. */
+    private ExportBlock.Table pestelActions(Context ctx) {
+        List<ExportBlock.TableRow> rows = new ArrayList<>();
+        for (String axis : DefaultSectionContentFactory.PESTEL_AXES) {
+            Contributions actions = new Contributions(ctx.groups);
+            for (WorkGroup group : ctx.groups) {
+                for (JsonNode row : JsonUtil.arr(ctx.content(group, "S03"), "rows")) {
+                    if (axis.equals(JsonUtil.text(row, "axis"))) {
+                        actions.addLines(group, JsonUtil.text(row, "actions"));
+                    }
+                }
+            }
+            if (!actions.isEmpty()) {
+                rows.add(new ExportBlock.TableRow(List.of(rowLabel(SectionLabels.pestel(axis)), attributedCell(actions))));
+            }
+        }
+        List<String> headers = List.of("Items", "Actions");
+        List<Integer> widths = List.of(28, 72);
+        return rows.isEmpty() ? emptyTable(headers, widths) : new ExportBlock.Table(headers, rows, widths);
+    }
+
     /** Sections du canevas que le Plan Strategique complet presente par axe de l'entreprise (cf. {@link #planSection}). */
     static final Set<String> PLAN_SECTIONS = Set.of("S06", "S07", "S08", "S09", "S10", "S11", "S12", "S17");
 
@@ -775,8 +886,11 @@ class PsdBriefBuilder {
         // valeurs sont des textes : seuls leurs titres figurent, que la Direction Generale les ait arretes ou non
         // (les propositions des directions n'y sont plus reprises). Le texte reste dans le Plan Strategique de SENICO.
         sub(b, "IX.1 Vision");
+        narrativeShown(b, ctx, NarrativeBlockKey.VISION);
         sub(b, "IX.2 Mission");
+        narrativeShown(b, ctx, NarrativeBlockKey.MISSION);
         sub(b, "IX.3 Valeurs");
+        narrativeShown(b, ctx, NarrativeBlockKey.VALEURS);
 
         sub(b, "IX.4 Synthèse des recommandations stratégiques");
         b.add(inventoryTable(ctx));
@@ -2050,18 +2164,50 @@ class PsdBriefBuilder {
         blocks.add(new ExportBlock.Heading(title, 2));
     }
 
+    /** Mention portee par chaque emplacement reserve au texte de la Direction Generale. */
+    private static final String TO_FILL = "À compléter par la Direction Générale — texte saisi sur "
+            + "l'écran « Plan Stratégique de SENICO ».";
+
     /**
-     * Texte arrete par la Direction Generale. Absent, la note le dit a l'endroit meme ou il manque :
-     * une page blanche sous un titre se lirait comme un oubli de mise en page.
+     * Rubrique dont le texte releve de la Direction Generale. La note ne reprend que titres, sous-titres
+     * et tableaux (cf. {@link #withoutText}) : apres les sous-titres eventuels tires du texte, elle laisse
+     * un cadre vide a remplir, pour marquer la place du texte que la DG arrete sur son ecran dedie.
      */
     private void narrative(List<ExportBlock> blocks, Context ctx, NarrativeBlockKey key) {
         String content = ctx.narrative(key);
         if (content.isBlank()) {
             blocks.add(new ExportBlock.Callout("« " + key.getLabel() + " » n'est pas encore rédigé. Ce texte relève de la "
                     + "Direction Générale et se saisit sur " + EDIT_SCREEN + ".", ExportBlock.Tone.WARNING));
+        } else {
+            blocks.addAll(PsdNarrativeText.blocks(content));
+        }
+        placeholder(blocks);
+    }
+
+    /** Un cadre vide a remplir, tenant la place d'un texte de la Direction Generale. */
+    private void placeholder(List<ExportBlock> blocks) {
+        blocks.add(new ExportBlock.Placeholder(TO_FILL));
+    }
+
+    /**
+     * Rubrique dont le texte de la Direction Generale s'affiche dans la note (vision, mission, valeurs) :
+     * chaque ligne devient un paragraphe conserve (cf. {@link ExportBlock.Prose}). Non rédigé, la rubrique
+     * retombe sur un cadre vide a remplir.
+     */
+    private void narrativeShown(List<ExportBlock> blocks, Context ctx, NarrativeBlockKey key) {
+        String content = ctx.narrative(key);
+        if (content.isBlank()) {
+            placeholder(blocks);
             return;
         }
-        blocks.addAll(PsdNarrativeText.blocks(content));
+        List<String> paragraphs = new ArrayList<>();
+        for (String line : content.split("\\R")) {
+            String text = line.strip();
+            if (!text.isEmpty()) {
+                paragraphs.add(text);
+            }
+        }
+        blocks.add(new ExportBlock.Prose(paragraphs));
     }
 
     /**

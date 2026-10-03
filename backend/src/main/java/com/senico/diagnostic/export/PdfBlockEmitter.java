@@ -595,6 +595,12 @@ public class PdfBlockEmitter {
             case ExportBlock.Table t -> document.add(table(t));
             case ExportBlock.Quadrant q -> document.add(keepCellsWhole(quadrant(q), document));
             case ExportBlock.Callout c -> document.add(callout(c));
+            case ExportBlock.Placeholder p -> document.add(placeholderBox(p));
+            case ExportBlock.Prose pr -> {
+                for (String text : pr.paragraphs()) {
+                    document.add(paragraph(new ExportBlock.Paragraph(text)));
+                }
+            }
             case ExportBlock.MetricGrid m -> document.add(metricGrid(m));
             case ExportBlock.AttributedList a -> emitAttributedList(document, writer, a);
             case ExportBlock.AttributedQuadrant a -> document.add(keepCellsWhole(attributedQuadrant(a), document));
@@ -839,6 +845,37 @@ public class PdfBlockEmitter {
         cell.setPaddingRight(11);
         cell.setPaddingTop(7);
         cell.setPaddingBottom(9);
+        table.addCell(cell);
+        return table;
+    }
+
+    /** Hauteur de la zone a remplir d'un emplacement reserve, sous sa mention. */
+    private static final float PLACEHOLDER_FILL_HEIGHT = 64;
+
+    /**
+     * Emplacement reserve : un cadre vide a filet gris clair, legende d'une mention discrete, qui tient la
+     * place d'un texte arrete par la Direction Generale (cf. PsdBriefBuilder). Le cadre reste d'un seul
+     * tenant, pour ne pas se partager entre deux pages.
+     */
+    private PdfPTable placeholderBox(ExportBlock.Placeholder placeholder) {
+        PdfPTable table = new PdfPTable(1);
+        table.setWidthPercentage(100);
+        table.setSpacingBefore(4);
+        table.setSpacingAfter(12);
+        table.setKeepTogether(true);
+        Paragraph caption = new Paragraph(PdfFonts.phrase(placeholder.label(), PdfFonts.font(9, Font.ITALIC, SLATE)));
+        caption.setLeading(13);
+        PdfPCell cell = new PdfPCell(caption);
+        cell.setBorder(Rectangle.BOX);
+        cell.setBorderColor(BORDER);
+        cell.setBorderWidth(0.8f);
+        cell.setBackgroundColor(Color.WHITE);
+        cell.setPaddingLeft(11);
+        cell.setPaddingRight(11);
+        cell.setPaddingTop(7);
+        cell.setPaddingBottom(9);
+        cell.setMinimumHeight(PLACEHOLDER_FILL_HEIGHT);
+        cell.setVerticalAlignment(Element.ALIGN_TOP);
         table.addCell(cell);
         return table;
     }

@@ -9,7 +9,12 @@ import { FileDown, FileText, PencilLine } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { listGroups } from "@/lib/api/groups";
-import { downloadSynthesisNotePdf, downloadSynthesisNoteWord } from "@/lib/api/exports";
+import {
+  downloadStrategicRecommendationsPdf,
+  downloadSwotRecommendationsPdf,
+  downloadSynthesisNotePdf,
+  downloadSynthesisNoteWord,
+} from "@/lib/api/exports";
 import { extractErrorMessage } from "@/lib/api-client";
 import { canEditSynthesisNote } from "@/lib/roles";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -72,6 +77,8 @@ export default function SynthesisPage() {
   const [exportingWord, setExportingWord] = useState(false);
   const { user } = useCurrentUser();
   const peutCorriger = canEditSynthesisNote(user);
+  const [exportingSwot, setExportingSwot] = useState(false);
+  const [exportingRecommendations, setExportingRecommendations] = useState(false);
 
   const { data: groups } = useQuery({ queryKey: ["admin", "groups"], queryFn: listGroups });
 
@@ -84,6 +91,28 @@ export default function SynthesisPage() {
       toast.error(extractErrorMessage(error, "Échec de la génération de la note de synthèse"));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleSwotExport() {
+    setExportingSwot(true);
+    try {
+      await downloadSwotRecommendationsPdf();
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Échec de la génération de la synthèse des SWOT et des recommandations"));
+    } finally {
+      setExportingSwot(false);
+    }
+  }
+
+  async function handleRecommendationsExport() {
+    setExportingRecommendations(true);
+    try {
+      await downloadStrategicRecommendationsPdf();
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Échec de la génération de la synthèse des recommandations stratégiques"));
+    } finally {
+      setExportingRecommendations(false);
     }
   }
 
@@ -136,6 +165,39 @@ export default function SynthesisPage() {
               </Button>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Synthèse des SWOT et des recommandations</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-[13px] text-muted-foreground">
+            Un document court, tiré des mêmes sections approuvées : le SWOT de toutes les directions réuni en un seul
+            tableau, la mise en relation du diagnostic stratégique, puis les recommandations — celles de la
+            matrice des ressources et des compétences, et les actions pour atténuer les menaces ou saisir les
+            opportunités —, et enfin le tableau de synthèse du cadre stratégique, avec les axes et leurs OS. Chaque constat porte la couleur de sa direction.
+          </p>
+          <Button variant="primary" onClick={handleSwotExport} loading={exportingSwot}>
+            <FileDown className="h-4 w-4" /> Télécharger le PDF
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Synthèse des recommandations stratégiques</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-[13px] text-muted-foreground">
+            Le tableau du canevas à quatre colonnes — SWOT, PESTEL, analyse des parties prenantes, analyse causale et
+            autres — réunissant ce que toutes les directions retiennent de leurs analyses, suivi de la note de synthèse
+            de chaque direction. Tiré des mêmes sections approuvées, chaque constat à la couleur de sa direction.
+          </p>
+          <Button variant="primary" onClick={handleRecommendationsExport} loading={exportingRecommendations}>
+            <FileDown className="h-4 w-4" /> Télécharger le PDF
+          </Button>
         </CardContent>
       </Card>
 

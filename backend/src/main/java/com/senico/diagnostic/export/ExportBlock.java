@@ -25,6 +25,8 @@ import java.util.List;
         @JsonSubTypes.Type(value = ExportBlock.ColorLegend.class, name = "COLOR_LEGEND"),
         @JsonSubTypes.Type(value = ExportBlock.Table.class, name = "TABLE"),
         @JsonSubTypes.Type(value = ExportBlock.Callout.class, name = "CALLOUT"),
+        @JsonSubTypes.Type(value = ExportBlock.Placeholder.class, name = "PLACEHOLDER"),
+        @JsonSubTypes.Type(value = ExportBlock.Prose.class, name = "PROSE"),
         @JsonSubTypes.Type(value = ExportBlock.MetricGrid.class, name = "METRIC_GRID"),
         @JsonSubTypes.Type(value = ExportBlock.Quadrant.class, name = "QUADRANT"),
         @JsonSubTypes.Type(value = ExportBlock.Chart.class, name = "CHART"),
@@ -203,6 +205,23 @@ public sealed interface ExportBlock {
         public Callout(String text) {
             this(text, Tone.ANALYSIS);
         }
+    }
+
+    /**
+     * Emplacement reserve : un cadre vide sous un titre, legende d'une mention discrete, pour une
+     * rubrique que la Direction Generale remplit ailleurs (ecran « Plan Stratégique de SENICO »).
+     * Contrairement a un paragraphe ou un encadre, ce bloc survit au filtrage de la note (cf.
+     * PsdBriefBuilder#withoutText) : il tient la place du texte, que la note ne reprend pas.
+     */
+    record Placeholder(String label) implements ExportBlock {
+    }
+
+    /**
+     * Texte narratif que la note conserve, la ou elle retire les autres paragraphes (vision, mission,
+     * valeurs arretees par la Direction Generale). Chaque entree est un paragraphe ; il survit au
+     * filtrage de la note (cf. PsdBriefBuilder#withoutText), contrairement a un {@link Paragraph}.
+     */
+    record Prose(List<String> paragraphs) implements ExportBlock {
     }
 
     /** Un chiffre cle et son intitule, rendus en tuile plutot qu'en ligne de tableau. */

@@ -64,6 +64,8 @@ export type NoteBlock =
   | { type: "COLOR_LEGEND"; title: string | null; entries: Attribution[] }
   | { type: "TABLE"; columnHeaders: string[]; rows: TableRow[]; widths: number[]; bands: HeaderBand[] }
   | { type: "CALLOUT"; text: string; tone: "ANALYSIS" | "WARNING" }
+  | { type: "PLACEHOLDER"; label: string }
+  | { type: "PROSE"; paragraphs: string[] }
   | { type: "METRIC_GRID"; metrics: { label: string; value: string }[] }
   | { type: "QUADRANT"; cells: QuadrantCell[] }
   | { type: "CHART"; kind: string; title: string; subtitle: string | null; categories: string[]; series: unknown[] };

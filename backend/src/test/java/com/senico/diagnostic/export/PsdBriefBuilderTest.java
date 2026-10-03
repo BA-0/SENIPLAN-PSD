@@ -44,6 +44,7 @@ class PsdBriefBuilderTest {
             Map.entry("S01", SectionType.STAKEHOLDERS),
             Map.entry("S01B", SectionType.PERFORMANCE_REVIEW_2026),
             Map.entry("S02", SectionType.RESOURCES_MATRIX),
+            Map.entry("S03", SectionType.PESTEL),
             Map.entry("S04", SectionType.SWOT),
             Map.entry("S05", SectionType.TOWS_MATRIX),
             Map.entry("S06", SectionType.CAUSAL_ANALYSIS),
@@ -194,6 +195,8 @@ class PsdBriefBuilderTest {
                     parts.add(c.title());
                     c.series().forEach(series -> parts.add(series.name()));
                 }
+                case ExportBlock.Placeholder p -> parts.add(p.label());
+                case ExportBlock.Prose pr -> parts.addAll(pr.paragraphs());
             }
         }
         return String.join("\n", parts);
@@ -832,6 +835,25 @@ class PsdBriefBuilderTest {
     }
 
     @Test
+    @DisplayName("La note affiche les vision, mission et valeurs arrêtées par la Direction Générale")
+    void afficheVisionMissionValeurs() {
+        narratives.put(NarrativeBlockKey.VISION, "Être un acteur de référence de l'agro-industrie en Afrique");
+        narratives.put(NarrativeBlockKey.MISSION, "Nourrir les populations avec des produits alimentaires sûrs");
+        narratives.put(NarrativeBlockKey.VALEURS, """
+                Foi : construire dans la durée.
+                Intégrité : décider sur des faits fiables.""");
+
+        String note = texte(build(group(1, "Direction commerciale")));
+
+        assertThat(note).as("mission et valeurs ne figurent dans aucun tableau : seul leur affichage sous IX les montre")
+                .contains(
+                        "Être un acteur de référence de l'agro-industrie en Afrique",
+                        "Nourrir les populations avec des produits alimentaires sûrs",
+                        "Foi : construire dans la durée.",
+                        "Intégrité : décider sur des faits fiables.");
+    }
+
+    @Test
     @DisplayName("Une section validée mais pas approuvée par le DG n'entre pas dans la note")
     void ecarteCeQueLeDgNaPasApprouve() {
         WorkGroup commerciale = group(1, "Direction commerciale");
@@ -966,6 +988,57 @@ class PsdBriefBuilderTest {
         assertThat(swot.rows().get(1).cells().get(0).isCovered()).isTrue();
         assertThat(attributions(blocs)).extracting(ExportBlock.Attribution::text)
                 .contains("Soutien de l'Etat", "Savoir-faire logistique");
+    }
+
+    @Test
+    @DisplayName("La synthese des SWOT et des recommandations reunit le SWOT, les strategies et les recommandations")
+    void rendLaSyntheseDesSwotEtDesRecommandations() {
+        WorkGroup commerciale = group(1, "Direction commerciale", "#2563EB");
+        WorkGroup technique = group(2, "Direction technique", "#16A34A");
+        saisie(commerciale, "S04", "{\"strengths\":[\"Reseau national\"],\"threats\":[\"Concurrence privee\"]}");
+        saisie(technique, "S04", "{\"weaknesses\":[\"Parc vieillissant\"]}");
+        saisie(commerciale, "S05", "{\"strengthsForOpportunities\":\"Ouvrir deux agences\"}");
+        saisie(technique, "S02", """
+                {"rows":[{"resourceKey":"COMPETENCES","recommendations":"Former les techniciens"}]}""");
+        saisie(commerciale, "S03", """
+                {"rows":[{"axis":"POLITIQUE","actions":"Suivre la reforme du secteur"}]}""");
+        saisie(technique, "S06", "{\"rows\":[]}", false);
+
+        List<ExportBlock> blocs = builder.swotAndRecommendations(List.of(commerciale, technique), sectionsByCode,
+                responsesByKey, statusesByKey, narratives);
+
+        assertThat(blocs.get(0)).isInstanceOf(ExportBlock.ColorLegend.class);
+        assertThat(blocs).filteredOn(ExportBlock.Heading.class::isInstance)
+                .extracting(b -> ((ExportBlock.Heading) b).text())
+                .startsWith(PsdBriefBuilder.SWOT_SYNTHESE, PsdBriefBuilder.SWOT_STRATEGIES, PsdBriefBuilder.RECOMMANDATIONS)
+                .contains(PsdBriefBuilder.SYNTHESE_CADRE);
+        assertThat(attributions(blocs)).extracting(ExportBlock.Attribution::text)
+                .contains("Reseau national", "Parc vieillissant", "Ouvrir deux agences",
+                        "Former les techniciens", "Suivre la reforme du secteur");
+        assertThat(attributions(blocs))
+                .filteredOn(item -> item.text().equals("Former les techniciens"))
+                .singleElement()
+                .satisfies(item -> assertThat(item.colorHexes()).containsExactly("#16A34A"));
+        assertThat(attributions(blocs)).as("le SWOT n'est pas repete constat par constat")
+                .extracting(ExportBlock.Attribution::text).doesNotContain("Force : Reseau national");
+    }
+
+    @Test
+    @DisplayName("La synthese des recommandations strategiques reprend l'inventaire et les notes des directions")
+    void rendLaSyntheseDesRecommandationsStrategiques() {
+        WorkGroup commerciale = group(1, "Direction commerciale", "#2563EB");
+        saisie(commerciale, "S04", "{\"strengths\":[\"Reseau national\"]}");
+        saisie(commerciale, "S07", "{\"synthesisNote\":\"Une direction solide mais peu outillee\"}");
+
+        List<ExportBlock> blocs = builder.strategicRecommendations(List.of(commerciale), sectionsByCode,
+                responsesByKey, statusesByKey, narratives);
+
+        assertThat(blocs.get(0)).isInstanceOf(ExportBlock.ColorLegend.class);
+        assertThat(blocs).filteredOn(ExportBlock.Heading.class::isInstance)
+                .extracting(b -> ((ExportBlock.Heading) b).text())
+                .containsExactly(PsdBriefBuilder.RECOMMANDATIONS_STRATEGIQUES, PsdBriefBuilder.NOTES_DES_DIRECTIONS);
+        assertThat(attributions(blocs)).extracting(ExportBlock.Attribution::text)
+                .contains("Force : Reseau national", "Une direction solide mais peu outillee");
     }
 
     @Test

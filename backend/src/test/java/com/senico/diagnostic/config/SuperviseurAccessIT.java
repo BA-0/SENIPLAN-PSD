@@ -68,6 +68,9 @@ class SuperviseurAccessIT {
         mockMvc.perform(get("/api/v1/admin/activity").with(sup)).andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/groups").with(sup)).andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/admin/exports/synthesis/pdf").with(sup)).andExpect(status().isOk());
+        // PDF sectoriel d'une direction : la securite laisse passer, seul le groupe inexistant repond 404.
+        mockMvc.perform(get("/api/v1/admin/exports/groups/" + GROUPE_INEXISTANT + "/pdf").with(sup))
+                .andExpect(status().isNotFound());
     }
 
     @Test

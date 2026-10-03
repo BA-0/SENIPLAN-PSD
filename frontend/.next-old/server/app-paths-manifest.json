@@ -1,0 +1,21 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/change-password/page": "app/change-password/page.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js",
+  "/projection/page": "app/projection/page.js",
+  "/(app)/admin/groups/[groupId]/sections/[code]/page": "app/(app)/admin/groups/[groupId]/sections/[code]/page.js",
+  "/(app)/admin/compare/page": "app/(app)/admin/compare/page.js",
+  "/(app)/admin/live-consolidation/page": "app/(app)/admin/live-consolidation/page.js",
+  "/(app)/admin/groups/page": "app/(app)/admin/groups/page.js",
+  "/(app)/admin/page": "app/(app)/admin/page.js",
+  "/(app)/admin/consolidation/page": "app/(app)/admin/consolidation/page.js",
+  "/(app)/admin/submissions/page": "app/(app)/admin/submissions/page.js",
+  "/(app)/admin/synthesis/page": "app/(app)/admin/synthesis/page.js",
+  "/(app)/admin/psd-final/page": "app/(app)/admin/psd-final/page.js",
+  "/(app)/dashboard/page": "app/(app)/dashboard/page.js",
+  "/(app)/directions/[groupId]/sections/[code]/page": "app/(app)/directions/[groupId]/sections/[code]/page.js",
+  "/(app)/directions/page": "app/(app)/directions/page.js",
+  "/(app)/sections/[code]/page": "app/(app)/sections/[code]/page.js",
+  "/(app)/directions/[groupId]/page": "app/(app)/directions/[groupId]/page.js"
+}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Users, TrendingUp, Send, CheckCircle2, RotateCcw, ArrowRight, AlertTriangle, Trash2, ShieldCheck } from "lucide-react";
+import { Users, TrendingUp, Send, CheckCircle2, RotateCcw, ArrowRight, AlertTriangle, Trash2, ShieldCheck, FileDown, Loader2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/kpi-card";
@@ -20,6 +20,7 @@ import {
   getAdminSubmissions,
 } from "@/lib/api/admin";
 import { attendLaDg } from "@/lib/dg-queue";
+import { downloadGroupPdf } from "@/lib/api/exports";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -50,6 +51,17 @@ export default function AdminDashboardPage() {
   // Effacer le fil d'activité : l'admin et la direction générale.
   // Le superviseur suit le fil en direct sans pouvoir l'effacer.
   const peutEffacer = canReview(user?.role);
+  const [pdfEnCours, setPdfEnCours] = useState<number | null>(null);
+  async function telechargerPdf(groupId: number) {
+    setPdfEnCours(groupId);
+    try {
+      await downloadGroupPdf(groupId);
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Échec de l'export PDF"));
+    } finally {
+      setPdfEnCours(null);
+    }
+  }
   const queryClient = useQueryClient();
   const retirerActivite = useMutation({
     mutationFn: (id: number) => deleteAdminActivity(id),
@@ -299,10 +311,10 @@ export default function AdminDashboardPage() {
         <CardContent className="p-0">
           <div className="divide-y divide-border">
             {data.groups.map((g) => (
+              <div key={g.groupId} className="flex items-center hover:bg-primary-50/60 dark:hover:bg-white/5 transition-colors">
               <Link prefetch={false}
-                key={g.groupId}
                 href={`/admin/groups/${g.groupId}/sections/${pendingSectionCode(g.groupId)}`}
-                className="flex items-center justify-between px-5 py-3 hover:bg-primary-50/60 dark:hover:bg-white/5 transition-colors"
+                className="flex flex-1 items-center justify-between pl-5 pr-3 py-3"
               >
                 <div>
                   <div className="flex items-center gap-2">
@@ -322,6 +334,19 @@ export default function AdminDashboardPage() {
                   </span>
                 </div>
               </Link>
+              {/* Plan Strategique Sectoriel de la direction : ouvert a tout le pilotage, superviseur compris. */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mr-3"
+                title={`Télécharger le Plan Stratégique Sectoriel — ${g.groupName} (PDF)`}
+                disabled={pdfEnCours === g.groupId}
+                onClick={() => telechargerPdf(g.groupId)}
+              >
+                {pdfEnCours === g.groupId ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+                PDF
+              </Button>
+              </div>
             ))}
           </div>
         </CardContent>
